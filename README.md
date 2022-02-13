@@ -1,2 +1,4 @@
 # Matiria
-/məˈtɪərɪə/ Hobby programming language
+/məˈtɪərɪə/ 
+
+Hobby programming language
