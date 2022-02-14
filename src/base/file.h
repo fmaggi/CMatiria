@@ -1,8 +1,14 @@
-#ifndef FILE_H
-#define FILE_H
+#ifndef MTR_FILE_H
+#define MTR_FILE_H
 
 #include <stdio.h>
+#include "types.h"
 
-char* read_file(const char* filepath);
+struct mtr_file {
+    char* bytes;
+    size_t size;
+};
+
+struct mtr_file mtr_read_file(const char* filepath);
 
 #endif

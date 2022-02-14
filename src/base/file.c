@@ -1,15 +1,21 @@
 #include "file.h"
 
-#include "stdlib.h"
+#include <stdlib.h>
 
 #include "log.h"
 
-char* read_file(const char* filepath) {
+struct mtr_file mtr_read_file(const char* filepath) {
+
+    struct mtr_file f = {
+        .bytes = NULL,
+        .size = 0
+    };
+
     FILE* file = fopen(filepath, "r");
     if (!file)
     {
-        LOG_ERROR("Unable to open file at %s", filepath);
-        return NULL;
+        MTR_LOG_ERROR("Unable to open file at %s", filepath);
+        return f;
     }
 
     fseek(file, 0L, SEEK_END);
@@ -19,12 +25,16 @@ char* read_file(const char* filepath) {
     size_t actuallyRead = fread(bytes, 1, size, file);
     if (actuallyRead != size)
     {
-        LOG_ERROR("Invalid file read from %s", filepath);
-        return NULL;
+        MTR_LOG_ERROR("Invalid file read from %s", filepath);
+        free(bytes);
+        return f;
     }
 
     fclose(file);
     bytes[size] = 0;
 
-    return bytes;
+    f.bytes = bytes;
+    f.size = size+1;
+
+    return f;
 }

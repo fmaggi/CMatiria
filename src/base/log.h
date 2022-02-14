@@ -1,31 +1,31 @@
-#ifndef LOG_H
-#define LOG_H
+#ifndef MTR_LOG_H
+#define MTR_LOG_H
 
-#include "stdio.h"
+#include <stdio.h>
 
-#define PROFILE_FUNC() (printf("[Function call] %s\n",__func__))
+#define MTR_PROFILE_FUNC() (printf("[Function call] %s\n",__func__))
 
-#define LOG(...)       (printf(__VA_ARGS__), printf("\n"))
+#define MTR_LOG(...)       (printf(__VA_ARGS__), printf("\n"))
 
-#define LOG_INFO(...)  (printf("Info: "), LOG(__VA_ARGS__))                      // white
-#define LOG_TRACE(...) (printf("\033[0;32mTrace: \033[0m"), LOG(__VA_ARGS__))  // green
-#define LOG_WARN(...)  (printf("\033[0;33mWarning: \033[0m"), LOG(__VA_ARGS__)) // yellow
-#define LOG_ERROR(...) (printf("\033[0;31mError: \033[0m"), LOG(__VA_ARGS__))   // red
+#define MTR_LOG_INFO(...)  (printf("Info: "), MTR_LOG(__VA_ARGS__))                      // white
+#define MTR_LOG_TRACE(...) (printf("\033[0;32mTrace: \033[0m"), MTR_LOG(__VA_ARGS__))  // green
+#define MTR_LOG_WARN(...)  (printf("\033[0;33mWarning: \033[0m"), MTR_LOG(__VA_ARGS__)) // yellow
+#define MTR_LOG_ERROR(...) (printf("\033[0;31mError: \033[0m"), MTR_LOG(__VA_ARGS__))   // red
 
 #ifdef DEBUG
-    #define LOG_INFO_DEBUG(...)   (LOG_INFO(__VA_ARGS__))
-    #define LOG_TRACE_DEBUG(...)  (LOG_TRACE(__VA_ARGS__))
-    #define LOG_WARN_DEBUG(...)   (LOG_WARN(__VA_ARGS__))
-    #define LOG_ERROR_DEBUG(...)  (LOG_ERROR(__VA_ARGS__))
+    #define MTR_LOG_INFO_DEBUG(...)   (MTR_LOG_INFO(__VA_ARGS__))
+    #define MTR_LOG_TRACE_DEBUG(...)  (MTR_LOG_TRACE(__VA_ARGS__))
+    #define MTR_LOG_WARN_DEBUG(...)   (MTR_LOG_WARN(__VA_ARGS__))
+    #define MTR_LOG_ERROR_DEBUG(...)  (MTR_LOG_ERROR(__VA_ARGS__))
 
-    #define ASSERT(x, m) if (!(x)) { LOG_ERROR((m)); exit(-1); }
+    #define MTR_ASSERT(x, m) if (!(x)) { MTR_LOG_ERROR((m)); exit(-1); }
 #else
-    #define LOG_INFO_DEBUG(...)
-    #define LOG_TRACE_DEBUG(...)
-    #define LOG_WARN_DEBUG(...)
-    #define LOG_ERROR_DEBUG(...)
+    #define MTR_LOG_INFO_DEBUG(...)
+    #define MTR_LOG_TRACE_DEBUG(...)
+    #define MTR_LOG_WARN_DEBUG(...)
+    #define MTR_LOG_ERROR_DEBUG(...)
 
-    #define ASSERT(x, m)
+    #define MTR_ASSERT(x, m)
 #endif
 
 #endif
