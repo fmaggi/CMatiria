@@ -1,9 +1,7 @@
 CC = clang
 LL = llvm-ar
 
-DEPS = dependencies
-
-CFLAGS = -Imatiria -Werror -D_FORTIFY_SOURCE=2 -std=c18 -O2
+CFLAGS = -Imatiria -Werror -D_FORTIFY_SOURCE=2 -std=c17
 LFLAGS = -no-pie
 
 MATIRIA = matiria
@@ -13,16 +11,14 @@ SRC = $(wildcard $(SRC_DIR)/*.c) $(wildcard $(SRC_DIR)/**/*.c) $(wildcard $(SRC_
 OBJS  = $(SRC:%.c=%.o)
 
 ifndef config
-	config=release
+	config=debug
 endif
 
 ifeq ($(config), debug)
 	CFLAGS += -DDEBUG -g -pg
 	LFLAGS += -pg -g
-
-	OBJ = obj/debug
 else
-	OBJ = obj/release
+	CFLAGS += -O2
 endif
 
 $(MATIRIA): $(OBJS)
