@@ -19,6 +19,8 @@
     #define MTR_LOG_ERROR_DEBUG(...)  (MTR_LOG_ERROR(__VA_ARGS__))
 
     #define MTR_ASSERT(x, m) if (!(x)) { MTR_LOG_ERROR((m)); exit(-1); }
+
+    #define IMPLEMENT MTR_LOG_WARN("%s function needs to be implemented!", __func__);
 #else
     #define MTR_LOG_INFO_DEBUG(...)
     #define MTR_LOG_TRACE_DEBUG(...)
@@ -26,6 +28,8 @@
     #define MTR_LOG_ERROR_DEBUG(...)
 
     #define MTR_ASSERT(x, m)
+
+    #define IMPLEMENT
 #endif
 
 #endif

@@ -1,8 +1,9 @@
 #include "file.h"
 
-#include <stdlib.h>
-
 #include "log.h"
+
+#include <stdio.h>
+#include <stdlib.h>
 
 struct mtr_file mtr_read_file(const char* filepath) {
 
@@ -37,4 +38,9 @@ struct mtr_file mtr_read_file(const char* filepath) {
     f.size = size+1;
 
     return f;
+}
+
+void mtr_free_file(struct mtr_file file)
+{
+    free(file.bytes);
 }

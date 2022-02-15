@@ -4,7 +4,6 @@
 #include "base/log.h"
 
 #include "scanner.h"
-#include "stdlib.h"
 #include "string.h"
 
 int main(int argc, char* argv[])
@@ -17,13 +16,11 @@ int main(int argc, char* argv[])
         .start = file.bytes
     };
 
-    while (*scanner.current != '\n') {
-        struct mtr_token t = next_token(&scanner);
-        char buf[5];
-        memcpy(buf, t.start, sizeof(char) * 2);
-        buf[4] = 0;
-        MTR_LOG_INFO("%s", buf);
+    struct mtr_token_array array = mtr_scan(&scanner);
+
+    for (size_t i = 0; i < array.size; ++i) {
+        mtr_print_token(array.tokens[i]);
     }
 
-    free(file.bytes);
+    mtr_free_file(file);
 }

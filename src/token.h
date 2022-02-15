@@ -13,17 +13,15 @@ enum mtr_token_type {
     MTR_TOKEN_BANG,
     MTR_TOKEN_EQUAL,
     MTR_TOKEN_GREATER, MTR_TOKEN_LESS,
+    MTR_TOKEN_AND, MTR_TOKEN_OR,
 
     // double char
     MTR_TOKEN_ARROW,
     MTR_TOKEN_BANG_EQUAL, MTR_TOKEN_EQUAL_EQUAL, MTR_TOKEN_GREATER_EQUAL, MTR_TOKEN_LESS_EQUAL,
 
-
     // Literals.
     MTR_TOKEN_STRING, MTR_TOKEN_INT, MTR_TOKEN_FLOAT, MTR_TOKEN_BOOLEAN,
 
-    // Keywords.
-    MTR_TOKEN_AND, MTR_TOKEN_OR,
     MTR_TOKEN_STRUCT,
     MTR_TOKEN_IF, MTR_TOKEN_ELSE,
     MTR_TOKEN_TRUE, MTR_TOKEN_FALSE,
@@ -46,7 +44,21 @@ enum mtr_token_type {
 struct mtr_token {
     enum mtr_token_type type;
     const char* start;
+    u32 char_index;
     size_t length;
 };
+
+struct mtr_token_array {
+    struct mtr_token* tokens;
+    size_t capacity;
+    size_t size;
+};
+
+struct mtr_token_array mtr_new_array(size_t capacity);
+void mtr_insert_token(struct mtr_token_array* array, struct mtr_token token);
+void mtr_delete_array(struct mtr_token_array* array);
+
+void mtr_print_token(struct mtr_token token);
+const char* mtr_token_type_to_str(enum mtr_token_type type);
 
 #endif
