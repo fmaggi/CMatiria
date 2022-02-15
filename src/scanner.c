@@ -66,6 +66,15 @@ struct mtr_token_array mtr_scan(struct mtr_scanner* scanner) {
         mtr_insert_token(&tokens, t);
     }
 
+    struct mtr_token e = {
+        .type = MTR_TOKEN_EOF,
+        .char_index = 0,
+        .start = NULL,
+        .length = 0
+    };
+
+    mtr_insert_token(&tokens, e);
+
     return tokens;
 }
 
@@ -164,7 +173,7 @@ static bool is_numeric(char c) {
 }
 
 static bool is_alpha(char c) {
-    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
 }
 
 static bool is_alphanumeric(char c) {

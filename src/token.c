@@ -27,11 +27,12 @@ void mtr_insert_token(struct mtr_token_array* array, struct mtr_token token) {
         memcpy(temp, array->tokens, sizeof(struct mtr_token) * array->capacity);
         free(array->tokens);
         array->tokens = temp;
+        array->capacity = new_capacity;
     }
 
     array->tokens[array->size++] = token;
 }
-void delete_array(struct mtr_token_array* array)
+void mtr_delete_array(struct mtr_token_array* array)
 {
     free(array->tokens);
     array->tokens = NULL;
@@ -40,8 +41,15 @@ void delete_array(struct mtr_token_array* array)
 }
 
 void mtr_print_token(struct mtr_token token) {
-    const char* str = mtr_token_type_to_str(token.type);
-    MTR_LOG_TRACE("TOKEN: %s at %i (%zu)", str, token.char_index, token.length);
+    if (token.type == MTR_TOKEN_IDENTIFIER || token.type == MTR_TOKEN_STRING ||token.type == MTR_TOKEN_BOOLEAN || token.type == MTR_TOKEN_INT ||token.type == MTR_TOKEN_FLOAT) {
+        char buf[256];
+        memcpy(buf, token.start, token.length);
+        buf[token.length] = '\0';
+        MTR_LOG_TRACE("TOKEN: %s at %i (%zu)", buf, token.char_index, token.length);
+    } else {
+        const char* str = mtr_token_type_to_str(token.type);
+        MTR_LOG_TRACE("TOKEN: %s at %i (%zu)", str, token.char_index, token.length);
+    }
 }
 
 const char* mtr_token_type_to_str(enum mtr_token_type type) {

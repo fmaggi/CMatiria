@@ -23,4 +23,5 @@ int main(int argc, char* argv[])
     }
 
     mtr_free_file(file);
+    mtr_delete_array(&array);
 }
