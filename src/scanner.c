@@ -1,7 +1,9 @@
 #include "scanner.h"
 
 #include "base/log.h"
-#include "string.h"
+#include "error.h"
+
+#include <string.h>
 
 struct keyword_entry {
     const enum mtr_token_type type;
@@ -9,10 +11,11 @@ struct keyword_entry {
     const size_t str_len;
 };
 
-static const enum mtr_token_type first_keyword = MTR_TOKEN_STRUCT;
-static const enum mtr_token_type last_keyword  = MTR_TOKEN_BOOL;
+#define FIRST_KEYWORD MTR_TOKEN_STRUCT
+#define LAST_KEYWORD  MTR_TOKEN_BOOL
+#define KEYWORD_COUNT LAST_KEYWORD - FIRST_KEYWORD + 1
 
-static const struct keyword_entry keywords[MTR_TOKEN_BOOL - MTR_TOKEN_STRUCT + 1] = {
+static const struct keyword_entry keywords[KEYWORD_COUNT] = {
     { .type = MTR_TOKEN_STRUCT, .str = "struct", .str_len = strlen("struct") },
     { .type = MTR_TOKEN_IF,     .str = "if",     .str_len = strlen("if")     },
     { .type = MTR_TOKEN_ELSE,   .str = "else",   .str_len = strlen("else")   },
@@ -143,6 +146,20 @@ struct mtr_token mtr_next_token(struct mtr_scanner* scanner) {
         }
         return make_token(scanner, MTR_TOKEN_LESS);
 
+    case '&':
+        if (peek(scanner->current) == '&') {
+            advance(scanner);
+            return make_token(scanner, MTR_TOKEN_AND);
+        }
+        return invalid_token;
+
+    case '|':
+        if (peek(scanner->current) == '|') {
+            advance(scanner);
+            return make_token(scanner, MTR_TOKEN_OR);
+        }
+        return invalid_token;
+
     case '"': return scan_string(scanner);
 
     case '0': case '1': case '2': case '3': case '4':
@@ -162,8 +179,14 @@ struct mtr_token mtr_next_token(struct mtr_scanner* scanner) {
     case 'P': case 'Q': case 'R': case 'S': case 'T':
     case 'U': case 'V': case 'W': case 'X': case 'Y':
     case 'Z':
+
+    case '_':
         return scan_identifier(scanner);
+
+    case '\n':
+        return invalid_token;
     }
+    mtr_scanner_error(scanner, "Invalid token", scanner->start - scanner->source);
 
     return invalid_token;
 }
@@ -207,7 +230,7 @@ static struct mtr_token make_token(const struct mtr_scanner* scanner, enum mtr_t
 static struct mtr_token scan_string(struct mtr_scanner* scanner) {
     while (peek(scanner->current) != '"')
         advance(scanner);
-    advance(scanner);
+    advance(scanner); // closing "
     return make_token(scanner, MTR_TOKEN_STRING);
 }
 
@@ -226,7 +249,7 @@ static struct mtr_token scan_number(struct mtr_scanner* scanner) {
 }
 
 static bool comp_identifier(const char* k, char* s, char* f) {
-    size_t max = f - s;
+    size_t max = strlen(k);
     for (size_t i = 0; i < max; ++i) {
         if (k[i] != *s)
             return false;
@@ -239,34 +262,11 @@ static struct mtr_token scan_identifier(struct mtr_scanner* scanner) {
     while (is_alphanumeric(peek(scanner->current)))
         advance(scanner);
 
-    #define CHECK_KEYWORD(type) {                                                                                                     \
-        const struct keyword_entry k = keywords[ type - first_keyword];                                                               \
-        if ((scanner->current - scanner->start) == k.str_len && comp_identifier(k.str, scanner->start, scanner->current))             \
-            return make_token((scanner), type);                                                                                       \
-        }
-
-    CHECK_KEYWORD(MTR_TOKEN_STRUCT)
-    CHECK_KEYWORD(MTR_TOKEN_IF)
-    CHECK_KEYWORD(MTR_TOKEN_ELSE)
-    CHECK_KEYWORD(MTR_TOKEN_TRUE)
-    CHECK_KEYWORD(MTR_TOKEN_FALSE)
-    CHECK_KEYWORD(MTR_TOKEN_FN)
-    CHECK_KEYWORD(MTR_TOKEN_RETURN)
-    CHECK_KEYWORD(MTR_TOKEN_WHILE)
-    CHECK_KEYWORD(MTR_TOKEN_FOR)
-    CHECK_KEYWORD(MTR_TOKEN_U8)
-    CHECK_KEYWORD(MTR_TOKEN_U16)
-    CHECK_KEYWORD(MTR_TOKEN_U32)
-    CHECK_KEYWORD(MTR_TOKEN_U64)
-    CHECK_KEYWORD(MTR_TOKEN_I8)
-    CHECK_KEYWORD(MTR_TOKEN_I16)
-    CHECK_KEYWORD(MTR_TOKEN_I32)
-    CHECK_KEYWORD(MTR_TOKEN_I64)
-    CHECK_KEYWORD(MTR_TOKEN_F32)
-    CHECK_KEYWORD(MTR_TOKEN_F64)
-    CHECK_KEYWORD(MTR_TOKEN_BOOL)
-
-    #undef CHECK_KEYWORD
+    for (int i = 0; i < KEYWORD_COUNT; ++i) {
+        const struct keyword_entry k = keywords[i];
+        if ((scanner->current - scanner->start) == k.str_len && comp_identifier(k.str, scanner->start, scanner->current))
+            return make_token((scanner), k.type);
+    }
 
     return make_token(scanner, MTR_TOKEN_IDENTIFIER);
 }

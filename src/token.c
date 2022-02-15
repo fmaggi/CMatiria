@@ -41,14 +41,15 @@ void mtr_delete_array(struct mtr_token_array* array)
 }
 
 void mtr_print_token(struct mtr_token token) {
+    const char* type = mtr_token_type_to_str(token.type);
+
     if (token.type == MTR_TOKEN_IDENTIFIER || token.type == MTR_TOKEN_STRING ||token.type == MTR_TOKEN_BOOLEAN || token.type == MTR_TOKEN_INT ||token.type == MTR_TOKEN_FLOAT) {
         char buf[256];
         memcpy(buf, token.start, token.length);
         buf[token.length] = '\0';
-        MTR_LOG_TRACE("TOKEN: %s at %i (%zu)", buf, token.char_index, token.length);
+        MTR_LOG_TRACE("TOKEN: %s at %i, (%s)", type, token.char_index, buf);
     } else {
-        const char* str = mtr_token_type_to_str(token.type);
-        MTR_LOG_TRACE("TOKEN: %s at %i (%zu)", str, token.char_index, token.length);
+        MTR_LOG_TRACE("TOKEN: %s at %i", type, token.char_index);
     }
 }
 
@@ -62,7 +63,7 @@ const char* mtr_token_type_to_str(enum mtr_token_type type) {
     case MTR_TOKEN_PERCENT:       return "%";
     case MTR_TOKEN_COMMA:         return ",";
     case MTR_TOKEN_COLON:         return ":";
-    case MTR_TOKEN_SEMICOLON:     return ".";
+    case MTR_TOKEN_SEMICOLON:     return ";";
     case MTR_TOKEN_DOT:           return ".";
     case MTR_TOKEN_PAREN_L:       return "(";
     case MTR_TOKEN_PAREN_R:       return ")";
@@ -79,10 +80,10 @@ const char* mtr_token_type_to_str(enum mtr_token_type type) {
     case MTR_TOKEN_EQUAL_EQUAL:   return "==";
     case MTR_TOKEN_GREATER_EQUAL: return ">=";
     case MTR_TOKEN_LESS_EQUAL:    return "<=";
-    case MTR_TOKEN_STRING:        return "string_literal";
-    case MTR_TOKEN_INT:           return "int_literal";
-    case MTR_TOKEN_FLOAT:         return "float_literal";
-    case MTR_TOKEN_BOOLEAN:       return "bool_literal";
+    case MTR_TOKEN_STRING:        return "STRING";
+    case MTR_TOKEN_INT:           return "INT";
+    case MTR_TOKEN_FLOAT:         return "FLOAT";
+    case MTR_TOKEN_BOOLEAN:       return "BOOL";
     case MTR_TOKEN_AND:           return "&&";
     case MTR_TOKEN_OR:            return "||";
     case MTR_TOKEN_STRUCT:        return "struct";
@@ -105,7 +106,7 @@ const char* mtr_token_type_to_str(enum mtr_token_type type) {
     case MTR_TOKEN_F32:           return "f32";
     case MTR_TOKEN_F64:           return "f64";
     case MTR_TOKEN_BOOL:          return "bool";
-    case MTR_TOKEN_IDENTIFIER:    return "identifier";
+    case MTR_TOKEN_IDENTIFIER:    return "IDENTIFIER";
     case MTR_TOKEN_EOF:           return "EOF";
     case MTR_TOKEN_INVALID:       return "invalid";
     }
