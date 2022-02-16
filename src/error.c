@@ -1,7 +1,7 @@
 #include "error.h"
 
-#include "base/macros.h"
-#include "base/log.h"
+#include "core/macros.h"
+#include "core/log.h"
 
 #include <string.h>
 

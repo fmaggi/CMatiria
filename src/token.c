@@ -1,6 +1,6 @@
 #include "token.h"
 
-#include "base/log.h"
+#include "core/log.h"
 
 #include <stdlib.h>
 #include <string.h>

@@ -1,11 +1,4 @@
-#include <stdio.h>
-
-#include "base/file.h"
-#include "base/log.h"
-
-#include "scanner.h"
 #include "compiler.h"
-#include "string.h"
 
 int main(int argc, char* argv[])
 {

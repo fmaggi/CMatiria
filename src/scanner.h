@@ -2,7 +2,7 @@
 #define MTR_SCANNER_H
 
 #include "token.h"
-#include "base/file.h"
+#include "core/file.h"
 
 struct mtr_scanner {
     const char* source;

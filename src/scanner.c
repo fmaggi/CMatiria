@@ -1,6 +1,6 @@
 #include "scanner.h"
 
-#include "base/log.h"
+#include "core/log.h"
 #include "error.h"
 
 #include <string.h>
@@ -248,7 +248,7 @@ static struct mtr_token scan_number(struct mtr_scanner* scanner) {
     return make_token(scanner, MTR_TOKEN_INT);
 }
 
-static bool comp_identifier(const char* k, char* s, char* f) {
+static bool comp_identifier(const char* k, char* s) {
     size_t max = strlen(k);
     for (size_t i = 0; i < max; ++i) {
         if (k[i] != *s)
@@ -264,7 +264,7 @@ static struct mtr_token scan_identifier(struct mtr_scanner* scanner) {
 
     for (int i = 0; i < KEYWORD_COUNT; ++i) {
         const struct keyword_entry k = keywords[i];
-        if ((scanner->current - scanner->start) == k.str_len && comp_identifier(k.str, scanner->start, scanner->current))
+        if ((scanner->current - scanner->start) == k.str_len && comp_identifier(k.str, scanner->start))
             return make_token((scanner), k.type);
     }
 
