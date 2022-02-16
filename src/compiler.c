@@ -4,14 +4,16 @@
 
 #include "core/file.h"
 
+#include <stdlib.h>
+
 bool mtr_compile(const char* filepath) {
 
-    struct mtr_file file = mtr_read_file(filepath);
+    char* source = mtr_read_file(filepath);
 
     struct mtr_scanner scanner = {
-        .start = file.bytes,
-        .current = file.bytes,
-        .source = file.bytes
+        .start = source,
+        .current = source,
+        .source = source
     };
 
     struct mtr_token_array array = mtr_scan(&scanner);
@@ -22,6 +24,6 @@ bool mtr_compile(const char* filepath) {
 
     mtr_delete_array(&array);
 
-    mtr_free_file(file);
+    free(source);
     return true;
 }

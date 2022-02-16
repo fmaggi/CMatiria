@@ -3,12 +3,6 @@
 
 #include "types.h"
 
-struct mtr_file {
-    char* bytes;
-    size_t size;
-};
-
-struct mtr_file mtr_read_file(const char* filepath);
-void mtr_free_file(struct mtr_file file);
+char* mtr_read_file(const char* filepath);
 
 #endif

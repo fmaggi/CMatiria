@@ -5,42 +5,36 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-struct mtr_file mtr_read_file(const char* filepath) {
-
-    struct mtr_file f = {
-        .bytes = NULL,
-        .size = 0
-    };
+char* mtr_read_file(const char* filepath) {
 
     FILE* file = fopen(filepath, "r");
-    if (!file)
-    {
+    if (NULL == file) {
         MTR_LOG_ERROR("Unable to open file at %s", filepath);
-        return f;
+        return NULL;
     }
 
     fseek(file, 0L, SEEK_END);
     size_t size = ftell(file);
     rewind(file);
+
     char* bytes = malloc(size * sizeof(char) + 1);
+    if (NULL == bytes) {
+        MTR_LOG_ERROR("Bad allocation! (%lu bytes for file %s)", size * sizeof(char) + 1, filepath);
+        fclose(file);
+        return NULL;
+    }
+
     size_t actuallyRead = fread(bytes, 1, size, file);
-    if (actuallyRead != size)
-    {
+    if (actuallyRead != size) {
         MTR_LOG_ERROR("Invalid file read from %s", filepath);
         free(bytes);
-        return f;
+        fclose(file);
+        return NULL;
     }
 
     fclose(file);
     bytes[size] = 0;
 
-    f.bytes = bytes;
-    f.size = size+1;
+    return bytes;
 
-    return f;
-}
-
-void mtr_free_file(struct mtr_file file)
-{
-    free(file.bytes);
 }
