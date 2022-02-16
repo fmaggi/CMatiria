@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct mtr_token_array mtr_new_array() {
+struct mtr_token_array mtr_new_token_array() {
     struct mtr_token_array array;
     array.capacity = 8;
     array.size = 0;
@@ -32,8 +32,7 @@ void mtr_write_token(struct mtr_token_array* array, struct mtr_token token) {
 
     array->tokens[array->size++] = token;
 }
-void mtr_delete_array(struct mtr_token_array* array)
-{
+void mtr_delete_token_array(struct mtr_token_array* array) {
     free(array->tokens);
     array->tokens = NULL;
     array->size = 0;
@@ -43,7 +42,7 @@ void mtr_delete_array(struct mtr_token_array* array)
 void mtr_print_token(struct mtr_token token) {
     const char* type = mtr_token_type_to_str(token.type);
 
-    if (token.type == MTR_TOKEN_IDENTIFIER || token.type == MTR_TOKEN_STRING ||token.type == MTR_TOKEN_BOOLEAN || token.type == MTR_TOKEN_INT ||token.type == MTR_TOKEN_FLOAT || token.type == MTR_TOKEN_INVALID) {
+    if (token.type == MTR_TOKEN_IDENTIFIER || token.type == MTR_TOKEN_STRING || token.type == MTR_TOKEN_INT ||token.type == MTR_TOKEN_FLOAT || token.type == MTR_TOKEN_INVALID) {
         MTR_LOG_TRACE("Token: %s at %i, (%.*s)", type, token.char_idx, (u32)token.length, token.start);
     } else {
         MTR_LOG_TRACE("Token: %s at %i", type, token.char_idx);
@@ -81,7 +80,6 @@ const char* mtr_token_type_to_str(enum mtr_token_type type) {
     case MTR_TOKEN_STRING:        return "STRING";
     case MTR_TOKEN_INT:           return "INT";
     case MTR_TOKEN_FLOAT:         return "FLOAT";
-    case MTR_TOKEN_BOOLEAN:       return "BOOL";
     case MTR_TOKEN_AND:           return "&&";
     case MTR_TOKEN_OR:            return "||";
     case MTR_TOKEN_STRUCT:        return "struct";

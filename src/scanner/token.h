@@ -21,7 +21,7 @@ enum mtr_token_type {
     MTR_TOKEN_DOUBLE_SLASH,
 
     // Literals.
-    MTR_TOKEN_STRING, MTR_TOKEN_INT, MTR_TOKEN_FLOAT, MTR_TOKEN_BOOLEAN,
+    MTR_TOKEN_STRING, MTR_TOKEN_INT, MTR_TOKEN_FLOAT,
 
     MTR_TOKEN_STRUCT,
     MTR_TOKEN_IF, MTR_TOKEN_ELSE,
@@ -57,9 +57,9 @@ struct mtr_token_array {
     size_t size;
 };
 
-struct mtr_token_array mtr_new_array();
+struct mtr_token_array mtr_new_token_array();
 void mtr_write_token(struct mtr_token_array* array, struct mtr_token token);
-void mtr_delete_array(struct mtr_token_array* array);
+void mtr_delete_token_array(struct mtr_token_array* array);
 
 void mtr_print_token(struct mtr_token token);
 const char* mtr_token_type_to_str(enum mtr_token_type type);

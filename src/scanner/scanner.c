@@ -2,6 +2,15 @@
 
 #include <string.h>
 
+struct mtr_scanner mtr_scanner_init(const char* source) {
+    struct mtr_scanner scanner = {
+        .source = source,
+        .start  = source,
+        .current = source
+    };
+    return scanner;
+}
+
 struct keyword_entry {
     const enum mtr_token_type type;
     const char* str;
@@ -57,7 +66,7 @@ static struct mtr_token scan_identifier(struct mtr_scanner* scanner);
 static struct mtr_token scan_comment(struct mtr_scanner* scanner);
 
 struct mtr_token_array mtr_scan(struct mtr_scanner* scanner) {
-    struct mtr_token_array tokens = mtr_new_array();
+    struct mtr_token_array tokens = mtr_new_token_array();
 
     while(*scanner->start != '\0') {
         struct mtr_token t = mtr_next_token(scanner);

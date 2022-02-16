@@ -10,18 +10,14 @@ enum mtr_expr_type {
     MTR_EXPR_UNARY
 };
 
-struct mtr_expr {
-    enum mtr_expr_type type;
-};
+struct mtr_expr;
 
 struct mtr_unary {
-    struct mtr_expr expr;
     struct mtr_token operator;
     struct mtr_expr* right;
 };
 
 struct mtr_literal {
-    struct mtr_expr expr;
     struct mtr_token token;
     union {
         u64 integer;
@@ -31,15 +27,39 @@ struct mtr_literal {
 };
 
 struct mtr_grouping {
-    struct mtr_expr expr;
     struct mtr_expr* expression;
 };
 
 struct mtr_binary {
-    struct mtr_expr expr;
-    struct mtr_expr* right;
     struct mtr_token operator;
+    struct mtr_expr* right;
     struct mtr_expr* left;
 };
+
+struct mtr_expr {
+
+    union {
+        struct mtr_binary binary;
+        struct mtr_unary unary;
+        struct mtr_literal literal;
+        struct mtr_grouping grouping;
+    };
+
+    enum mtr_expr_type type;
+};
+
+struct mtr_expr_array {
+    struct mtr_expr* expressions;
+    size_t size;
+    size_t capacity;
+};
+
+struct mtr_expr_array mtr_new_expr_array();
+struct mtr_expr* mtr_write_expr(struct mtr_expr_array* array, struct mtr_expr expr);
+struct mtr_expr* mtr_get_expr_ptr(struct mtr_expr_array* array, u64 index);
+struct mtr_expr mtr_get_expr(struct mtr_expr_array* array, u64 index);
+void mtr_delete_expr_array(struct mtr_expr_array* array);
+
+void mtr_print_expr(struct mtr_expr* node);
 
 #endif
