@@ -47,7 +47,7 @@ static bool is_alpha(char c);
 static bool is_alphanumeric(char c);
 
 static char advance(struct mtr_scanner* scanner);
-static const char* skip_whitespace(const char* c);
+static void skip_whitespace(struct mtr_scanner* scanner);
 
 static struct mtr_token make_token(const struct mtr_scanner* scanner, enum mtr_token_type type);
 
@@ -57,36 +57,30 @@ static struct mtr_token scan_identifier(struct mtr_scanner* scanner);
 static struct mtr_token scan_comment(struct mtr_scanner* scanner);
 
 struct mtr_token_array mtr_scan(struct mtr_scanner* scanner) {
-    struct mtr_token_array tokens = mtr_new_array(10);
-    while (*scanner->current != '\0') {
+    struct mtr_token_array tokens = mtr_new_array();
+
+    while(*scanner->start != '\0') {
         struct mtr_token t = mtr_next_token(scanner);
-        mtr_insert_token(&tokens, t);
+        mtr_write_token(&tokens, t);
     }
-
-    struct mtr_token e = {
-        .type = MTR_TOKEN_EOF,
-        .start = scanner->current,
-        .length = 0,
-        .char_idx = scanner->start - scanner->source
-    };
-
-    mtr_insert_token(&tokens, e);
 
     return tokens;
 }
 
 struct mtr_token mtr_next_token(struct mtr_scanner* scanner) {
-    scanner->current = skip_whitespace(scanner->current);
+    skip_whitespace(scanner);
+
     scanner->start = scanner->current;
 
-    char c = advance(scanner);
+    char c_ = advance(scanner);
+    char current = *scanner->current;
 
-    switch (c)
+    switch (c_)
     {
     case '+': return make_token(scanner, MTR_TOKEN_PLUS);
 
     case '-':
-        if (*scanner->current == '>') {
+        if (current == '>') {
             advance(scanner);
             return make_token(scanner, MTR_TOKEN_ARROW);
         }
@@ -95,7 +89,7 @@ struct mtr_token mtr_next_token(struct mtr_scanner* scanner) {
     case '*': return make_token(scanner, MTR_TOKEN_STAR);
 
     case '/':
-        if (*scanner->current == '/') {
+        if (current == '/') {
             advance(scanner);
             return make_token(scanner, MTR_TOKEN_DOUBLE_SLASH);
         }
@@ -116,42 +110,42 @@ struct mtr_token mtr_next_token(struct mtr_scanner* scanner) {
     case '#': return scan_comment(scanner);
 
     case '!':
-        if (*scanner->current == '=') {
+        if (current == '=') {
             advance(scanner);
             return make_token(scanner, MTR_TOKEN_BANG_EQUAL);
         }
         return make_token(scanner, MTR_TOKEN_BANG);
 
     case '=':
-        if (*scanner->current == '=') {
+        if (current == '=') {
             advance(scanner);
             return make_token(scanner, MTR_TOKEN_EQUAL_EQUAL);
         }
         return make_token(scanner, MTR_TOKEN_EQUAL);
 
     case '>':
-        if (*scanner->current == '=') {
+        if (current == '=') {
             advance(scanner);
             return make_token(scanner, MTR_TOKEN_GREATER_EQUAL);
         }
         return make_token(scanner, MTR_TOKEN_GREATER);
 
     case '<':
-        if (*scanner->current == '=') {
+        if (current == '=') {
             advance(scanner);
             return make_token(scanner, MTR_TOKEN_LESS_EQUAL);
         }
         return make_token(scanner, MTR_TOKEN_LESS);
 
     case '&':
-        if (*scanner->current == '&') {
+        if (current == '&') {
             advance(scanner);
             return make_token(scanner, MTR_TOKEN_AND);
         }
         return invalid_token;
 
     case '|':
-        if (*scanner->current == '|') {
+        if (current == '|') {
             advance(scanner);
             return make_token(scanner, MTR_TOKEN_OR);
         }
@@ -182,6 +176,10 @@ struct mtr_token mtr_next_token(struct mtr_scanner* scanner) {
 
     case '\n':
         return make_token(scanner, MTR_TOKEN_NEWLINE);
+
+    case '\0':
+        return make_token(scanner, MTR_TOKEN_EOF);
+
     }
 
     return make_token(scanner, MTR_TOKEN_INVALID);
@@ -203,10 +201,11 @@ static char advance(struct mtr_scanner* scanner) {
     return *(scanner->current++);
 }
 
-static const char* skip_whitespace(const char* c) {
+static void skip_whitespace(struct mtr_scanner* scanner) {
+    const char* c = scanner->current;
     while(*c == ' ' || *c == '\t' || *c == '\r')
         c++;
-    return c;
+    scanner->current = c;
 }
 
 static struct mtr_token make_token(const struct mtr_scanner* scanner, enum mtr_token_type type) {
@@ -240,13 +239,17 @@ static struct mtr_token scan_number(struct mtr_scanner* scanner) {
     return make_token(scanner, MTR_TOKEN_INT);
 }
 
+static bool check_keyword(const char* start, const char* end, const struct keyword_entry k) {
+    return (end - start) == k.str_len && memcmp(k.str, start, k.str_len) == 0;
+}
+
 static struct mtr_token scan_identifier(struct mtr_scanner* scanner) {
     while (is_alphanumeric(*scanner->current))
         advance(scanner);
 
     for (int i = 0; i < KEYWORD_COUNT; ++i) {
         const struct keyword_entry k = keywords[i];
-        if ((scanner->current - scanner->start) == k.str_len && memcmp(k.str, scanner->start, k.str_len) == 0)
+        if (check_keyword(scanner->start, scanner->current, k))
             return make_token(scanner, k.type);
     }
 

@@ -21,5 +21,7 @@ bool mtr_compile(const char* filepath) {
     }
 
     mtr_delete_array(&array);
+
+    mtr_free_file(file);
     return true;
 }

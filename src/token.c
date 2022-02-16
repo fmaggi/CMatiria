@@ -5,17 +5,17 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct mtr_token_array mtr_new_array(size_t capacity) {
+struct mtr_token_array mtr_new_array() {
     struct mtr_token_array array;
-    array.capacity = capacity;
+    array.capacity = 8;
     array.size = 0;
-    array.tokens = malloc(sizeof(struct mtr_token) * capacity);
+    array.tokens = malloc(sizeof(struct mtr_token) * 8);
     if (NULL == array.tokens)
         MTR_LOG_ERROR("Invalid allocation!");
     return array;
 }
 
-void mtr_insert_token(struct mtr_token_array* array, struct mtr_token token) {
+void mtr_write_token(struct mtr_token_array* array, struct mtr_token token) {
     if (array->size == array->capacity) {
         size_t new_capacity = array->size * 2;
         struct mtr_token* temp = malloc(sizeof(struct mtr_token) * new_capacity);
@@ -44,12 +44,9 @@ void mtr_print_token(struct mtr_token token) {
     const char* type = mtr_token_type_to_str(token.type);
 
     if (token.type == MTR_TOKEN_IDENTIFIER || token.type == MTR_TOKEN_STRING ||token.type == MTR_TOKEN_BOOLEAN || token.type == MTR_TOKEN_INT ||token.type == MTR_TOKEN_FLOAT || token.type == MTR_TOKEN_INVALID) {
-        char buf[256];
-        memcpy(buf, token.start, token.length);
-        buf[token.length] = '\0';
-        MTR_LOG_TRACE("TOKEN: %s at %i, (%s)", type, token.char_idx, buf);
+        MTR_LOG_TRACE("Token: %s at %i, (%.*s)", type, token.char_idx, (u32)token.length, token.start);
     } else {
-        MTR_LOG_TRACE("TOKEN: %s at %i", type, token.char_idx);
+        MTR_LOG_TRACE("Token: %s at %i", type, token.char_idx);
     }
 }
 

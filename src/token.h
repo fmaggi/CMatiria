@@ -1,5 +1,5 @@
-#ifndef MTR_TOKEN_H
-#define MTR_TOKEN_H
+#ifndef _MTR_TOKEN_H
+#define _MTR_TOKEN_H
 
 #include "core/types.h"
 
@@ -57,8 +57,8 @@ struct mtr_token_array {
     size_t size;
 };
 
-struct mtr_token_array mtr_new_array(size_t capacity);
-void mtr_insert_token(struct mtr_token_array* array, struct mtr_token token);
+struct mtr_token_array mtr_new_array();
+void mtr_write_token(struct mtr_token_array* array, struct mtr_token token);
 void mtr_delete_array(struct mtr_token_array* array);
 
 void mtr_print_token(struct mtr_token token);

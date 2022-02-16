@@ -1,5 +1,5 @@
-#ifndef TYPES_H
-#define TYPES_H
+#ifndef _MTR_TYPES_H
+#define _MTR_TYPES_H
 
 #include <stdint.h>
 #include <stdbool.h>

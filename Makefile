@@ -2,7 +2,7 @@ CC = clang
 LL = llvm-ar
 
 CFLAGS = -Imatiria -Werror -D_FORTIFY_SOURCE=2 -std=c17
-LFLAGS = -no-pie
+LFLAGS =
 
 MATIRIA = matiria
 SRC_DIR = src

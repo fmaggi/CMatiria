@@ -1,5 +1,5 @@
-#ifndef MTR_LOG_H
-#define MTR_LOG_H
+#ifndef _MTR_LOG_H
+#define _MTR_LOG_H
 
 #include <stdio.h>
 

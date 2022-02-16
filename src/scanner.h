@@ -1,5 +1,5 @@
-#ifndef MTR_SCANNER_H
-#define MTR_SCANNER_H
+#ifndef _MTR_SCANNER_H
+#define _MTR_SCANNER_H
 
 #include "token.h"
 #include "core/file.h"

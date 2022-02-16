@@ -1,6 +1,6 @@
-#include "compiler.h"
+// this file is just temporary (probably :) )
 
-#include "core/log.h"
+#include "compiler.h"
 
 int main(int argc, char* argv[])
 {
