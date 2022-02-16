@@ -30,4 +30,4 @@ $(MATIRIA): $(OBJS)
 	@$(CC) -o $@ -c $< $(CFLAGS)
 
 clean:
-	@rm $(OBJS) $(MATIRIA)
+	@rm $(OBJS)

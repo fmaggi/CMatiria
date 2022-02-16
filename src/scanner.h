@@ -5,9 +5,9 @@
 #include "core/file.h"
 
 struct mtr_scanner {
-    const char* source;
-    char* start;
-    char* current;
+    const char* const source;
+    const char* start;
+    const char* current;
 };
 
 struct mtr_token_array mtr_scan(struct mtr_scanner* scanner);

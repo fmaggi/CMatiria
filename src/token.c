@@ -43,7 +43,7 @@ void mtr_delete_array(struct mtr_token_array* array)
 void mtr_print_token(struct mtr_token token) {
     const char* type = mtr_token_type_to_str(token.type);
 
-    if (token.type == MTR_TOKEN_IDENTIFIER || token.type == MTR_TOKEN_STRING ||token.type == MTR_TOKEN_BOOLEAN || token.type == MTR_TOKEN_INT ||token.type == MTR_TOKEN_FLOAT) {
+    if (token.type == MTR_TOKEN_IDENTIFIER || token.type == MTR_TOKEN_STRING ||token.type == MTR_TOKEN_BOOLEAN || token.type == MTR_TOKEN_INT ||token.type == MTR_TOKEN_FLOAT || token.type == MTR_TOKEN_INVALID) {
         char buf[256];
         memcpy(buf, token.start, token.length);
         buf[token.length] = '\0';
@@ -107,6 +107,8 @@ const char* mtr_token_type_to_str(enum mtr_token_type type) {
     case MTR_TOKEN_F64:           return "f64";
     case MTR_TOKEN_BOOL:          return "bool";
     case MTR_TOKEN_IDENTIFIER:    return "IDENTIFIER";
+    case MTR_TOKEN_NEWLINE:       return "newline";
+    case MTR_TOKEN_COMMENT:       return "comment";
     case MTR_TOKEN_EOF:           return "EOF";
     case MTR_TOKEN_INVALID:       return "invalid";
     }

@@ -37,6 +37,8 @@ enum mtr_token_type {
 
     MTR_TOKEN_IDENTIFIER,
 
+    MTR_TOKEN_NEWLINE,
+    MTR_TOKEN_COMMENT,
     MTR_TOKEN_EOF,
     MTR_TOKEN_INVALID
 };

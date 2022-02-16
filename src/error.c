@@ -1,5 +1,7 @@
 #include "error.h"
 
+#include "compiler.h"
+
 #include "core/macros.h"
 #include "core/log.h"
 
@@ -10,11 +12,10 @@ void mtr_scanner_error(struct mtr_scanner* scanner, const char* message, u32 ind
 
     compiler->error_count++;
 
-
-    char* c = compiler->file.bytes;
-    char* at = c + index;
+    const char* c = scanner->source;
+    const char* at = c + index;
     u32 line = 1;
-    char* line_start = c;
+    const char* line_start = c;
     // count number of lines
     while (c != at) {
         if (*c == '\n') {
@@ -34,7 +35,7 @@ void mtr_scanner_error(struct mtr_scanner* scanner, const char* message, u32 ind
     }
 
     // find the next new line so that it doesnt get printed
-    char* line_end = line_start;
+    const char* line_end = line_start;
     while (*line_end != '\n')
         ++line_end;
 

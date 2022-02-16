@@ -1,6 +1,5 @@
 #include "scanner.h"
 
-#include "core/log.h"
 #include "error.h"
 
 #include <string.h>
@@ -50,8 +49,7 @@ static bool is_alpha(char c);
 static bool is_alphanumeric(char c);
 
 static char advance(struct mtr_scanner* scanner);
-static char peek(char* c);
-static char* skip_whitespace(char* string);
+static const char* skip_whitespace(const char* c);
 
 static struct mtr_token make_token(const struct mtr_scanner* scanner, enum mtr_token_type type);
 
@@ -64,15 +62,13 @@ struct mtr_token_array mtr_scan(struct mtr_scanner* scanner) {
     struct mtr_token_array tokens = mtr_new_array(10);
     while (*scanner->current != '\0') {
         struct mtr_token t = mtr_next_token(scanner);
-        if (t.type == MTR_TOKEN_INVALID)
-            continue;
         mtr_insert_token(&tokens, t);
     }
 
     struct mtr_token e = {
         .type = MTR_TOKEN_EOF,
-        .char_index = 0,
-        .start = NULL,
+        .char_index = scanner->current - scanner->source,
+        .start = scanner->current,
         .length = 0
     };
 
@@ -92,7 +88,7 @@ struct mtr_token mtr_next_token(struct mtr_scanner* scanner) {
     case '+': return make_token(scanner, MTR_TOKEN_PLUS);
 
     case '-':
-        if (peek(scanner->current) == '>') {
+        if (*scanner->current == '>') {
             advance(scanner);
             return make_token(scanner, MTR_TOKEN_ARROW);
         }
@@ -101,7 +97,7 @@ struct mtr_token mtr_next_token(struct mtr_scanner* scanner) {
     case '*': return make_token(scanner, MTR_TOKEN_STAR);
 
     case '/':
-        if (peek(scanner->current) == '/') {
+        if (*scanner->current == '/') {
             advance(scanner);
             return scan_comment(scanner);
         }
@@ -119,42 +115,42 @@ struct mtr_token mtr_next_token(struct mtr_scanner* scanner) {
     case '}': return make_token(scanner, MTR_TOKEN_CURLY_R);
 
     case '!':
-        if (peek(scanner->current) == '=') {
+        if (*scanner->current == '=') {
             advance(scanner);
             return make_token(scanner, MTR_TOKEN_BANG_EQUAL);
         }
         return make_token(scanner, MTR_TOKEN_BANG);
 
     case '=':
-        if (peek(scanner->current) == '=') {
+        if (*scanner->current == '=') {
             advance(scanner);
             return make_token(scanner, MTR_TOKEN_EQUAL_EQUAL);
         }
         return make_token(scanner, MTR_TOKEN_EQUAL);
 
     case '>':
-        if (peek(scanner->current) == '=') {
+        if (*scanner->current == '=') {
             advance(scanner);
             return make_token(scanner, MTR_TOKEN_GREATER_EQUAL);
         }
         return make_token(scanner, MTR_TOKEN_GREATER);
 
     case '<':
-        if (peek(scanner->current) == '=') {
+        if (*scanner->current == '=') {
             advance(scanner);
             return make_token(scanner, MTR_TOKEN_LESS_EQUAL);
         }
         return make_token(scanner, MTR_TOKEN_LESS);
 
     case '&':
-        if (peek(scanner->current) == '&') {
+        if (*scanner->current == '&') {
             advance(scanner);
             return make_token(scanner, MTR_TOKEN_AND);
         }
         return invalid_token;
 
     case '|':
-        if (peek(scanner->current) == '|') {
+        if (*scanner->current == '|') {
             advance(scanner);
             return make_token(scanner, MTR_TOKEN_OR);
         }
@@ -184,11 +180,11 @@ struct mtr_token mtr_next_token(struct mtr_scanner* scanner) {
         return scan_identifier(scanner);
 
     case '\n':
-        return invalid_token;
+        return make_token(scanner, MTR_TOKEN_NEWLINE);
     }
-    mtr_scanner_error(scanner, "Invalid token", scanner->start - scanner->source);
+    mtr_scanner_error(scanner, "Invalid character.", scanner->start - scanner->source);
 
-    return invalid_token;
+    return make_token(scanner, MTR_TOKEN_INVALID);
 }
 
 static bool is_numeric(char c) {
@@ -207,14 +203,10 @@ static char advance(struct mtr_scanner* scanner) {
     return *(scanner->current++);
 }
 
-static char peek(char* c) {
-    return *c;
-}
-
-static char* skip_whitespace(char* string) {
-    while(*string == ' ')
-        string++;
-    return string;
+static const char* skip_whitespace(const char* c) {
+    while(*c == ' ' || *c == '\t' || *c == '\r')
+        c++;
+    return c;
 }
 
 static struct mtr_token make_token(const struct mtr_scanner* scanner, enum mtr_token_type type) {
@@ -228,19 +220,19 @@ static struct mtr_token make_token(const struct mtr_scanner* scanner, enum mtr_t
 }
 
 static struct mtr_token scan_string(struct mtr_scanner* scanner) {
-    while (peek(scanner->current) != '"')
+    while (*scanner->current != '"')
         advance(scanner);
     advance(scanner); // closing "
     return make_token(scanner, MTR_TOKEN_STRING);
 }
 
 static struct mtr_token scan_number(struct mtr_scanner* scanner) {
-    while (is_numeric(peek(scanner->current)))
+    while (is_numeric(*scanner->current))
         advance(scanner);
 
-    if (peek(scanner->current) == '.') {
+    if (*scanner->current == '.') {
         advance(scanner);
-        while (is_numeric(peek(scanner->current)))
+        while (is_numeric(*scanner->current))
             advance(scanner);
         return make_token(scanner, MTR_TOKEN_FLOAT);
     }
@@ -248,7 +240,7 @@ static struct mtr_token scan_number(struct mtr_scanner* scanner) {
     return make_token(scanner, MTR_TOKEN_INT);
 }
 
-static bool comp_identifier(const char* k, char* s) {
+static bool comp_identifier(const char* k, const char* s) {
     size_t max = strlen(k);
     for (size_t i = 0; i < max; ++i) {
         if (k[i] != *s)
@@ -259,7 +251,7 @@ static bool comp_identifier(const char* k, char* s) {
 }
 
 static struct mtr_token scan_identifier(struct mtr_scanner* scanner) {
-    while (is_alphanumeric(peek(scanner->current)))
+    while (is_alphanumeric(*scanner->current))
         advance(scanner);
 
     for (int i = 0; i < KEYWORD_COUNT; ++i) {
@@ -272,8 +264,8 @@ static struct mtr_token scan_identifier(struct mtr_scanner* scanner) {
 }
 
 static struct mtr_token scan_comment(struct mtr_scanner* scanner) {
-    while (peek(scanner->current) != '\n')
+    while (*scanner->current != '\n')
         advance(scanner);
-    return invalid_token;
+    return make_token(scanner, MTR_TOKEN_COMMENT);
 }
 

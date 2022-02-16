@@ -2,8 +2,8 @@
 #define _MTR_COMPILER_H
 
 #include "scanner.h"
-#include "core/file.h"
 
+#include "core/file.h"
 #include "core/types.h"
 
 struct mtr_compiler {
