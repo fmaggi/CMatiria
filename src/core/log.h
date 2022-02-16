@@ -3,33 +3,55 @@
 
 #include <stdio.h>
 
-#define MTR_PROFILE_FUNC() (printf("[Function call] %s\n",__func__))
+#define MTR_PRE    "\033["
+#define MTR_SUF    "m"
 
-#define MTR_LOG(...)       (printf(__VA_ARGS__), printf("\n"))
+#define MTR_RESET  MTR_PRE "0" MTR_SUF
+#define MTR_BOLD   MTR_PRE "1" MTR_SUF
 
-#define MTR_LOG_INFO(...)  (printf("Info: "), MTR_LOG(__VA_ARGS__))                      // white
-#define MTR_LOG_TRACE(...) (printf("\033[0;32mTrace: \033[0m"), MTR_LOG(__VA_ARGS__))  // green
-#define MTR_LOG_WARN(...)  (printf("\033[0;33mWarning: \033[0m"), MTR_LOG(__VA_ARGS__)) // yellow
-#define MTR_LOG_ERROR(...) (printf("\033[0;31mError: \033[0m"), MTR_LOG(__VA_ARGS__))   // red
+#define MTR_WHITE  "37"
+#define MTR_RED    "31"
+#define MTR_GREEN  "32"
+#define MTR_YELLOW "33"
+#define MTR_BLUE   "34"
+
+#define MTR_DARK(color)  MTR_PRE "0;" color MTR_SUF
+#define MTR_LIGHT(color) MTR_PRE "1;" color MTR_SUF
+
+#define MTR_BOLD_DARK(color)  MTR_DARK(color) MTR_BOLD
+#define MTR_BOLD_LIGHT(color) MTR_LIGHT(color) MTR_BOLD
+
+#define MTR_INFO_PRE  MTR_BOLD_DARK(MTR_WHITE) "Info: " MTR_RESET
+#define MTR_TRACE_PRE MTR_BOLD_DARK(MTR_GREEN) "Trace: " MTR_RESET
+#define MTR_WARN_PRE  MTR_BOLD_DARK(MTR_YELLOW) "Warning: " MTR_RESET
+#define MTR_ERROR_PRE MTR_BOLD_DARK(MTR_RED) "Error: " MTR_RESET
+#define MTR_DEBUG_PRE  MTR_BOLD_DARK(MTR_BLUE) "Debug: " MTR_RESET
+
+#define MTR_LOG(...)       (printf(__VA_ARGS__), putc('\n', stdout))
+
+#define MTR_LOG_INFO(...)  (printf( (MTR_INFO_PRE) ), MTR_LOG(__VA_ARGS__))
+#define MTR_LOG_TRACE(...) (printf( (MTR_TRACE_PRE)), MTR_LOG(__VA_ARGS__))
+#define MTR_LOG_WARN(...)  (printf( (MTR_WARN_PRE) ), MTR_LOG(__VA_ARGS__))
+#define MTR_LOG_ERROR(...) (printf( (MTR_ERROR_PRE)), MTR_LOG(__VA_ARGS__))
+
+#define MTR_PROFILE_FUNC() (printf("%s[Function call]%s %s\n",BOLD_DARK(WHITE), RESET, __func__))
 
 #ifdef DEBUG
-    #define MTR_LOG_INFO_DEBUG(...)   (MTR_LOG_INFO(__VA_ARGS__))
-    #define MTR_LOG_TRACE_DEBUG(...)  (MTR_LOG_TRACE(__VA_ARGS__))
-    #define MTR_LOG_WARN_DEBUG(...)   (MTR_LOG_WARN(__VA_ARGS__))
-    #define MTR_LOG_ERROR_DEBUG(...)  (MTR_LOG_ERROR(__VA_ARGS__))
+
+    #define MTR_LOG_DEBUG(...)  (printf( (MTR_DEBUG_PRE)), MTR_LOG(__VA_ARGS__))
 
     #define MTR_ASSERT(x, m) if (!(x)) { MTR_LOG_ERROR((m)); exit(-1); }
 
     #define IMPLEMENT MTR_LOG_WARN("%s function needs to be implemented!", __func__);
+
 #else
-    #define MTR_LOG_INFO_DEBUG(...)
-    #define MTR_LOG_TRACE_DEBUG(...)
-    #define MTR_LOG_WARN_DEBUG(...)
-    #define MTR_LOG_ERROR_DEBUG(...)
+
+    #define MTR_LOG_DEBUG(...)
 
     #define MTR_ASSERT(x, m)
 
     #define IMPLEMENT
+
 #endif
 
 #endif
