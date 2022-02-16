@@ -1,6 +1,6 @@
 #include "compiler.h"
 
-#include "scanner.h"
+#include "scanner/scanner.h"
 
 #include "core/file.h"
 
