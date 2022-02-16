@@ -1,22 +1,25 @@
 #include "compiler.h"
 
-struct mtr_compiler mtr_new_compiler_unit(const char* filepath) {
+#include "scanner.h"
+
+#include "core/file.h"
+
+bool mtr_compile(const char* filepath) {
+
     struct mtr_file file = mtr_read_file(filepath);
+
     struct mtr_scanner scanner = {
-        .source = file.bytes,
         .start = file.bytes,
-        .current = file.bytes
+        .current = file.bytes,
+        .source = file.bytes
     };
 
-    struct mtr_compiler c = {
-        .file = file,
-        .scanner = scanner,
-        .error_count = 0
-    };
+    struct mtr_token_array array = mtr_scan(&scanner);
 
-    return c;
-}
+    for (size_t i = 0; i < array.size; ++i) {
+        mtr_print_token(array.tokens[i]);
+    }
 
-bool mtr_compile(struct mtr_compiler* compiler) {
+    mtr_delete_array(&array);
     return true;
 }

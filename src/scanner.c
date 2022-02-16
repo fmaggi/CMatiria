@@ -1,7 +1,5 @@
 #include "scanner.h"
 
-#include "error.h"
-
 #include <string.h>
 
 struct keyword_entry {
@@ -40,8 +38,8 @@ static const struct keyword_entry keywords[KEYWORD_COUNT] = {
 static const struct mtr_token invalid_token = {
     .type = MTR_TOKEN_INVALID,
     .start = NULL,
-    .char_index = 0,
-    .length = 0
+    .length = 0,
+    .char_idx = 0
 };
 
 static bool is_numeric(char c);
@@ -67,9 +65,9 @@ struct mtr_token_array mtr_scan(struct mtr_scanner* scanner) {
 
     struct mtr_token e = {
         .type = MTR_TOKEN_EOF,
-        .char_index = scanner->current - scanner->source,
         .start = scanner->current,
-        .length = 0
+        .length = 0,
+        .char_idx = scanner->start - scanner->source
     };
 
     mtr_insert_token(&tokens, e);
@@ -99,9 +97,10 @@ struct mtr_token mtr_next_token(struct mtr_scanner* scanner) {
     case '/':
         if (*scanner->current == '/') {
             advance(scanner);
-            return scan_comment(scanner);
+            return make_token(scanner, MTR_TOKEN_DOUBLE_SLASH);
         }
         return make_token(scanner, MTR_TOKEN_SLASH);
+
     case '%': return make_token(scanner, MTR_TOKEN_PERCENT);
     case ',': return make_token(scanner, MTR_TOKEN_COMMA);
     case ':': return make_token(scanner, MTR_TOKEN_COLON);
@@ -113,6 +112,8 @@ struct mtr_token mtr_next_token(struct mtr_scanner* scanner) {
     case ']': return make_token(scanner, MTR_TOKEN_SQR_R);
     case '{': return make_token(scanner, MTR_TOKEN_CURLY_L);
     case '}': return make_token(scanner, MTR_TOKEN_CURLY_R);
+
+    case '#': return scan_comment(scanner);
 
     case '!':
         if (*scanner->current == '=') {
@@ -182,7 +183,6 @@ struct mtr_token mtr_next_token(struct mtr_scanner* scanner) {
     case '\n':
         return make_token(scanner, MTR_TOKEN_NEWLINE);
     }
-    mtr_scanner_error(scanner, "Invalid character.", scanner->start - scanner->source);
 
     return make_token(scanner, MTR_TOKEN_INVALID);
 }
@@ -211,10 +211,10 @@ static const char* skip_whitespace(const char* c) {
 
 static struct mtr_token make_token(const struct mtr_scanner* scanner, enum mtr_token_type type) {
     struct mtr_token t = {
+        .type = type,
         .start = scanner->start,
-        .char_index = scanner->start - scanner->source,
         .length = scanner->current - scanner->start,
-        .type = type
+        .char_idx = scanner->start - scanner->source
     };
     return t;
 }
@@ -230,7 +230,7 @@ static struct mtr_token scan_number(struct mtr_scanner* scanner) {
     while (is_numeric(*scanner->current))
         advance(scanner);
 
-    if (*scanner->current == '.') {
+    if (*scanner->current == '.' && is_numeric(*(scanner->current + 1))) {
         advance(scanner);
         while (is_numeric(*scanner->current))
             advance(scanner);
@@ -240,24 +240,14 @@ static struct mtr_token scan_number(struct mtr_scanner* scanner) {
     return make_token(scanner, MTR_TOKEN_INT);
 }
 
-static bool comp_identifier(const char* k, const char* s) {
-    size_t max = strlen(k);
-    for (size_t i = 0; i < max; ++i) {
-        if (k[i] != *s)
-            return false;
-        ++s;
-    }
-    return true;
-}
-
 static struct mtr_token scan_identifier(struct mtr_scanner* scanner) {
     while (is_alphanumeric(*scanner->current))
         advance(scanner);
 
     for (int i = 0; i < KEYWORD_COUNT; ++i) {
         const struct keyword_entry k = keywords[i];
-        if ((scanner->current - scanner->start) == k.str_len && comp_identifier(k.str, scanner->start))
-            return make_token((scanner), k.type);
+        if ((scanner->current - scanner->start) == k.str_len && memcmp(k.str, scanner->start, k.str_len) == 0)
+            return make_token(scanner, k.type);
     }
 
     return make_token(scanner, MTR_TOKEN_IDENTIFIER);

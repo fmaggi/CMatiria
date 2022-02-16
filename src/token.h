@@ -18,6 +18,7 @@ enum mtr_token_type {
     // double char
     MTR_TOKEN_ARROW,
     MTR_TOKEN_BANG_EQUAL, MTR_TOKEN_EQUAL_EQUAL, MTR_TOKEN_GREATER_EQUAL, MTR_TOKEN_LESS_EQUAL,
+    MTR_TOKEN_DOUBLE_SLASH,
 
     // Literals.
     MTR_TOKEN_STRING, MTR_TOKEN_INT, MTR_TOKEN_FLOAT, MTR_TOKEN_BOOLEAN,
@@ -46,8 +47,8 @@ enum mtr_token_type {
 struct mtr_token {
     enum mtr_token_type type;
     const char* start;
-    u32 char_index;
     size_t length;
+    u32 char_idx;
 };
 
 struct mtr_token_array {

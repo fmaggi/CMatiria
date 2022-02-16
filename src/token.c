@@ -47,9 +47,9 @@ void mtr_print_token(struct mtr_token token) {
         char buf[256];
         memcpy(buf, token.start, token.length);
         buf[token.length] = '\0';
-        MTR_LOG_TRACE("TOKEN: %s at %i, (%s)", type, token.char_index, buf);
+        MTR_LOG_TRACE("TOKEN: %s at %i, (%s)", type, token.char_idx, buf);
     } else {
-        MTR_LOG_TRACE("TOKEN: %s at %i", type, token.char_index);
+        MTR_LOG_TRACE("TOKEN: %s at %i", type, token.char_idx);
     }
 }
 
@@ -80,6 +80,7 @@ const char* mtr_token_type_to_str(enum mtr_token_type type) {
     case MTR_TOKEN_EQUAL_EQUAL:   return "==";
     case MTR_TOKEN_GREATER_EQUAL: return ">=";
     case MTR_TOKEN_LESS_EQUAL:    return "<=";
+    case MTR_TOKEN_DOUBLE_SLASH:  return "//";
     case MTR_TOKEN_STRING:        return "STRING";
     case MTR_TOKEN_INT:           return "INT";
     case MTR_TOKEN_FLOAT:         return "FLOAT";
