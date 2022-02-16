@@ -34,7 +34,7 @@
 #define MTR_LOG_WARN(...)  (printf( (MTR_WARN_PRE) ), MTR_LOG(__VA_ARGS__))
 #define MTR_LOG_ERROR(...) (printf( (MTR_ERROR_PRE)), MTR_LOG(__VA_ARGS__))
 
-#define MTR_PROFILE_FUNC() (printf("%s[Function call]%s %s\n",BOLD_DARK(WHITE), RESET, __func__))
+#define MTR_PROFILE_FUNC() (printf("%s[Function call]%s %s\n", MTR_BOLD_DARK(MTR_WHITE), MTR_RESET, __func__))
 
 #ifdef DEBUG
 

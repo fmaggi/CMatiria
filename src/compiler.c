@@ -1,6 +1,7 @@
 #include "compiler.h"
 
 #include "scanner/scanner.h"
+#include "parser/parser.h"
 
 #include "core/file.h"
 
@@ -16,13 +17,12 @@ bool mtr_compile(const char* filepath) {
         .source = source
     };
 
-    struct mtr_token_array array = mtr_scan(&scanner);
+    struct mtr_parser parser = {
+        .scanner = scanner
+    };
 
-    for (size_t i = 0; i < array.size; ++i) {
-        mtr_print_token(array.tokens[i]);
-    }
-
-    mtr_delete_array(&array);
+    struct mtr_expr* expr = mtr_parse(&parser);
+    mtr_print_expr(expr);
 
     free(source);
     return true;

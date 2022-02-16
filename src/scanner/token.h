@@ -1,7 +1,7 @@
 #ifndef _MTR_TOKEN_H
 #define _MTR_TOKEN_H
 
-#include "../core/types.h"
+#include "core/types.h"
 
 enum mtr_token_type {
     // single char
