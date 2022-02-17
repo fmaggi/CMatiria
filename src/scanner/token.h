@@ -54,4 +54,6 @@ struct mtr_token {
 void mtr_print_token(struct mtr_token token);
 const char* mtr_token_type_to_str(enum mtr_token_type type);
 
+extern const struct mtr_token invalid_token;
+
 #endif

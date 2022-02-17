@@ -24,13 +24,6 @@ void mtr_report_error(struct mtr_token token, const char* message) {
     ++line_start;
 
     u32 column = token.start - line_start;
-    u32 marker_offset = column;
-
-    // make sure it fits in the buffer
-    while (marker_offset > 32) {
-        marker_offset -= 5;
-        line_start += 5;
-    }
 
     // find the next new line so that it doesnt get printed
     const char* line_end = line_start;
@@ -39,16 +32,11 @@ void mtr_report_error(struct mtr_token token, const char* message) {
 
     u32 eol_index = line_end - line_start;
 
-    char line_buf[32] = {0};
-    memcpy(line_buf, line_start, eol_index);
-    line_buf[eol_index] = '\0';
-
-    char marker_buf[32] = {0};
-    memset(marker_buf, ' ', marker_offset);
-    marker_buf[marker_offset] = '^';
-    memset(marker_buf + marker_offset + 1, '-', 4);
-
     MTR_LOG_ERROR("[%i:%i]: %s", line, column, message);
-    MTR_LOG("\t%s", line_buf);
-    MTR_LOG(MTR_BOLD_DARK(MTR_GREEN) "\t%s" MTR_RESET, marker_buf);
+    MTR_LOG("\t%.*s", eol_index, line_start);
+
+    char buf[256];
+    memset(buf, ' ', 256);
+    MTR_LOG(MTR_BOLD_DARK(MTR_GREEN) "\t%.*s%s" MTR_RESET, column, buf, "^---");
+
 }

@@ -14,12 +14,10 @@ bool mtr_compile(const char* filepath) {
     struct mtr_scanner scanner = mtr_scanner_init(source);
     struct mtr_parser parser = mtr_parser_init(scanner);
 
-    // MTR_LOG_DEBUG("%p %zu", parser.array.expressions, parser.array.capacity);
-
-    struct mtr_expr* expr = mtr_parse(&parser);
+    struct mtr_stmt* stmt = mtr_parse(&parser);
 
     if (!parser.had_error)
-        mtr_print_expr(expr);
+        mtr_print_expr(stmt->expression);
 
     free(source);
     return true;

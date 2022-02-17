@@ -2,7 +2,8 @@
 #define _MTR_PARSER_H
 
 #include "scanner/scanner.h"
-#include "ast_nodes.h"
+#include "expr.h"
+#include "stmt.h"
 
 #include "core/types.h"
 
@@ -15,6 +16,6 @@ struct mtr_parser {
 struct mtr_parser mtr_parser_init(struct mtr_scanner scanner);
 void mtr_parser_shutdown(struct mtr_parser* parser);
 
-struct mtr_expr* mtr_parse(struct mtr_parser* parser);
+struct mtr_stmt* mtr_parse(struct mtr_parser* parser);
 
 #endif

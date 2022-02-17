@@ -29,10 +29,10 @@
 
 #define MTR_LOG(...)       (printf(__VA_ARGS__), putc('\n', stdout))
 
-#define MTR_LOG_INFO(...)  (printf( (MTR_INFO_PRE) ), MTR_LOG(__VA_ARGS__))
-#define MTR_LOG_TRACE(...) (printf( (MTR_TRACE_PRE)), MTR_LOG(__VA_ARGS__))
-#define MTR_LOG_WARN(...)  (printf( (MTR_WARN_PRE) ), MTR_LOG(__VA_ARGS__))
-#define MTR_LOG_ERROR(...) (printf( (MTR_ERROR_PRE)), MTR_LOG(__VA_ARGS__))
+#define MTR_LOG_INFO(...)  (printf((MTR_INFO_PRE) ), MTR_LOG(__VA_ARGS__))
+#define MTR_LOG_TRACE(...) (printf((MTR_TRACE_PRE)), MTR_LOG(__VA_ARGS__))
+#define MTR_LOG_WARN(...)  (printf((MTR_WARN_PRE) ), MTR_LOG(__VA_ARGS__))
+#define MTR_LOG_ERROR(...) (printf((MTR_ERROR_PRE)), MTR_LOG(__VA_ARGS__))
 
 #define MTR_PROFILE_FUNC() (printf("%s[Function call]%s %s\n", MTR_BOLD_DARK(MTR_WHITE), MTR_RESET, __func__))
 

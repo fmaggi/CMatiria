@@ -44,7 +44,7 @@ static const struct keyword_entry keywords[KEYWORD_COUNT] = {
     { .type = MTR_TOKEN_BOOL,   .str = "bool",   .str_len = strlen("bool")   },
 };
 
-static const struct mtr_token invalid_token = {
+const struct mtr_token invalid_token = {
     .type = MTR_TOKEN_INVALID,
     .start = NULL,
     .length = 0,

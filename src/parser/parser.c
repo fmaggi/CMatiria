@@ -17,9 +17,14 @@ struct mtr_parser mtr_parser_init(struct mtr_scanner scanner) {
     return parser;
 }
 
-static void* allocate_node(struct mtr_parser* parser, enum mtr_expr_type type) {
+static void* allocate_expr(struct mtr_parser* parser, enum mtr_expr_type type) {
     struct mtr_expr* node = malloc(sizeof(struct mtr_expr));
     node->type = type;
+    return node;
+}
+
+static void* allocate_stmt(struct mtr_parser* parser) {
+    struct mtr_stmt* node = malloc(sizeof(struct mtr_stmt));
     return node;
 }
 
@@ -43,25 +48,28 @@ static struct mtr_token advance(struct mtr_parser* parser) {
 }
 
 static void consume(struct mtr_parser* parser, enum mtr_token_type token, const char* message) {
-    if (parser->token.type == token)
+    if (parser->token.type == token) {
+        advance(parser);
         return;
+    }
     parser_error(parser, message);
 }
+
+// ======================= EXPR ================================
 
 static struct mtr_expr* parse_expression(struct mtr_parser* parser);
 
 static struct mtr_expr* parse_primary(struct mtr_parser* parser) {
     if (CHECK(MTR_TOKEN_STRING) || CHECK(MTR_TOKEN_INT) || CHECK(MTR_TOKEN_FLOAT) || CHECK(MTR_TOKEN_TRUE) || CHECK(MTR_TOKEN_FALSE)) {
-        struct mtr_literal* node = allocate_node(parser, MTR_EXPR_LITERAL);
+        struct mtr_literal* node = allocate_expr(parser, MTR_EXPR_LITERAL);
 
-        struct mtr_token t = advance(parser);
-        node->token = t;
+        node->token = advance(parser);
 
         return (struct mtr_expr*) node;
 
     } else if (CHECK(MTR_TOKEN_PAREN_L)) {
-        struct mtr_grouping* node = allocate_node(parser, MTR_EXPR_GROUPING);
-        struct mtr_token t = advance(parser);
+        struct mtr_grouping* node = allocate_expr(parser, MTR_EXPR_GROUPING);
+        advance(parser);
 
         node->expression = parse_expression(parser);
 
@@ -76,11 +84,9 @@ static struct mtr_expr* parse_primary(struct mtr_parser* parser) {
 
 static struct mtr_expr* parse_unary(struct mtr_parser* parser) {
     if (CHECK(MTR_TOKEN_BANG) || CHECK(MTR_TOKEN_MINUS)) {
-        struct mtr_token op = advance(parser);
+        struct mtr_unary* node = allocate_expr(parser, MTR_EXPR_UNARY);
 
-        struct mtr_unary* node = allocate_node(parser, MTR_EXPR_UNARY);
-
-        node->operator = op;
+        node->operator = advance(parser);
         node->right = parse_unary(parser);
         return (struct mtr_expr*)node;
     }
@@ -92,14 +98,11 @@ static struct mtr_expr* parse_factor(struct mtr_parser* parser) {
     struct mtr_expr* left = parse_unary(parser);
 
     while (CHECK(MTR_TOKEN_STAR) || CHECK(MTR_TOKEN_SLASH)) {
-        struct mtr_token op = advance(parser);
-
-        struct mtr_binary* node = allocate_node(parser, MTR_EXPR_BINARY);
-        struct mtr_expr* right = parse_unary(parser);
+        struct mtr_binary* node = allocate_expr(parser, MTR_EXPR_BINARY);
 
         node->left = left;
-        node->operator = op;
-        node->right = right;
+        node->operator = advance(parser);;
+        node->right = parse_unary(parser);;
         left = (struct mtr_expr*) node;
     }
 
@@ -110,14 +113,11 @@ static struct mtr_expr* parse_term(struct mtr_parser* parser) {
     struct mtr_expr* left = parse_factor(parser);
 
     while (CHECK(MTR_TOKEN_PLUS) || CHECK(MTR_TOKEN_MINUS)) {
-        struct mtr_token op = advance(parser);
-
-        struct mtr_binary* node = allocate_node(parser, MTR_EXPR_BINARY);
-        struct mtr_expr* right = parse_factor(parser);
+        struct mtr_binary* node = allocate_expr(parser, MTR_EXPR_BINARY);
 
         node->left = left;
-        node->operator = op;
-        node->right = right;
+        node->operator = advance(parser);
+        node->right = parse_factor(parser);
         left = (struct mtr_expr*) node;
     }
 
@@ -128,14 +128,11 @@ static struct mtr_expr* parse_comparison(struct mtr_parser* parser) {
     struct mtr_expr* left = parse_term(parser);
 
     while (CHECK(MTR_TOKEN_LESS) || CHECK(MTR_TOKEN_LESS_EQUAL) || CHECK(MTR_TOKEN_GREATER) || CHECK(MTR_TOKEN_GREATER_EQUAL)) {
-        struct mtr_token op = advance(parser);
-
-        struct mtr_binary* node = allocate_node(parser, MTR_EXPR_BINARY);
-        struct mtr_expr* right = parse_term(parser);
+        struct mtr_binary* node = allocate_expr(parser, MTR_EXPR_BINARY);
 
         node->left = left;
-        node->operator = op;
-        node->right = right;
+        node->operator = advance(parser);
+        node->right = parse_term(parser);
         left = (struct mtr_expr*) node;
     }
 
@@ -146,14 +143,11 @@ static struct mtr_expr* parse_equality(struct mtr_parser* parser) {
     struct mtr_expr* left = parse_comparison(parser);
 
     while (CHECK(MTR_TOKEN_BANG_EQUAL) || CHECK(MTR_TOKEN_EQUAL_EQUAL)) {
-        struct mtr_token op = advance(parser);
-
-        struct mtr_binary* node = allocate_node(parser, MTR_EXPR_BINARY);
-        struct mtr_expr* right = parse_comparison(parser);
+        struct mtr_binary* node = allocate_expr(parser, MTR_EXPR_BINARY);
 
         node->left = left;
-        node->operator = op;
-        node->right = right;
+        node->operator = advance(parser);
+        node->right = parse_comparison(parser);
         left = (struct mtr_expr*) node;
     }
 
@@ -164,12 +158,28 @@ static struct mtr_expr* parse_expression(struct mtr_parser* parser) {
     return parse_equality(parser);
 }
 
-struct mtr_expr* mtr_parse(struct mtr_parser* parser) {
-    advance(parser);
-    return parse_expression(parser);
+// ========================================================================
+
+// ========================= STMTS ========================================
+
+
+static struct mtr_stmt* parse_statement(struct mtr_parser* parser) {
+    struct mtr_expr* expr = parse_expression(parser);
+    consume(parser, MTR_TOKEN_SEMICOLON, "Expected ; after expression");
+
+    struct mtr_stmt* stmt = allocate_stmt(parser);
+    stmt->expression = expr;
+    return stmt;
 }
 
-// ============= DEBUG =============
+// ========================================================================
+
+struct mtr_stmt* mtr_parse(struct mtr_parser* parser) {
+    advance(parser);
+    return parse_statement(parser);
+}
+
+// ======================= DEBUG =========================
 
 static void print_expr(struct mtr_expr* parser);
 
