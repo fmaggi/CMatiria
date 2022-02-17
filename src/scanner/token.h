@@ -48,18 +48,8 @@ struct mtr_token {
     enum mtr_token_type type;
     const char* start;
     size_t length;
-    u32 line;
+    u32 char_idx;
 };
-
-struct mtr_token_array {
-    struct mtr_token* tokens;
-    size_t capacity;
-    size_t size;
-};
-
-struct mtr_token_array mtr_new_token_array();
-void mtr_write_token(struct mtr_token_array* array, struct mtr_token token);
-void mtr_delete_token_array(struct mtr_token_array* array);
 
 void mtr_print_token(struct mtr_token token);
 const char* mtr_token_type_to_str(enum mtr_token_type type);

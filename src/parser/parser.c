@@ -34,8 +34,9 @@ static struct mtr_token advance(struct mtr_parser* parser) {
     struct mtr_token previous = parser->token;
 
     parser->token = mtr_next_token(&parser->scanner);
-    if (parser->token.type == MTR_TOKEN_INVALID) {
+    while (parser->token.type == MTR_TOKEN_INVALID) {
         parser_error(parser, "Invalid token.");
+        parser->token = mtr_next_token(&parser->scanner);
     }
 
     return previous;
