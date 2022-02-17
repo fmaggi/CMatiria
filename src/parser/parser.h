@@ -9,7 +9,7 @@
 struct mtr_parser {
     struct mtr_scanner scanner;
     struct mtr_token token;
-    struct mtr_expr_array array;
+    bool had_error;
 };
 
 struct mtr_parser mtr_parser_init(struct mtr_scanner scanner);

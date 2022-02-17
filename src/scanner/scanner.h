@@ -5,9 +5,9 @@
 #include "core/file.h"
 
 struct mtr_scanner {
-    const char* const source;
     const char* start;
     const char* current;
+    u32 line;
 };
 
 struct mtr_scanner mtr_scanner_init(const char* source);

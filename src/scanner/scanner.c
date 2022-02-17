@@ -4,9 +4,9 @@
 
 struct mtr_scanner mtr_scanner_init(const char* source) {
     struct mtr_scanner scanner = {
-        .source = source,
         .start  = source,
-        .current = source
+        .current = source,
+        .line = 1
     };
     return scanner;
 }
@@ -48,7 +48,7 @@ static const struct mtr_token invalid_token = {
     .type = MTR_TOKEN_INVALID,
     .start = NULL,
     .length = 0,
-    .char_idx = 0
+    .line = 0
 };
 
 static bool is_numeric(char c);
@@ -184,6 +184,7 @@ struct mtr_token mtr_next_token(struct mtr_scanner* scanner) {
         return scan_identifier(scanner);
 
     case '\n':
+        ++scanner->line;
         return make_token(scanner, MTR_TOKEN_NEWLINE);
 
     case '\0':
@@ -222,7 +223,7 @@ static struct mtr_token make_token(const struct mtr_scanner* scanner, enum mtr_t
         .type = type,
         .start = scanner->start,
         .length = scanner->current - scanner->start,
-        .char_idx = scanner->start - scanner->source
+        .line = scanner->line
     };
     return t;
 }
