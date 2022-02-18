@@ -17,7 +17,7 @@ struct mtr_parser mtr_parser_init(struct mtr_scanner scanner) {
     return parser;
 }
 
-static void* allocate_expr(struct mtr_parser* parser, enum mtr_expr_type type) {
+static void* allocate_expr(enum mtr_expr_type type) {
     struct mtr_expr* node = malloc(sizeof(struct mtr_expr));
     node->type = type;
     return node;
@@ -55,128 +55,157 @@ static void consume(struct mtr_parser* parser, enum mtr_token_type token, const 
     parser_error(parser, message);
 }
 
-// ======================= EXPR ================================
+// ======================== EXPR =============================
 
 static struct mtr_expr* parse_expression(struct mtr_parser* parser);
 
-static struct mtr_expr* parse_primary(struct mtr_parser* parser) {
-    if (CHECK(MTR_TOKEN_STRING) || CHECK(MTR_TOKEN_INT) || CHECK(MTR_TOKEN_FLOAT) || CHECK(MTR_TOKEN_TRUE) || CHECK(MTR_TOKEN_FALSE)) {
-        struct mtr_literal* node = allocate_expr(parser, MTR_EXPR_LITERAL);
+enum precedence {
+    MTR_PRECEDENCE_NONE,
+    MTR_PRECEDENCE_ASSIGN,
+    MTR_PRECEDENCE_LOGIC,
+    MTR_PRECEDENCE_EQUALITY,
+    MTR_PRECEDENCE_COMPARISON,
+    MTR_PRECEDENCE_TERM,
+    MTR_PRECEDENCE_FACTOR,
+    MTR_PRECEDENCE_UNARY,
+    MTR_PRECEDENCE_CALL,
+    MTR_PRECEDENCE_PRIMARY
+};
 
-        node->token = advance(parser);
+typedef struct mtr_expr* (*prefix_fn)(struct mtr_parser*, struct mtr_token);
+typedef struct mtr_expr* (*infix_fn)(struct mtr_parser*, struct mtr_token, struct mtr_expr*);
 
-        return (struct mtr_expr*) node;
+struct parser_rule {
+    prefix_fn prefix;
+    infix_fn infix;
+    enum precedence precedence;
+};
 
-    } else if (CHECK(MTR_TOKEN_PAREN_L)) {
-        struct mtr_grouping* node = allocate_expr(parser, MTR_EXPR_GROUPING);
-        advance(parser);
+static struct mtr_expr* unary(struct mtr_parser* parser, struct mtr_token op);
+static struct mtr_expr* binary(struct mtr_parser* parser, struct mtr_token op, struct mtr_expr* left);
+static struct mtr_expr* grouping(struct mtr_parser* parser, struct mtr_token token);
+static struct mtr_expr* literal(struct mtr_parser* parser, struct mtr_token literal);
 
-        node->expression = parse_expression(parser);
+#define NO_OP .prefix = NULL, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE
 
-        consume(parser, MTR_TOKEN_PAREN_R, "Expected ) after expression.");
-        return (struct mtr_expr*) node;
+static const struct parser_rule rules[] = {
+    [MTR_TOKEN_PLUS] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_TERM },
+    [MTR_TOKEN_MINUS] = { .prefix = unary, .infix = binary, .precedence = MTR_PRECEDENCE_TERM },
+    [MTR_TOKEN_STAR] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_FACTOR },
+    [MTR_TOKEN_SLASH] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_FACTOR },
+    [MTR_TOKEN_PERCENT] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_FACTOR },
+    [MTR_TOKEN_COMMA] = { .prefix = NULL, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE },
+    [MTR_TOKEN_COLON] = { .prefix = NULL, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE },
+    [MTR_TOKEN_SEMICOLON] = { .prefix = NULL, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE },
+    [MTR_TOKEN_DOT] = { .prefix = NULL, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE },
+    [MTR_TOKEN_PAREN_L] = { .prefix = grouping, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE },
+    [MTR_TOKEN_PAREN_R] = { NO_OP },
+    [MTR_TOKEN_SQR_L] = { NO_OP },
+    [MTR_TOKEN_SQR_R] = { NO_OP },
+    [MTR_TOKEN_CURLY_L] = { NO_OP },
+    [MTR_TOKEN_CURLY_R] = { NO_OP },
+    [MTR_TOKEN_BANG] = { .prefix = unary, .infix = NULL, .precedence = MTR_PRECEDENCE_UNARY },
+    [MTR_TOKEN_EQUAL] = { NO_OP },
+    [MTR_TOKEN_GREATER] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_COMPARISON },
+    [MTR_TOKEN_LESS] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_COMPARISON },
+    [MTR_TOKEN_ARROW] = { NO_OP },
+    [MTR_TOKEN_BANG_EQUAL] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_EQUALITY },
+    [MTR_TOKEN_EQUAL_EQUAL] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_EQUALITY },
+    [MTR_TOKEN_GREATER_EQUAL] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_COMPARISON },
+    [MTR_TOKEN_LESS_EQUAL] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_COMPARISON },
+    [MTR_TOKEN_DOUBLE_SLASH] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_FACTOR },
+    [MTR_TOKEN_STRING] = { .prefix = literal, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE },
+    [MTR_TOKEN_INT] = { .prefix = literal, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE },
+    [MTR_TOKEN_FLOAT] = { .prefix = literal, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE },
+    [MTR_TOKEN_AND] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_LOGIC },
+    [MTR_TOKEN_OR] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_LOGIC },
+    [MTR_TOKEN_STRUCT] = { NO_OP },
+    [MTR_TOKEN_IF] = { NO_OP },
+    [MTR_TOKEN_ELSE] = { NO_OP },
+    [MTR_TOKEN_TRUE] = { .prefix = literal, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE },
+    [MTR_TOKEN_FALSE] = { .prefix = literal, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE },
+    [MTR_TOKEN_FN] = { NO_OP },
+    [MTR_TOKEN_RETURN] = { NO_OP },
+    [MTR_TOKEN_WHILE] = { NO_OP },
+    [MTR_TOKEN_FOR] = { NO_OP },
+    [MTR_TOKEN_U8] = { NO_OP },
+    [MTR_TOKEN_U16] = { NO_OP },
+    [MTR_TOKEN_U32] = { NO_OP },
+    [MTR_TOKEN_U64] = { NO_OP },
+    [MTR_TOKEN_I8] = { NO_OP },
+    [MTR_TOKEN_I16] = { NO_OP },
+    [MTR_TOKEN_I32] = { NO_OP },
+    [MTR_TOKEN_I64] = { NO_OP },
+    [MTR_TOKEN_F32] = { NO_OP },
+    [MTR_TOKEN_F64] = { NO_OP },
+    [MTR_TOKEN_BOOL] = { NO_OP },
+    [MTR_TOKEN_IDENTIFIER] = { NO_OP },
+    [MTR_TOKEN_NEWLINE] = { NO_OP },
+    [MTR_TOKEN_COMMENT] = { NO_OP },
+    [MTR_TOKEN_EOF] = { NO_OP },
+    [MTR_TOKEN_INVALID] = { NO_OP }
+};
+
+#undef NO_OP
+
+static struct mtr_expr* parse_precedence(struct mtr_parser* parser, enum precedence precedece) {
+    struct mtr_token token = advance(parser);
+    prefix_fn prefix = rules[token.type].prefix;
+    if (NULL == prefix) {
+        parser_error(parser, "Expected expression.");
+        return NULL;
     }
 
-    parser_error(parser, "Expected an expression.");
+    struct mtr_expr* node = prefix(parser, token);
 
-    return NULL;
+    while (precedece <= rules[parser->token.type].precedence) {
+        struct mtr_token t = advance(parser);
+        infix_fn infix = rules[t.type].infix;
+        node = infix(parser, t, node);
+    }
+
+    return node;
 }
 
-static struct mtr_expr* parse_unary(struct mtr_parser* parser) {
-    if (CHECK(MTR_TOKEN_BANG) || CHECK(MTR_TOKEN_MINUS)) {
-        struct mtr_unary* node = allocate_expr(parser, MTR_EXPR_UNARY);
-
-        node->operator = advance(parser);
-        node->right = parse_unary(parser);
-        return (struct mtr_expr*)node;
-    }
-
-    return parse_primary(parser);
+static struct mtr_expr* unary(struct mtr_parser* parser, struct mtr_token op) {
+    struct mtr_unary* node = allocate_expr(MTR_EXPR_UNARY);
+    node->operator = op;
+    node->right = parse_expression(parser);
+    return (struct mtr_expr*) node;
 }
 
-static struct mtr_expr* parse_factor(struct mtr_parser* parser) {
-    struct mtr_expr* left = parse_unary(parser);
-
-    while (CHECK(MTR_TOKEN_STAR) || CHECK(MTR_TOKEN_SLASH)) {
-        struct mtr_binary* node = allocate_expr(parser, MTR_EXPR_BINARY);
-
-        node->left = left;
-        node->operator = advance(parser);;
-        node->right = parse_unary(parser);;
-        left = (struct mtr_expr*) node;
-    }
-
-    return left;
+static struct mtr_expr* binary(struct mtr_parser* parser, struct mtr_token op, struct mtr_expr* left) {
+    struct mtr_binary* node = allocate_expr(MTR_EXPR_BINARY);
+    node->left = left;
+    node->operator = op;
+    node->right = parse_precedence(parser, rules[op.type].precedence + 1);
+    return (struct mtr_expr*) node;
 }
 
-static struct mtr_expr* parse_term(struct mtr_parser* parser) {
-    struct mtr_expr* left = parse_factor(parser);
-
-    while (CHECK(MTR_TOKEN_PLUS) || CHECK(MTR_TOKEN_MINUS)) {
-        struct mtr_binary* node = allocate_expr(parser, MTR_EXPR_BINARY);
-
-        node->left = left;
-        node->operator = advance(parser);
-        node->right = parse_factor(parser);
-        left = (struct mtr_expr*) node;
-    }
-
-    return left;
+static struct mtr_expr* grouping(struct mtr_parser* parser, struct mtr_token token) {
+    struct mtr_grouping* node = allocate_expr(MTR_EXPR_GROUPING);
+    node->expression = parse_expression(parser);
+    consume(parser, MTR_TOKEN_PAREN_R, "Expected ) after expression");
+    return (struct mtr_expr*) node;
 }
 
-static struct mtr_expr* parse_comparison(struct mtr_parser* parser) {
-    struct mtr_expr* left = parse_term(parser);
-
-    while (CHECK(MTR_TOKEN_LESS) || CHECK(MTR_TOKEN_LESS_EQUAL) || CHECK(MTR_TOKEN_GREATER) || CHECK(MTR_TOKEN_GREATER_EQUAL)) {
-        struct mtr_binary* node = allocate_expr(parser, MTR_EXPR_BINARY);
-
-        node->left = left;
-        node->operator = advance(parser);
-        node->right = parse_term(parser);
-        left = (struct mtr_expr*) node;
-    }
-
-    return left;
-}
-
-static struct mtr_expr* parse_equality(struct mtr_parser* parser) {
-    struct mtr_expr* left = parse_comparison(parser);
-
-    while (CHECK(MTR_TOKEN_BANG_EQUAL) || CHECK(MTR_TOKEN_EQUAL_EQUAL)) {
-        struct mtr_binary* node = allocate_expr(parser, MTR_EXPR_BINARY);
-
-        node->left = left;
-        node->operator = advance(parser);
-        node->right = parse_comparison(parser);
-        left = (struct mtr_expr*) node;
-    }
-
-    return left;
+static struct mtr_expr* literal(struct mtr_parser* parser, struct mtr_token literal) {
+    struct mtr_literal* node = allocate_expr(MTR_EXPR_LITERAL);
+    node->token = literal;
+    return (struct mtr_expr*) node;
 }
 
 static struct mtr_expr* parse_expression(struct mtr_parser* parser) {
-    return parse_equality(parser);
-}
-
-// ========================================================================
-
-// ========================= STMTS ========================================
-
-
-static struct mtr_stmt* parse_statement(struct mtr_parser* parser) {
-    struct mtr_expr* expr = parse_expression(parser);
-    consume(parser, MTR_TOKEN_SEMICOLON, "Expected ; after expression");
-
-    struct mtr_stmt* stmt = allocate_stmt(parser);
-    stmt->expression = expr;
-    return stmt;
+    return parse_precedence(parser, MTR_PRECEDENCE_ASSIGN);
 }
 
 // ========================================================================
 
 struct mtr_stmt* mtr_parse(struct mtr_parser* parser) {
     advance(parser);
-    return parse_statement(parser);
+    struct mtr_stmt* stmt = allocate_stmt(parser);
+    stmt->expression = parse_expression(parser);
+    return stmt;
 }
 
 // ======================= DEBUG =========================
