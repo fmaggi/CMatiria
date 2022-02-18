@@ -50,4 +50,6 @@ struct mtr_expr {
 
 void mtr_print_expr(struct mtr_expr* node);
 
+void mtr_free_expr(struct mtr_expr* node);
+
 #endif

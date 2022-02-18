@@ -57,7 +57,7 @@ static void consume(struct mtr_parser* parser, enum mtr_token_type token, const 
 
 // ======================== EXPR =============================
 
-static struct mtr_expr* parse_expression(struct mtr_parser* parser);
+static struct mtr_expr* expression(struct mtr_parser* parser);
 
 enum precedence {
     MTR_PRECEDENCE_NONE,
@@ -170,7 +170,7 @@ static struct mtr_expr* parse_precedence(struct mtr_parser* parser, enum precede
 static struct mtr_expr* unary(struct mtr_parser* parser, struct mtr_token op) {
     struct mtr_unary* node = allocate_expr(MTR_EXPR_UNARY);
     node->operator = op;
-    node->right = parse_expression(parser);
+    node->right = expression(parser);
     return (struct mtr_expr*) node;
 }
 
@@ -184,7 +184,7 @@ static struct mtr_expr* binary(struct mtr_parser* parser, struct mtr_token op, s
 
 static struct mtr_expr* grouping(struct mtr_parser* parser, struct mtr_token token) {
     struct mtr_grouping* node = allocate_expr(MTR_EXPR_GROUPING);
-    node->expression = parse_expression(parser);
+    node->expression = expression(parser);
     consume(parser, MTR_TOKEN_PAREN_R, "Expected ) after expression");
     return (struct mtr_expr*) node;
 }
@@ -195,7 +195,7 @@ static struct mtr_expr* literal(struct mtr_parser* parser, struct mtr_token lite
     return (struct mtr_expr*) node;
 }
 
-static struct mtr_expr* parse_expression(struct mtr_parser* parser) {
+static struct mtr_expr* expression(struct mtr_parser* parser) {
     return parse_precedence(parser, MTR_PRECEDENCE_ASSIGN);
 }
 
@@ -204,11 +204,47 @@ static struct mtr_expr* parse_expression(struct mtr_parser* parser) {
 struct mtr_stmt* mtr_parse(struct mtr_parser* parser) {
     advance(parser);
     struct mtr_stmt* stmt = allocate_stmt(parser);
-    stmt->expression = parse_expression(parser);
+    stmt->expression = expression(parser);
     return stmt;
 }
 
-// ======================= DEBUG =========================
+// =======================================================================
+
+static void free_binary(struct mtr_binary* node) {
+    mtr_free_expr(node->left);
+    mtr_free_expr(node->right);
+    node->left = NULL;
+    node->right = NULL;
+    free(node);
+}
+
+static void free_grouping(struct mtr_grouping* node) {
+    mtr_free_expr(node->expression);
+    node->expression = NULL;
+    free(node);
+}
+
+static void free_literal(struct mtr_literal* node) {
+    free(node);
+}
+
+static void free_unary(struct mtr_unary* node) {
+    mtr_free_expr(node->right);
+    node->right = NULL;
+    free(node);
+}
+
+void mtr_free_expr(struct mtr_expr* node) {
+    switch (node->type)
+    {
+    case MTR_EXPR_BINARY:   return free_binary(&node->binary);
+    case MTR_EXPR_GROUPING: return free_grouping(&node->grouping);
+    case MTR_EXPR_LITERAL:  return free_literal(&node->literal);
+    case MTR_EXPR_UNARY:    return free_unary(&node->unary);
+    }
+}
+
+// ======================= DEBUG =========================================
 
 static void print_expr(struct mtr_expr* parser);
 

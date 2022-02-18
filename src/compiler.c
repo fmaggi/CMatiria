@@ -19,6 +19,8 @@ bool mtr_compile(const char* filepath) {
     if (!parser.had_error)
         mtr_print_expr(stmt->expression);
 
+    mtr_free_expr(stmt->expression);
+    free(stmt);
     free(source);
     return true;
 }
