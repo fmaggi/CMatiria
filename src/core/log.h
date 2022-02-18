@@ -39,6 +39,7 @@
 #ifdef DEBUG
 
     #define MTR_LOG_DEBUG(...)  (printf( (MTR_DEBUG_PRE)), MTR_LOG(__VA_ARGS__))
+    #define MTR_PRINT_DEBUG(...) (printf(__VA_ARGS__))
 
     #define MTR_ASSERT(x, m) if (!(x)) { MTR_LOG_ERROR((m)); exit(-1); }
 
@@ -47,6 +48,7 @@
 #else
 
     #define MTR_LOG_DEBUG(...)
+    #define MTR_PRINT_DEBUG(...)
 
     #define MTR_ASSERT(x, m)
 

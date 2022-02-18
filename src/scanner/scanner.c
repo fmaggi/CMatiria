@@ -269,9 +269,9 @@ void mtr_print_token(struct mtr_token token) {
     const char* type = mtr_token_type_to_str(token.type);
 
     if (token.type == MTR_TOKEN_IDENTIFIER || token.type == MTR_TOKEN_STRING || token.type == MTR_TOKEN_INT ||token.type == MTR_TOKEN_FLOAT || token.type == MTR_TOKEN_INVALID) {
-        MTR_LOG_TRACE("Token: %s, (%.*s)", type, (u32)token.length, token.start);
+        MTR_LOG_DEBUG("Token: %s at %u, (%.*s)", type, token.char_idx, (u32)token.length, token.start);
     } else {
-        MTR_LOG_TRACE("Token: %s", type);
+        MTR_LOG_DEBUG("Token: %s at %u", type, token.char_idx);
     }
 }
 

@@ -35,11 +35,12 @@ static void parser_error(struct mtr_parser* parser, const char* message) {
     mtr_report_error(parser->token, message);
 }
 
-static struct mtr_token advance(struct mtr_parser* parser) {
+struct mtr_token advance(struct mtr_parser* parser) {
     struct mtr_token previous = parser->token;
 
     parser->token = mtr_next_token(&parser->scanner);
-    while (parser->token.type == MTR_TOKEN_INVALID) {
+
+    while (CHECK(MTR_TOKEN_INVALID)) {
         parser_error(parser, "Invalid token.");
         parser->token = mtr_next_token(&parser->scanner);
     }
@@ -47,12 +48,17 @@ static struct mtr_token advance(struct mtr_parser* parser) {
     return previous;
 }
 
-static void consume(struct mtr_parser* parser, enum mtr_token_type token, const char* message) {
-    if (parser->token.type == token) {
+static void skip_newline_and_comments(struct mtr_parser* parser) {
+    while (CHECK(MTR_TOKEN_NEWLINE) || CHECK(MTR_TOKEN_COMMENT))
         advance(parser);
-        return;
-    }
+}
+
+static struct mtr_token consume(struct mtr_parser* parser, enum mtr_token_type token, const char* message) {
+    if (parser->token.type == token)
+        return advance(parser);
+
     parser_error(parser, message);
+    return invalid_token;
 }
 
 // ======================== EXPR =============================
@@ -170,7 +176,7 @@ static struct mtr_expr* parse_precedence(struct mtr_parser* parser, enum precede
 static struct mtr_expr* unary(struct mtr_parser* parser, struct mtr_token op) {
     struct mtr_unary* node = allocate_expr(MTR_EXPR_UNARY);
     node->operator = op;
-    node->right = expression(parser);
+    node->right = parse_precedence(parser, rules[op.type].precedence + 1);
     return (struct mtr_expr*) node;
 }
 
@@ -185,7 +191,7 @@ static struct mtr_expr* binary(struct mtr_parser* parser, struct mtr_token op, s
 static struct mtr_expr* grouping(struct mtr_parser* parser, struct mtr_token token) {
     struct mtr_grouping* node = allocate_expr(MTR_EXPR_GROUPING);
     node->expression = expression(parser);
-    consume(parser, MTR_TOKEN_PAREN_R, "Expected ) after expression");
+    consume(parser, MTR_TOKEN_PAREN_R, "Expected ')'.");
     return (struct mtr_expr*) node;
 }
 
@@ -202,9 +208,15 @@ static struct mtr_expr* expression(struct mtr_parser* parser) {
 // ========================================================================
 
 struct mtr_stmt* mtr_parse(struct mtr_parser* parser) {
-    advance(parser);
+
+    parser->had_error = false;
+
     struct mtr_stmt* stmt = allocate_stmt(parser);
     stmt->expression = expression(parser);
+    consume(parser, MTR_TOKEN_SEMICOLON, "Expected ';'.");
+
+    skip_newline_and_comments(parser);
+
     return stmt;
 }
 
@@ -249,19 +261,19 @@ void mtr_free_expr(struct mtr_expr* node) {
 static void print_expr(struct mtr_expr* parser);
 
 static void print_literal(struct mtr_literal* node) {
-    printf("%.*s ", (u32)node->token.length, node->token.start);
+    MTR_PRINT_DEBUG("%.*s ", (u32)node->token.length, node->token.start);
 }
 
 static void print_unary(struct mtr_unary* node) {
-    printf("%.*s", (u32)node->operator.length, node->operator.start);
+    MTR_PRINT_DEBUG("%.*s", (u32)node->operator.length, node->operator.start);
     print_expr(node->right);
 }
 
 static void print_binary(struct mtr_binary* node) {
-    printf("(%.*s ", (u32)node->operator.length, node->operator.start);
+    MTR_PRINT_DEBUG("(%.*s ", (u32)node->operator.length, node->operator.start);
     print_expr(node->left);
     print_expr(node->right);
-    printf(")");
+    MTR_PRINT_DEBUG(")");
 }
 
 static void print_grouping(struct mtr_grouping* node) {
@@ -289,7 +301,7 @@ static void print_expr(struct mtr_expr* node) {
 void mtr_print_expr(struct mtr_expr* node) {
     MTR_LOG_DEBUG("Expression: ");
     print_expr(node);
-    putc('\n', stdout);
+    MTR_PRINT_DEBUG("\n");
 }
 
 #undef CHECK

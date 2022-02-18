@@ -17,4 +17,6 @@ struct mtr_parser mtr_parser_init(struct mtr_scanner scanner);
 
 struct mtr_stmt* mtr_parse(struct mtr_parser* parser);
 
+struct mtr_token advance(struct mtr_parser* parser);
+
 #endif

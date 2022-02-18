@@ -6,7 +6,6 @@
 #include <string.h>
 
 void mtr_report_error(struct mtr_token token, const char* message) {
-
     const char* source_start = token.start - token.char_idx;
     const char* c = source_start;
 
@@ -27,7 +26,7 @@ void mtr_report_error(struct mtr_token token, const char* message) {
 
     // find the next new line so that it doesnt get printed
     const char* line_end = line_start;
-    while (*line_end != '\n')
+    while (*line_end != '\n' && *line_end != '\0')
         ++line_end;
 
     u32 eol_index = line_end - line_start;
