@@ -8,34 +8,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-struct mtr_parser mtr_parser_init(struct mtr_scanner scanner) {
-    struct mtr_parser parser = {
-        .scanner = scanner,
-        .had_error = false
-    };
-
-    return parser;
-}
-
 static void* allocate_expr(enum mtr_expr_type type) {
     struct mtr_expr* node = malloc(sizeof(struct mtr_expr));
     node->type = type;
     return node;
 }
 
-static void* allocate_stmt(struct mtr_parser* parser) {
-    struct mtr_stmt* node = malloc(sizeof(struct mtr_stmt));
+static void* allocate_decl(enum mtr_decl_type type) {
+    struct mtr_decl* node = malloc(sizeof(struct mtr_decl));
+    node->type = type;
     return node;
 }
-
-#define CHECK(token_type) parser->token.type == token_type
 
 static void parser_error(struct mtr_parser* parser, const char* message) {
     parser->had_error = true;
     mtr_report_error(parser->token, message);
 }
 
-struct mtr_token advance(struct mtr_parser* parser) {
+#define CHECK(token_type) parser->token.type == token_type
+
+static struct mtr_token advance(struct mtr_parser* parser) {
     struct mtr_token previous = parser->token;
 
     parser->token = mtr_next_token(&parser->scanner);
@@ -59,6 +51,15 @@ static struct mtr_token consume(struct mtr_parser* parser, enum mtr_token_type t
 
     parser_error(parser, message);
     return invalid_token;
+}
+
+struct mtr_parser mtr_parser_init(struct mtr_scanner scanner) {
+    struct mtr_parser parser = {
+        .scanner = scanner,
+        .had_error = false
+    };
+
+    return parser;
 }
 
 // ======================== EXPR =============================
@@ -207,17 +208,111 @@ static struct mtr_expr* expression(struct mtr_parser* parser) {
 
 // ========================================================================
 
-struct mtr_stmt* mtr_parse(struct mtr_parser* parser) {
+struct mtr_decl* var_decl(struct mtr_parser* parser, struct mtr_token var_type) {
+    static struct mtr_expr def_expr = {
+        .literal.floating = 0
+    };
 
-    parser->had_error = false;
+    struct mtr_var_decl* node = allocate_decl(MTR_DECL_VAR_DECL);
+    node->var_type = var_type;
+    node->name = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
 
-    struct mtr_stmt* stmt = allocate_stmt(parser);
-    stmt->expression = expression(parser);
+    if (CHECK(MTR_TOKEN_EQUAL)) {
+        advance(parser);
+        node->value = expression(parser);
+    } else {
+        node->value = &def_expr;
+    }
+
     consume(parser, MTR_TOKEN_SEMICOLON, "Expected ';'.");
 
+    return (struct mtr_decl*) node;
+}
+
+struct mtr_decl* declaration(struct mtr_parser* parser) {
+    struct mtr_token token = advance(parser);
+
+    switch (token.type)
+    {
+    case MTR_TOKEN_U8:
+    case MTR_TOKEN_U16:
+    case MTR_TOKEN_U32:
+    case MTR_TOKEN_U64:
+    case MTR_TOKEN_I8:
+    case MTR_TOKEN_I16:
+    case MTR_TOKEN_I32:
+    case MTR_TOKEN_I64:
+    case MTR_TOKEN_F32:
+    case MTR_TOKEN_F64:
+    case MTR_TOKEN_BOOL:
+        return var_decl(parser, token);
+        break;
+    default:
+        break;
+    }
+
+    parser_error(parser, "Expected declaration.");
+    return NULL;
+}
+
+// ========================================================================
+
+struct mtr_program mtr_parse(struct mtr_parser* parser) {
+
+    advance(parser);
     skip_newline_and_comments(parser);
 
-    return stmt;
+    struct mtr_program program = mtr_new_program();
+
+    while (parser->token.type != MTR_TOKEN_EOF) {
+        struct mtr_decl* decl = declaration(parser);
+        mtr_write_decl(&program, decl);
+
+        skip_newline_and_comments(parser);
+    }
+
+    return program;
+}
+
+// =======================================================================
+
+#include "string.h"
+
+struct mtr_program mtr_new_program() {
+    struct mtr_program program = {
+        .capacity = 8,
+        .size = 0,
+        .declarations = NULL
+    };
+
+    void* temp = malloc(sizeof(struct mtr_decl*) * 8);
+    if (NULL == temp) {
+        MTR_LOG_ERROR("Bad allocation.");
+        return program;
+    }
+
+    program.declarations = temp;
+    return program;
+}
+
+void mtr_write_decl(struct mtr_program* program, struct mtr_decl* declaration) {
+    if (program->size == program->capacity) {
+        size_t new_cap = program->capacity * 2;
+
+        void* temp = malloc(sizeof(struct mtr_decl*) * new_cap);
+        if (NULL == temp) {
+            MTR_LOG_ERROR("Bad allocation.");
+            return;
+        }
+
+        memcpy(temp, program->declarations, sizeof(struct mtr_decl*) * program->size);
+
+        free(program->declarations);
+        program->declarations = temp;
+        program->capacity = new_cap;
+    }
+
+    program->declarations[program->size++] = declaration;
 }
 
 // =======================================================================

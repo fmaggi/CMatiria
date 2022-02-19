@@ -14,20 +14,7 @@ bool mtr_compile(const char* filepath) {
     struct mtr_scanner scanner = mtr_scanner_init(source);
     struct mtr_parser parser = mtr_parser_init(scanner);
 
-    advance(&parser);
-
-    while (parser.token.type != MTR_TOKEN_EOF) {
-        struct mtr_stmt* stmt = mtr_parse(&parser);
-
-        if (!parser.had_error)
-            mtr_print_expr(stmt->expression);
-
-
-        mtr_free_expr(stmt->expression);
-        free(stmt);
-    }
-
-    // mtr_print_token(parser.token);
+    struct mtr_program program = mtr_parse(&parser);
 
     free(source);
     return true;
