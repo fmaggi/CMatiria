@@ -31,7 +31,6 @@ struct mtr_binary {
     struct mtr_expr* left;
 };
 
-
 // I use a union here because Im thinking about allocating exprs in a linear array in the future.
 // It uses more memory and the logic is a bit messier but it could be faster
 struct mtr_expr {

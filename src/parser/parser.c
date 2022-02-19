@@ -16,7 +16,7 @@ static void* allocate_expr(enum mtr_expr_type type) {
 }
 
 // I know it is not allocating but hey
-static void* allocate_decl(enum mtr_stmt_type type) {
+static void* allocate_stmt(enum mtr_stmt_type type) {
     struct mtr_stmt* node = malloc(sizeof(struct mtr_stmt));
     node->type = type;
     return node;
@@ -223,17 +223,21 @@ static struct mtr_stmt* statement(struct mtr_parser* parser);
 
 static struct mtr_stmt* block(struct mtr_parser* parser) {
 
-    skip_newline_and_comments(parser);
-
-    struct mtr_stmt* node = NULL;
-
-    if (!CHECK(MTR_TOKEN_CURLY_R))
-        node = statement(parser);
 
     skip_newline_and_comments(parser);
+
+    struct mtr_block* node = allocate_stmt(MTR_STMT_BLOCK);
+    node->statements = mtr_new_ast();
+
+    while(!CHECK(MTR_TOKEN_CURLY_R) && !CHECK(MTR_TOKEN_EOF)) {
+        struct mtr_stmt* s = statement(parser);
+        mtr_write_stmt(&node->statements, s);
+
+        skip_newline_and_comments(parser);
+    }
 
     consume(parser, MTR_TOKEN_CURLY_R, "Expected '}'.");
-    return  node;
+    return (struct mtr_stmt*) node;
 }
 
 static struct mtr_stmt* expr_statement(struct mtr_parser* parser) {
@@ -243,14 +247,15 @@ static struct mtr_stmt* expr_statement(struct mtr_parser* parser) {
         return block(parser);
     }
 
-    struct mtr_expr_stmt* node = allocate_decl(MTR_STMT_EXPRESSION);
+    struct mtr_expr_stmt* node = allocate_stmt(MTR_STMT_EXPRESSION);
     node->expression = expression(parser);
+    consume(parser, MTR_TOKEN_SEMICOLON, "Expected ';'.");
     return (struct mtr_stmt*)  node;
 }
 
 static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
 
-    struct mtr_fn_decl* node = allocate_decl(MTR_STMT_FUNC);
+    struct mtr_fn_decl* node = allocate_stmt(MTR_STMT_FUNC);
 
     advance(parser);
 
@@ -300,7 +305,7 @@ static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
 
 static struct mtr_stmt* var_decl(struct mtr_parser* parser) {
 
-    struct mtr_var_decl* node = allocate_decl(MTR_STMT_VAR_DECL);
+    struct mtr_var_decl* node = allocate_stmt(MTR_STMT_VAR_DECL);
 
     node->var_type = advance(parser); // because we are here we alredy know its a type!
     node->name = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
@@ -482,9 +487,16 @@ void mtr_print_expr(struct mtr_expr* node) {
     MTR_PRINT_DEBUG("\n");
 }
 
-static void print_decl(struct mtr_stmt* decl);
 
-static void print_var(struct mtr_var_decl* dec) {
+static void print_stmt(struct mtr_stmt* stmt);
+
+static void print_block(struct mtr_block* block) {
+    for (u32 i = 0; i < block->statements.size; ++i) {
+        print_stmt(block->statements.statements[i]);
+    }
+}
+
+static void print_var(struct mtr_var_decl* decl) {
 
 }
 
@@ -507,7 +519,8 @@ static void print_func(struct mtr_fn_decl* decl) {
         MTR_PRINT_DEBUG("%s %.*s", mtr_token_type_to_str(param.var_type.type), (u32)param.name.length, param.name.start);
     }
 
-    MTR_PRINT_DEBUG(") -> %s", mtr_token_type_to_str(decl->return_type.type));
+    MTR_PRINT_DEBUG(") -> %s\n", mtr_token_type_to_str(decl->return_type.type));
+    print_stmt(decl->body);
 }
 
 static void print_stmt(struct mtr_stmt* decl) {
@@ -516,6 +529,7 @@ static void print_stmt(struct mtr_stmt* decl) {
     case MTR_STMT_FUNC:       return print_func((struct mtr_fn_decl*) decl);
     case MTR_STMT_EXPRESSION: return print_expr_stmt((struct mtr_expr_stmt*) decl);
     case MTR_STMT_VAR_DECL:   return print_var((struct mtr_var_decl*) decl);
+    case MTR_STMT_BLOCK:      return print_block((struct mtr_block*) decl);
     }
 }
 
