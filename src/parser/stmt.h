@@ -44,13 +44,9 @@ struct mtr_var_decl {
 struct mtr_fn_decl {
     struct mtr_token name;
     struct mtr_block body;
-
-    struct {
-        struct mtr_var_decl* argv;
-        u8 argc;
-    } args;
-
+    struct mtr_var_decl* argv;
     enum mtr_token_type return_type;
+    u32 argc;
 };
 
 struct mtr_expr_stmt {

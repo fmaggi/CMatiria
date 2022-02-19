@@ -216,7 +216,7 @@ static struct mtr_expr* expression(struct mtr_parser* parser) {
 
 // ========================================================================
 
-static struct mtr_stmt statement(struct mtr_parser* parser);
+static struct mtr_stmt declaration(struct mtr_parser* parser);
 
 static struct mtr_stmt block(struct mtr_parser* parser) {
     struct mtr_stmt stmt = allocate_stmt(MTR_STMT_BLOCK);
@@ -226,7 +226,7 @@ static struct mtr_stmt block(struct mtr_parser* parser) {
     consume(parser, MTR_TOKEN_CURLY_L, "Expected '{'.");
 
     while(!CHECK(MTR_TOKEN_CURLY_R) && !CHECK(MTR_TOKEN_EOF)) {
-        struct mtr_stmt s = statement(parser);
+        struct mtr_stmt s = declaration(parser);
         mtr_write_stmt(&node->statements, s);
     }
 
@@ -275,7 +275,17 @@ static struct mtr_stmt while_stmt(struct mtr_parser* parser) {
     return stmt;
 }
 
-static struct mtr_stmt expr_statement(struct mtr_parser* parser) {
+static struct mtr_stmt statement(struct mtr_parser* parser) {
+    switch (parser->token.type)
+    {
+    case MTR_TOKEN_IF:      return if_stmt(parser);
+    case MTR_TOKEN_WHILE:   return while_stmt(parser);
+    case MTR_TOKEN_CURLY_L: return block(parser);
+
+    default:
+        break;
+    }
+
     struct mtr_stmt stmt = allocate_stmt(MTR_STMT_EXPRESSION);
     struct mtr_expr_stmt* node = &stmt.expr;
     node->expression = expression(parser);
@@ -292,7 +302,7 @@ static struct mtr_stmt func_decl(struct mtr_parser* parser) {
     node->name = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
     consume(parser, MTR_TOKEN_PAREN_L, "Expected '('.");
 
-    u8 argc = 0;
+    u32 argc = 0;
     struct mtr_var_decl vars[255];
     while (argc < 255 && !CHECK(MTR_TOKEN_PAREN_R)) {
         struct mtr_var_decl* var = vars + argc++;
@@ -311,15 +321,15 @@ static struct mtr_stmt func_decl(struct mtr_parser* parser) {
 
     consume(parser, MTR_TOKEN_PAREN_R, "Expected ')'."); // need to check again in case we broke out of the loop because of arg count
 
-    node->args.argc = argc;
-    node->args.argv = NULL;
+    node->argc = argc;
+    node->argv = NULL;
 
     if (argc > 0) {
-        node->args.argv = malloc(sizeof(struct mtr_var_decl) * argc);
-        if (NULL == node->args.argv)
+        node->argv = malloc(sizeof(struct mtr_var_decl) * argc);
+        if (NULL == node->argv)
             MTR_LOG_ERROR("Bad allocation.");
         else
-            memcpy(node->args.argv, vars, sizeof(struct mtr_var_decl) * argc);
+            memcpy(node->argv, vars, sizeof(struct mtr_var_decl) * argc);
     }
 
     consume(parser, MTR_TOKEN_ARROW, "Expected '->'.");
@@ -349,7 +359,7 @@ static struct mtr_stmt var_decl(struct mtr_parser* parser) {
     return stmt;
 }
 
-static struct mtr_stmt statement(struct mtr_parser* parser) {
+static struct mtr_stmt declaration(struct mtr_parser* parser) {
     switch (parser->token.type)
     {
     case MTR_TOKEN_U8:
@@ -366,17 +376,9 @@ static struct mtr_stmt statement(struct mtr_parser* parser) {
         return var_decl(parser);
     case MTR_TOKEN_FN:
         return func_decl(parser);
-    case MTR_TOKEN_IF:
-        return if_stmt(parser);
-    case MTR_TOKEN_WHILE:
-        return while_stmt(parser);
-    case MTR_TOKEN_CURLY_L:
-        return block(parser);
     default:
-        break;
+        return statement(parser);
     }
-
-    return expr_statement(parser);
 }
 
 // ========================================================================
@@ -387,7 +389,7 @@ struct mtr_ast mtr_parse(struct mtr_parser* parser) {
     struct mtr_ast ast = mtr_new_ast();
 
     while (parser->token.type != MTR_TOKEN_EOF) {
-        struct mtr_stmt stmt = statement(parser);
+        struct mtr_stmt stmt = declaration(parser);
         mtr_write_stmt(&ast, stmt);
     }
 
@@ -446,9 +448,9 @@ void mtr_delete_ast(struct mtr_ast* ast) {
             s->expr.expression = NULL;
             break;
         case MTR_STMT_FUNC:
-            if (s->function.args.argc > 0)
-                free(s->function.args.argv);
-            s->function.args.argv = NULL;
+            if (s->function.argc > 0)
+                free(s->function.argv);
+            s->function.argv = NULL;
             mtr_delete_ast(&s->function.body.statements);
             break;
         case MTR_STMT_IF:
@@ -581,13 +583,13 @@ static void print_expr_stmt(struct mtr_expr_stmt* decl) {
 static void print_func(struct mtr_fn_decl* decl) {
     MTR_PRINT_DEBUG("function: %.*s(", (u32)decl->name.length, decl->name.start);
 
-    if (decl->args.argc > 0) {
-        for (u32 i = 0; i < decl->args.argc - 1; ++i) {
-            struct mtr_var_decl param = decl->args.argv[i];
+    if (decl->argc > 0) {
+        for (u32 i = 0; i < decl->argc - 1; ++i) {
+            struct mtr_var_decl param = decl->argv[i];
             MTR_PRINT_DEBUG("%s %.*s, ", mtr_token_type_to_str(param.var_type), (u32)param.name.length, param.name.start);
         }
 
-        struct mtr_var_decl param = decl->args.argv[decl->args.argc-1];
+        struct mtr_var_decl param = decl->argv[decl->argc-1];
         MTR_PRINT_DEBUG("%s %.*s", mtr_token_type_to_str(param.var_type), (u32)param.name.length, param.name.start);
     }
 
