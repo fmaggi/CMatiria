@@ -44,6 +44,8 @@ struct mtr_expr_stmt {
     struct mtr_expr* expression;
 };
 
+// This wastes to much memory. Every stmt is 80 bytes. Dont know if it is worth it
+// it could lead to less indirection and thus more performance but...
 struct mtr_stmt {
     union {
         struct mtr_var_decl variable;

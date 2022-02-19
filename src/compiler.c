@@ -20,7 +20,7 @@ bool mtr_compile(const char* filepath) {
         mtr_print_stmt(&ast.statements[i]);
     }
 
-    free(ast.statements);
+    mtr_delete_ast(&ast);
     free(source);
     return true;
 }

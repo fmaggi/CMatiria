@@ -398,6 +398,37 @@ void mtr_write_stmt(struct mtr_ast* ast, struct mtr_stmt statement) {
     ast->statements[ast->size++] = statement;
 }
 
+void mtr_delete_ast(struct mtr_ast* ast) {
+    for (size_t i = 0; i < ast->size; i++) {
+        struct mtr_stmt* s = ast->statements + i;
+        switch (s->type)
+        {
+        case MTR_STMT_BLOCK:
+            mtr_delete_ast(&s->block.statements);
+            break;
+        case MTR_STMT_EXPRESSION:
+            mtr_free_expr(s->expr.expression);
+            s->expr.expression = NULL;
+            break;
+        case MTR_STMT_FUNC:
+            if (s->function.args.argc > 0)
+                free(s->function.args.argv);
+            s->function.args.argv = NULL;
+            mtr_delete_ast(&s->function.body.statements);
+            break;
+        case MTR_STMT_VAR_DECL:
+            mtr_free_expr(s->variable.value);
+            s->variable.value = NULL;
+            break;
+        }
+    }
+
+    free(ast->statements);
+    ast->statements = NULL;
+    ast->size = 0;
+    ast->capacity = 0;
+}
+
 // =======================================================================
 
 static void free_binary(struct mtr_binary* node) {
