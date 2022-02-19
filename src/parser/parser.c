@@ -223,6 +223,8 @@ static struct mtr_stmt block(struct mtr_parser* parser) {
     struct mtr_block* node = &stmt.block;
     node->statements = mtr_new_ast();
 
+    consume(parser, MTR_TOKEN_CURLY_L, "Expected '{'.");
+
     while(!CHECK(MTR_TOKEN_CURLY_R) && !CHECK(MTR_TOKEN_EOF)) {
         struct mtr_stmt s = statement(parser);
         mtr_write_stmt(&node->statements, s);
@@ -241,7 +243,6 @@ static struct mtr_stmt if_stmt(struct mtr_parser* parser) {
     node->condition = expression(parser);
     consume(parser, MTR_TOKEN_PAREN_R, "Expected ')'.");
 
-    consume(parser, MTR_TOKEN_CURLY_L, "Expected '{'.");
     node->then = block(parser).block;
 
     struct mtr_ast e = {
@@ -254,19 +255,27 @@ static struct mtr_stmt if_stmt(struct mtr_parser* parser) {
 
     if (CHECK(MTR_TOKEN_ELSE)) {
         advance(parser);
-        consume(parser, MTR_TOKEN_CURLY_L, "Expected '{'.");
         node->else_b = block(parser).block;
     }
 
     return stmt;
 }
 
-static struct mtr_stmt expr_statement(struct mtr_parser* parser) {
-    if (CHECK(MTR_TOKEN_CURLY_L)) {
-        advance(parser);
-        return block(parser);
-    }
+static struct mtr_stmt while_stmt(struct mtr_parser* parser) {
+    struct mtr_stmt stmt = allocate_stmt(MTR_STMT_WHILE);
+    struct mtr_while* node = &stmt.while_s;
 
+    advance(parser);
+    consume(parser, MTR_TOKEN_PAREN_L, "Expected '('.");
+    node->condition = expression(parser);
+    consume(parser, MTR_TOKEN_PAREN_R, "Expected ')'.");
+
+    node->body = block(parser).block;
+
+    return stmt;
+}
+
+static struct mtr_stmt expr_statement(struct mtr_parser* parser) {
     struct mtr_stmt stmt = allocate_stmt(MTR_STMT_EXPRESSION);
     struct mtr_expr_stmt* node = &stmt.expr;
     node->expression = expression(parser);
@@ -317,8 +326,6 @@ static struct mtr_stmt func_decl(struct mtr_parser* parser) {
 
     node->return_type = consume_type(parser).type;
 
-    consume(parser, MTR_TOKEN_CURLY_L, "Expected '{'.");
-
     node->body = block(parser).block;
 
     return stmt;
@@ -361,6 +368,10 @@ static struct mtr_stmt statement(struct mtr_parser* parser) {
         return func_decl(parser);
     case MTR_TOKEN_IF:
         return if_stmt(parser);
+    case MTR_TOKEN_WHILE:
+        return while_stmt(parser);
+    case MTR_TOKEN_CURLY_L:
+        return block(parser);
     default:
         break;
     }
@@ -444,6 +455,10 @@ void mtr_delete_ast(struct mtr_ast* ast) {
             mtr_delete_ast(&s->if_s.then.statements);
             mtr_delete_ast(&s->if_s.else_b.statements);
             mtr_free_expr(s->if_s.condition);
+            break;
+        case MTR_STMT_WHILE:
+            mtr_delete_ast(&s->while_s.body.statements);
+            mtr_free_expr(s->while_s.condition);
             break;
         case MTR_STMT_VAR_DECL:
             mtr_free_expr(s->variable.value);
@@ -553,6 +568,12 @@ static void print_if(struct mtr_if* decl) {
     print_block(&decl->else_b);
 }
 
+static void print_while(struct mtr_while* decl) {
+    MTR_PRINT_DEBUG("while: ");
+    mtr_print_expr(decl->condition);
+    print_block(&decl->body);
+}
+
 static void print_expr_stmt(struct mtr_expr_stmt* decl) {
     mtr_print_expr(decl->expression);
 }
@@ -581,6 +602,7 @@ static void print_stmt(struct mtr_stmt* decl) {
     case MTR_STMT_EXPRESSION: return print_expr_stmt((struct mtr_expr_stmt*) decl);
     case MTR_STMT_VAR_DECL:   return print_var((struct mtr_var_decl*) decl);
     case MTR_STMT_IF:         return print_if((struct mtr_if*) decl);
+    case MTR_STMT_WHILE:      return print_while((struct mtr_while*) decl);
     case MTR_STMT_BLOCK:      return print_block((struct mtr_block*) decl);
     }
 }

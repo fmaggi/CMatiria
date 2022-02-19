@@ -10,6 +10,7 @@ enum mtr_stmt_type {
     MTR_STMT_FUNC,
     MTR_STMT_VAR_DECL,
     MTR_STMT_IF,
+    MTR_STMT_WHILE,
     MTR_STMT_BLOCK
 };
 
@@ -26,6 +27,11 @@ struct mtr_block {
 struct mtr_if {
     struct mtr_block then;
     struct mtr_block else_b;
+    struct mtr_expr* condition;
+};
+
+struct mtr_while {
+    struct mtr_block body;
     struct mtr_expr* condition;
 };
 
@@ -59,6 +65,7 @@ struct mtr_stmt {
         struct mtr_fn_decl function;
         struct mtr_var_decl variable;
         struct mtr_if if_s;
+        struct mtr_while while_s;
         struct mtr_block block;
     };
     enum mtr_stmt_type type;
