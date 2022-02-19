@@ -47,8 +47,7 @@ static const struct keyword_entry keywords[KEYWORD_COUNT] = {
 const struct mtr_token invalid_token = {
     .type = MTR_TOKEN_INVALID,
     .start = NULL,
-    .length = 0,
-    .char_idx = 0
+    .length = 0
 };
 
 static bool is_numeric(char c);
@@ -207,8 +206,7 @@ static struct mtr_token make_token(const struct mtr_scanner* scanner, enum mtr_t
     struct mtr_token t = {
         .type = type,
         .start = scanner->start,
-        .length = scanner->current - scanner->start,
-        .char_idx = scanner->start - scanner->source
+        .length = scanner->current - scanner->start
     };
     return t;
 }
@@ -266,9 +264,9 @@ void mtr_print_token(struct mtr_token token) {
     const char* type = mtr_token_type_to_str(token.type);
 
     if (token.type == MTR_TOKEN_IDENTIFIER || token.type == MTR_TOKEN_STRING || token.type == MTR_TOKEN_INT ||token.type == MTR_TOKEN_FLOAT || token.type == MTR_TOKEN_INVALID) {
-        MTR_LOG_DEBUG("Token: %s at %u, (%.*s)", type, token.char_idx, (u32)token.length, token.start);
+        MTR_LOG_DEBUG("Token: %s, (%.*s)", type, (u32)token.length, token.start);
     } else {
-        MTR_LOG_DEBUG("Token: %s at %u", type, token.char_idx);
+        MTR_LOG_DEBUG("Token: %s", type);
     }
 }
 

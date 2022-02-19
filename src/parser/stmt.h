@@ -9,6 +9,7 @@ enum mtr_stmt_type {
     MTR_STMT_EXPRESSION,
     MTR_STMT_FUNC,
     MTR_STMT_VAR_DECL,
+    MTR_STMT_IF,
     MTR_STMT_BLOCK
 };
 
@@ -22,6 +23,12 @@ struct mtr_block {
     struct mtr_ast statements;
 };
 
+struct mtr_if {
+    struct mtr_block then;
+    struct mtr_block else_b;
+    struct mtr_expr* condition;
+};
+
 struct mtr_var_decl {
     struct mtr_token name;
     struct mtr_expr* value;
@@ -30,13 +37,13 @@ struct mtr_var_decl {
 
 struct mtr_fn_decl {
     struct mtr_token name;
+    struct mtr_block body;
 
     struct {
         struct mtr_var_decl* argv;
         u8 argc;
     } args;
 
-    struct mtr_block body;
     enum mtr_token_type return_type;
 };
 
@@ -48,9 +55,10 @@ struct mtr_expr_stmt {
 // it could lead to less indirection and thus more performance but...
 struct mtr_stmt {
     union {
-        struct mtr_var_decl variable;
-        struct mtr_fn_decl function;
         struct mtr_expr_stmt expr;
+        struct mtr_fn_decl function;
+        struct mtr_var_decl variable;
+        struct mtr_if if_s;
         struct mtr_block block;
     };
     enum mtr_stmt_type type;

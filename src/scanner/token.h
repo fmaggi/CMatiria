@@ -47,7 +47,6 @@ struct mtr_token {
     enum mtr_token_type type;
     const char* start;
     u32 length;
-    u32 char_idx;
 };
 
 void mtr_print_token(struct mtr_token token);

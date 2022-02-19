@@ -5,9 +5,8 @@
 
 #include <string.h>
 
-void mtr_report_error(struct mtr_token token, const char* message) {
-    const char* source_start = token.start - token.char_idx;
-    const char* c = source_start;
+void mtr_report_error(struct mtr_token token, const char* message, const char* const source) {
+    const char* c = source;
 
     // count lines
     u32 line = 1;
@@ -18,9 +17,8 @@ void mtr_report_error(struct mtr_token token, const char* message) {
     }
 
     const char* line_start = token.start-1;
-    while (*line_start != '\n' && line_start != source_start)
+    while (*(line_start-1) != '\n' && (line_start-1) != source)
         --line_start;
-    ++line_start;
 
     u32 column = token.start - line_start;
 

@@ -25,7 +25,7 @@ static struct mtr_stmt allocate_stmt(enum mtr_stmt_type type) {
 
 static void parser_error(struct mtr_parser* parser, const char* message) {
     parser->had_error = true;
-    mtr_report_error(parser->token, message);
+    mtr_report_error(parser->token, message, parser->scanner.source);
 }
 
 #define CHECK(token_type) (parser->token.type == token_type)
@@ -232,6 +232,35 @@ static struct mtr_stmt block(struct mtr_parser* parser) {
     return stmt;
 }
 
+static struct mtr_stmt if_stmt(struct mtr_parser* parser) {
+    struct mtr_stmt stmt = allocate_stmt(MTR_STMT_IF);
+    struct mtr_if* node = &stmt.if_s;
+
+    advance(parser);
+    consume(parser, MTR_TOKEN_PAREN_L, "Expected '('.");
+    node->condition = expression(parser);
+    consume(parser, MTR_TOKEN_PAREN_R, "Expected ')'.");
+
+    consume(parser, MTR_TOKEN_CURLY_L, "Expected '{'.");
+    node->then = block(parser).block;
+
+    struct mtr_ast e = {
+        .statements = NULL,
+        .size = 0,
+        .capacity = 0
+    };
+
+    node->else_b.statements = e;
+
+    if (CHECK(MTR_TOKEN_ELSE)) {
+        advance(parser);
+        consume(parser, MTR_TOKEN_CURLY_L, "Expected '{'.");
+        node->else_b = block(parser).block;
+    }
+
+    return stmt;
+}
+
 static struct mtr_stmt expr_statement(struct mtr_parser* parser) {
     if (CHECK(MTR_TOKEN_CURLY_L)) {
         advance(parser);
@@ -330,6 +359,8 @@ static struct mtr_stmt statement(struct mtr_parser* parser) {
         return var_decl(parser);
     case MTR_TOKEN_FN:
         return func_decl(parser);
+    case MTR_TOKEN_IF:
+        return if_stmt(parser);
     default:
         break;
     }
@@ -408,6 +439,11 @@ void mtr_delete_ast(struct mtr_ast* ast) {
                 free(s->function.args.argv);
             s->function.args.argv = NULL;
             mtr_delete_ast(&s->function.body.statements);
+            break;
+        case MTR_STMT_IF:
+            mtr_delete_ast(&s->if_s.then.statements);
+            mtr_delete_ast(&s->if_s.else_b.statements);
+            mtr_free_expr(s->if_s.condition);
             break;
         case MTR_STMT_VAR_DECL:
             mtr_free_expr(s->variable.value);
@@ -493,7 +529,6 @@ static void print_expr(struct mtr_expr* node) {
 }
 
 void mtr_print_expr(struct mtr_expr* node) {
-    MTR_LOG_DEBUG("Expression: ");
     print_expr(node);
     MTR_PRINT_DEBUG("\n");
 }
@@ -508,6 +543,14 @@ static void print_block(struct mtr_block* block) {
 
 static void print_var(struct mtr_var_decl* decl) {
 
+}
+
+static void print_if(struct mtr_if* decl) {
+    MTR_PRINT_DEBUG("if: ");
+    mtr_print_expr(decl->condition);
+    print_block(&decl->then);
+    MTR_PRINT_DEBUG("else: \n");
+    print_block(&decl->else_b);
 }
 
 static void print_expr_stmt(struct mtr_expr_stmt* decl) {
@@ -537,6 +580,7 @@ static void print_stmt(struct mtr_stmt* decl) {
     case MTR_STMT_FUNC:       return print_func((struct mtr_fn_decl*) decl);
     case MTR_STMT_EXPRESSION: return print_expr_stmt((struct mtr_expr_stmt*) decl);
     case MTR_STMT_VAR_DECL:   return print_var((struct mtr_var_decl*) decl);
+    case MTR_STMT_IF:         return print_if((struct mtr_if*) decl);
     case MTR_STMT_BLOCK:      return print_block((struct mtr_block*) decl);
     }
 }

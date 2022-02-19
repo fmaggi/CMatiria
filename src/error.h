@@ -3,6 +3,6 @@
 
 #include "scanner/token.h"
 
-void mtr_report_error(struct mtr_token token, const char* message);
+void mtr_report_error(struct mtr_token token, const char* message, const char* const source);
 
 #endif

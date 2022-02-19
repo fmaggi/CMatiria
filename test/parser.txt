@@ -1,5 +1,6 @@
 fn main(i32 x, i32 y) -> u32 {
-    # this is a comment
-    2 + 3 < 3 * (2 + 4);
-    # this is a comment
+    if (x == 4) {
+        x + 3;
+    }
+
 }
