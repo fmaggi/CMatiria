@@ -35,17 +35,15 @@ static struct mtr_token advance(struct mtr_parser* parser) {
 
     parser->token = mtr_next_token(&parser->scanner);
 
+    while (CHECK(MTR_TOKEN_COMMENT))
+        parser->token = mtr_next_token(&parser->scanner);
+
     while (CHECK(MTR_TOKEN_INVALID)) {
         parser_error(parser, "Invalid token.");
         parser->token = mtr_next_token(&parser->scanner);
     }
 
     return previous;
-}
-
-static void skip_newline_and_comments(struct mtr_parser* parser) {
-    while (CHECK(MTR_TOKEN_NEWLINE) || CHECK(MTR_TOKEN_COMMENT))
-        advance(parser);
 }
 
 static struct mtr_token consume(struct mtr_parser* parser, enum mtr_token_type token, const char* message) {
@@ -158,7 +156,6 @@ static const struct parser_rule rules[] = {
     [MTR_TOKEN_F64] = { NO_OP },
     [MTR_TOKEN_BOOL] = { NO_OP },
     [MTR_TOKEN_IDENTIFIER] = { .prefix = primary, .infix = NULL, .precedence = MTR_PRECEDENCE_PRIMARY },
-    [MTR_TOKEN_NEWLINE] = { NO_OP },
     [MTR_TOKEN_COMMENT] = { NO_OP },
     [MTR_TOKEN_EOF] = { NO_OP },
     [MTR_TOKEN_INVALID] = { NO_OP }
@@ -222,8 +219,6 @@ static struct mtr_expr* expression(struct mtr_parser* parser) {
 static struct mtr_stmt statement(struct mtr_parser* parser);
 
 static struct mtr_stmt block(struct mtr_parser* parser) {
-    skip_newline_and_comments(parser);
-
     struct mtr_stmt stmt = allocate_stmt(MTR_STMT_BLOCK);
     struct mtr_block* node = &stmt.block;
     node->statements = mtr_new_ast();
@@ -231,8 +226,6 @@ static struct mtr_stmt block(struct mtr_parser* parser) {
     while(!CHECK(MTR_TOKEN_CURLY_R) && !CHECK(MTR_TOKEN_EOF)) {
         struct mtr_stmt s = statement(parser);
         mtr_write_stmt(&node->statements, s);
-
-        skip_newline_and_comments(parser);
     }
 
     consume(parser, MTR_TOKEN_CURLY_R, "Expected '}'.");
@@ -267,6 +260,7 @@ static struct mtr_stmt func_decl(struct mtr_parser* parser) {
         struct mtr_var_decl* var = vars + argc++;
         var->var_type = consume_type(parser).type;
         var->name = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
+        var->value = NULL;
 
         if (CHECK(MTR_TOKEN_PAREN_R))
             break;
@@ -294,8 +288,6 @@ static struct mtr_stmt func_decl(struct mtr_parser* parser) {
 
     node->return_type = consume_type(parser).type;
 
-    skip_newline_and_comments(parser);
-
     consume(parser, MTR_TOKEN_CURLY_L, "Expected '{'.");
 
     node->body = block(parser).block;
@@ -309,6 +301,7 @@ static struct mtr_stmt var_decl(struct mtr_parser* parser) {
 
     node->var_type = advance(parser).type; // because we are here we alredy know its a type!
     node->name = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
+    node->value = NULL;
 
     if (CHECK(MTR_TOKEN_EQUAL)) {
         advance(parser);
@@ -348,15 +341,12 @@ static struct mtr_stmt statement(struct mtr_parser* parser) {
 
 struct mtr_ast mtr_parse(struct mtr_parser* parser) {
     advance(parser);
-    skip_newline_and_comments(parser);
 
     struct mtr_ast ast = mtr_new_ast();
 
     while (parser->token.type != MTR_TOKEN_EOF) {
         struct mtr_stmt stmt = statement(parser);
         mtr_write_stmt(&ast, stmt);
-
-        skip_newline_and_comments(parser);
     }
 
     return ast;

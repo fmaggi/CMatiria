@@ -172,9 +172,6 @@ struct mtr_token mtr_next_token(struct mtr_scanner* scanner) {
     case '_':
         return scan_identifier(scanner);
 
-    case '\n':
-        return make_token(scanner, MTR_TOKEN_NEWLINE);
-
     case '\0':
         return make_token(scanner, MTR_TOKEN_EOF);
 
@@ -201,7 +198,7 @@ static char advance(struct mtr_scanner* scanner) {
 
 static void skip_whitespace(struct mtr_scanner* scanner) {
     const char* c = scanner->current;
-    while(*c == ' ' || *c == '\t' || *c == '\r')
+    while(*c == ' ' || *c == '\t' || *c == '\r' || *c == '\n')
         c++;
     scanner->current = c;
 }
@@ -329,7 +326,6 @@ const char* mtr_token_type_to_str(enum mtr_token_type type) {
     case MTR_TOKEN_F64:           return "f64";
     case MTR_TOKEN_BOOL:          return "bool";
     case MTR_TOKEN_IDENTIFIER:    return "IDENTIFIER";
-    case MTR_TOKEN_NEWLINE:       return "newline";
     case MTR_TOKEN_COMMENT:       return "comment";
     case MTR_TOKEN_EOF:           return "EOF";
     case MTR_TOKEN_INVALID:       return "invalid";
