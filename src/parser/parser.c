@@ -14,9 +14,10 @@ static void* allocate_expr(enum mtr_expr_type type) {
     return node;
 }
 
-static void* allocate_decl(enum mtr_decl_type type) {
-    struct mtr_decl* node = malloc(sizeof(struct mtr_decl));
-    node->type = type;
+// I know it is not allocating but hey
+static struct mtr_decl allocate_decl(enum mtr_decl_type type) {
+    struct mtr_decl node;
+    node.type = type;
     return node;
 }
 
@@ -91,7 +92,7 @@ struct parser_rule {
 static struct mtr_expr* unary(struct mtr_parser* parser, struct mtr_token op);
 static struct mtr_expr* binary(struct mtr_parser* parser, struct mtr_token op, struct mtr_expr* left);
 static struct mtr_expr* grouping(struct mtr_parser* parser, struct mtr_token token);
-static struct mtr_expr* literal(struct mtr_parser* parser, struct mtr_token literal);
+static struct mtr_expr* primary(struct mtr_parser* parser, struct mtr_token primary);
 
 #define NO_OP .prefix = NULL, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE
 
@@ -112,7 +113,7 @@ static const struct parser_rule rules[] = {
     [MTR_TOKEN_CURLY_L] = { NO_OP },
     [MTR_TOKEN_CURLY_R] = { NO_OP },
     [MTR_TOKEN_BANG] = { .prefix = unary, .infix = NULL, .precedence = MTR_PRECEDENCE_UNARY },
-    [MTR_TOKEN_EQUAL] = { NO_OP },
+    [MTR_TOKEN_EQUAL] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_ASSIGN }, // not sure about this one;
     [MTR_TOKEN_GREATER] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_COMPARISON },
     [MTR_TOKEN_LESS] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_COMPARISON },
     [MTR_TOKEN_ARROW] = { NO_OP },
@@ -121,16 +122,16 @@ static const struct parser_rule rules[] = {
     [MTR_TOKEN_GREATER_EQUAL] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_COMPARISON },
     [MTR_TOKEN_LESS_EQUAL] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_COMPARISON },
     [MTR_TOKEN_DOUBLE_SLASH] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_FACTOR },
-    [MTR_TOKEN_STRING] = { .prefix = literal, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE },
-    [MTR_TOKEN_INT] = { .prefix = literal, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE },
-    [MTR_TOKEN_FLOAT] = { .prefix = literal, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE },
+    [MTR_TOKEN_STRING] = { .prefix = primary, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE },
+    [MTR_TOKEN_INT] = { .prefix = primary, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE },
+    [MTR_TOKEN_FLOAT] = { .prefix = primary, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE },
     [MTR_TOKEN_AND] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_LOGIC },
     [MTR_TOKEN_OR] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_LOGIC },
     [MTR_TOKEN_STRUCT] = { NO_OP },
     [MTR_TOKEN_IF] = { NO_OP },
     [MTR_TOKEN_ELSE] = { NO_OP },
-    [MTR_TOKEN_TRUE] = { .prefix = literal, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE },
-    [MTR_TOKEN_FALSE] = { .prefix = literal, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE },
+    [MTR_TOKEN_TRUE] = { .prefix = primary, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE },
+    [MTR_TOKEN_FALSE] = { .prefix = primary, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE },
     [MTR_TOKEN_FN] = { NO_OP },
     [MTR_TOKEN_RETURN] = { NO_OP },
     [MTR_TOKEN_WHILE] = { NO_OP },
@@ -146,7 +147,7 @@ static const struct parser_rule rules[] = {
     [MTR_TOKEN_F32] = { NO_OP },
     [MTR_TOKEN_F64] = { NO_OP },
     [MTR_TOKEN_BOOL] = { NO_OP },
-    [MTR_TOKEN_IDENTIFIER] = { NO_OP },
+    [MTR_TOKEN_IDENTIFIER] = { .prefix = primary, .infix = NULL, .precedence = MTR_PRECEDENCE_PRIMARY },
     [MTR_TOKEN_NEWLINE] = { NO_OP },
     [MTR_TOKEN_COMMENT] = { NO_OP },
     [MTR_TOKEN_EOF] = { NO_OP },
@@ -176,7 +177,7 @@ static struct mtr_expr* parse_precedence(struct mtr_parser* parser, enum precede
 
 static struct mtr_expr* unary(struct mtr_parser* parser, struct mtr_token op) {
     struct mtr_unary* node = allocate_expr(MTR_EXPR_UNARY);
-    node->operator = op;
+    node->operator = op.type;
     node->right = parse_precedence(parser, rules[op.type].precedence + 1);
     return (struct mtr_expr*) node;
 }
@@ -184,7 +185,7 @@ static struct mtr_expr* unary(struct mtr_parser* parser, struct mtr_token op) {
 static struct mtr_expr* binary(struct mtr_parser* parser, struct mtr_token op, struct mtr_expr* left) {
     struct mtr_binary* node = allocate_expr(MTR_EXPR_BINARY);
     node->left = left;
-    node->operator = op;
+    node->operator = op.type;
     node->right = parse_precedence(parser, rules[op.type].precedence + 1);
     return (struct mtr_expr*) node;
 }
@@ -196,9 +197,9 @@ static struct mtr_expr* grouping(struct mtr_parser* parser, struct mtr_token tok
     return (struct mtr_expr*) node;
 }
 
-static struct mtr_expr* literal(struct mtr_parser* parser, struct mtr_token literal) {
-    struct mtr_literal* node = allocate_expr(MTR_EXPR_LITERAL);
-    node->token = literal;
+static struct mtr_expr* primary(struct mtr_parser* parser, struct mtr_token primary) {
+    struct mtr_primary* node = allocate_expr(MTR_EXPR_PRIMARY);
+    node->token = primary;
     return (struct mtr_expr*) node;
 }
 
@@ -208,31 +209,58 @@ static struct mtr_expr* expression(struct mtr_parser* parser) {
 
 // ========================================================================
 
-struct mtr_decl* var_decl(struct mtr_parser* parser, struct mtr_token var_type) {
-    static struct mtr_expr def_expr = {
-        .literal.floating = 0
-    };
+static struct mtr_decl statement(struct mtr_parser* parser) {
+    struct mtr_decl decl;
+    decl.statement.expression = expression(parser);
+    return decl;
+}
 
-    struct mtr_var_decl* node = allocate_decl(MTR_DECL_VAR_DECL);
-    node->var_type = var_type;
+static struct mtr_decl func_decl(struct mtr_parser* parser) {
+    struct mtr_decl decl = allocate_decl(MTR_DECL_FUNC);
+    struct mtr_fn_decl* node = &decl.function;
+
+    advance(parser);
+
+    node->name = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
+    consume(parser, MTR_TOKEN_PAREN_L, "Expected '('.");
+
+    u8 argc = 0;
+    while (argc < 255) {
+        if (CHECK(MTR_TOKEN_PAREN_R))
+            break;
+        if (CHECK(MTR_TOKEN_COMMA))
+            ++argc;
+        advance(parser);
+    }
+
+    if (argc >= 255) {
+        parser_error(parser, "Exceded maximum number of arguments (255)");
+    }
+
+    consume(parser, MTR_TOKEN_PAREN_R, "Expected ')'.");
+    consume(parser, MTR_TOKEN_ARROW, "Expected '->'.");
+    return decl;
+}
+
+static struct mtr_decl var_decl(struct mtr_parser* parser) {
+    struct mtr_decl decl = allocate_decl(MTR_DECL_VAR_DECL);
+    struct mtr_var_decl* node = &decl.variable;
+
+    node->var_type = advance(parser); // because we are here we alredy know its a type!
     node->name = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
 
     if (CHECK(MTR_TOKEN_EQUAL)) {
         advance(parser);
         node->value = expression(parser);
-    } else {
-        node->value = &def_expr;
     }
 
     consume(parser, MTR_TOKEN_SEMICOLON, "Expected ';'.");
 
-    return (struct mtr_decl*) node;
+    return decl;
 }
 
-struct mtr_decl* declaration(struct mtr_parser* parser) {
-    struct mtr_token token = advance(parser);
-
-    switch (token.type)
+static struct mtr_decl declaration(struct mtr_parser* parser) {
+    switch (parser->token.type)
     {
     case MTR_TOKEN_U8:
     case MTR_TOKEN_U16:
@@ -245,14 +273,14 @@ struct mtr_decl* declaration(struct mtr_parser* parser) {
     case MTR_TOKEN_F32:
     case MTR_TOKEN_F64:
     case MTR_TOKEN_BOOL:
-        return var_decl(parser, token);
-        break;
+        return var_decl(parser);
+    case MTR_TOKEN_FN:
+        return func_decl(parser);
     default:
         break;
     }
 
-    parser_error(parser, "Expected declaration.");
-    return NULL;
+    return statement(parser);
 }
 
 // ========================================================================
@@ -265,7 +293,7 @@ struct mtr_program mtr_parse(struct mtr_parser* parser) {
     struct mtr_program program = mtr_new_program();
 
     while (parser->token.type != MTR_TOKEN_EOF) {
-        struct mtr_decl* decl = declaration(parser);
+        struct mtr_decl decl = declaration(parser);
         mtr_write_decl(&program, decl);
 
         skip_newline_and_comments(parser);
@@ -285,7 +313,7 @@ struct mtr_program mtr_new_program() {
         .declarations = NULL
     };
 
-    void* temp = malloc(sizeof(struct mtr_decl*) * 8);
+    void* temp = malloc(sizeof(struct mtr_decl) * 8);
     if (NULL == temp) {
         MTR_LOG_ERROR("Bad allocation.");
         return program;
@@ -295,17 +323,17 @@ struct mtr_program mtr_new_program() {
     return program;
 }
 
-void mtr_write_decl(struct mtr_program* program, struct mtr_decl* declaration) {
+void mtr_write_decl(struct mtr_program* program, struct mtr_decl declaration) {
     if (program->size == program->capacity) {
         size_t new_cap = program->capacity * 2;
 
-        void* temp = malloc(sizeof(struct mtr_decl*) * new_cap);
+        void* temp = malloc(sizeof(struct mtr_decl) * new_cap);
         if (NULL == temp) {
             MTR_LOG_ERROR("Bad allocation.");
             return;
         }
 
-        memcpy(temp, program->declarations, sizeof(struct mtr_decl*) * program->size);
+        memcpy(temp, program->declarations, sizeof(struct mtr_decl) * program->size);
 
         free(program->declarations);
         program->declarations = temp;
@@ -331,7 +359,7 @@ static void free_grouping(struct mtr_grouping* node) {
     free(node);
 }
 
-static void free_literal(struct mtr_literal* node) {
+static void free_primary(struct mtr_primary* node) {
     free(node);
 }
 
@@ -344,10 +372,10 @@ static void free_unary(struct mtr_unary* node) {
 void mtr_free_expr(struct mtr_expr* node) {
     switch (node->type)
     {
-    case MTR_EXPR_BINARY:   return free_binary(&node->binary);
-    case MTR_EXPR_GROUPING: return free_grouping(&node->grouping);
-    case MTR_EXPR_LITERAL:  return free_literal(&node->literal);
-    case MTR_EXPR_UNARY:    return free_unary(&node->unary);
+    case MTR_EXPR_BINARY:   return free_binary((struct mtr_binary*) node);
+    case MTR_EXPR_GROUPING: return free_grouping((struct mtr_grouping*) node);
+    case MTR_EXPR_PRIMARY:  return free_primary((struct mtr_primary*) node);
+    case MTR_EXPR_UNARY:    return free_unary((struct mtr_unary*) node);
     }
 }
 
@@ -355,17 +383,17 @@ void mtr_free_expr(struct mtr_expr* node) {
 
 static void print_expr(struct mtr_expr* parser);
 
-static void print_literal(struct mtr_literal* node) {
+static void print_primary(struct mtr_primary* node) {
     MTR_PRINT_DEBUG("%.*s ", (u32)node->token.length, node->token.start);
 }
 
 static void print_unary(struct mtr_unary* node) {
-    MTR_PRINT_DEBUG("%.*s", (u32)node->operator.length, node->operator.start);
+    MTR_PRINT_DEBUG("%s", mtr_token_type_to_str(node->operator));
     print_expr(node->right);
 }
 
 static void print_binary(struct mtr_binary* node) {
-    MTR_PRINT_DEBUG("(%.*s ", (u32)node->operator.length, node->operator.start);
+    MTR_PRINT_DEBUG("(%s ", mtr_token_type_to_str(node->operator));
     print_expr(node->left);
     print_expr(node->right);
     MTR_PRINT_DEBUG(")");
@@ -378,8 +406,8 @@ static void print_grouping(struct mtr_grouping* node) {
 static void print_expr(struct mtr_expr* node) {
     switch (node->type)
     {
-    case MTR_EXPR_LITERAL:
-        print_literal((struct mtr_literal*) node);
+    case MTR_EXPR_PRIMARY:
+        print_primary((struct mtr_primary*) node);
         break;
     case MTR_EXPR_BINARY:
         print_binary((struct mtr_binary*) node);

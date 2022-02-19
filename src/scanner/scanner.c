@@ -211,7 +211,7 @@ static struct mtr_token make_token(const struct mtr_scanner* scanner, enum mtr_t
         .type = type,
         .start = scanner->start,
         .length = scanner->current - scanner->start,
-        .char_idx = scanner->current - scanner->source
+        .char_idx = scanner->start - scanner->source
     };
     return t;
 }

@@ -16,6 +16,9 @@ bool mtr_compile(const char* filepath) {
 
     struct mtr_program program = mtr_parse(&parser);
 
+    mtr_print_expr(program.declarations[0].statement.expression);
+
+    free(program.declarations);
     free(source);
     return true;
 }
