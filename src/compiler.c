@@ -17,7 +17,7 @@ bool mtr_compile(const char* filepath) {
     struct mtr_ast ast = mtr_parse(&parser);
 
     for (size_t i = 0; i < ast.size; ++i) {
-        mtr_print_stmt(ast.statements[i]);
+        mtr_print_stmt(&ast.statements[i]);
     }
 
     free(ast.statements);

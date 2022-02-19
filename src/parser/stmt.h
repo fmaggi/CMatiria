@@ -13,7 +13,7 @@ enum mtr_stmt_type {
 };
 
 struct mtr_ast {
-    struct mtr_stmt** statements;
+    struct mtr_stmt* statements;
     size_t size;
     size_t capacity;
 };
@@ -36,7 +36,7 @@ struct mtr_fn_decl {
         u8 argc;
     } args;
 
-    struct mtr_stmt* body;
+    struct mtr_block body;
     enum mtr_token_type return_type;
 };
 
@@ -48,14 +48,14 @@ struct mtr_stmt {
     union {
         struct mtr_var_decl variable;
         struct mtr_fn_decl function;
-        struct mtr_expr_stmt statement;
+        struct mtr_expr_stmt expr;
         struct mtr_block block;
     };
     enum mtr_stmt_type type;
 };
 
 struct mtr_ast mtr_new_ast();
-void mtr_write_stmt(struct mtr_ast* ast, struct mtr_stmt* declaration);
+void mtr_write_stmt(struct mtr_ast* ast, struct mtr_stmt declaration);
 void mtr_delete_ast(struct mtr_ast* ast);
 
 void mtr_print_stmt(struct mtr_stmt* decl);
