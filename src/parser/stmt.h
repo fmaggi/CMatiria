@@ -14,7 +14,7 @@ struct mtr_var_decl {
 struct mtr_fn_decl {
     struct mtr_token name;
     struct mtr_token return_type;
-    struct mtr_decl* body;
+    struct mtr_stmt* body;
 
     struct {
         struct mtr_var_decl* argv;
@@ -22,35 +22,35 @@ struct mtr_fn_decl {
     } args;
 };
 
-struct mtr_stmt {
+struct mtr_expr_stmt {
     struct mtr_expr* expression;
 };
 
-enum mtr_decl_type {
-    MTR_DECL_STATEMENT,
-    MTR_DECL_FUNC,
-    MTR_DECL_VAR_DECL
+enum mtr_stmt_type {
+    MTR_STMT_EXPRESSION,
+    MTR_STMT_FUNC,
+    MTR_STMT_VAR_DECL
 };
 
-struct mtr_decl {
+struct mtr_stmt {
     union {
         struct mtr_var_decl variable;
         struct mtr_fn_decl function;
-        struct mtr_stmt statement;
+        struct mtr_expr_stmt statement;
     };
-    enum mtr_decl_type type;
+    enum mtr_stmt_type type;
 };
 
 struct mtr_ast{
-    struct mtr_decl** declarations;
+    struct mtr_stmt** statements;
     size_t size;
     size_t capacity;
 };
 
 struct mtr_ast mtr_new_ast();
-void mtr_write_decl(struct mtr_ast* ast, struct mtr_decl* declaration);
+void mtr_write_stmt(struct mtr_ast* ast, struct mtr_stmt* declaration);
 void mtr_delete_ast(struct mtr_ast* ast);
 
-void mtr_print_decl(struct mtr_decl* decl);
+void mtr_print_stmt(struct mtr_stmt* decl);
 
 #endif

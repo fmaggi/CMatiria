@@ -17,10 +17,10 @@ bool mtr_compile(const char* filepath) {
     struct mtr_ast ast = mtr_parse(&parser);
 
     for (size_t i = 0; i < ast.size; ++i) {
-        mtr_print_decl(ast.declarations[i]);
+        mtr_print_stmt(ast.statements[i]);
     }
 
-    free(ast.declarations);
+    free(ast.statements);
     free(source);
     return true;
 }
