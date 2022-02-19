@@ -14,11 +14,13 @@ bool mtr_compile(const char* filepath) {
     struct mtr_scanner scanner = mtr_scanner_init(source);
     struct mtr_parser parser = mtr_parser_init(scanner);
 
-    struct mtr_program program = mtr_parse(&parser);
+    struct mtr_ast ast = mtr_parse(&parser);
 
-    mtr_print_expr(program.declarations[0].statement.expression);
+    for (size_t i = 0; i < ast.size; ++i) {
+        mtr_print_decl(ast.declarations[i]);
+    }
 
-    free(program.declarations);
+    free(ast.declarations);
     free(source);
     return true;
 }

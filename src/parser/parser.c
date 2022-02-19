@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 static void* allocate_expr(enum mtr_expr_type type) {
     struct mtr_expr* node = malloc(sizeof(struct mtr_expr));
@@ -15,9 +16,9 @@ static void* allocate_expr(enum mtr_expr_type type) {
 }
 
 // I know it is not allocating but hey
-static struct mtr_decl allocate_decl(enum mtr_decl_type type) {
-    struct mtr_decl node;
-    node.type = type;
+static void* allocate_decl(enum mtr_decl_type type) {
+    struct mtr_decl* node = malloc(sizeof(struct mtr_decl));
+    node->type = type;
     return node;
 }
 
@@ -26,7 +27,7 @@ static void parser_error(struct mtr_parser* parser, const char* message) {
     mtr_report_error(parser->token, message);
 }
 
-#define CHECK(token_type) parser->token.type == token_type
+#define CHECK(token_type) (parser->token.type == token_type)
 
 static struct mtr_token advance(struct mtr_parser* parser) {
     struct mtr_token previous = parser->token;
@@ -42,6 +43,7 @@ static struct mtr_token advance(struct mtr_parser* parser) {
 }
 
 static void skip_newline_and_comments(struct mtr_parser* parser) {
+
     while (CHECK(MTR_TOKEN_NEWLINE) || CHECK(MTR_TOKEN_COMMENT))
         advance(parser);
 }
@@ -51,6 +53,14 @@ static struct mtr_token consume(struct mtr_parser* parser, enum mtr_token_type t
         return advance(parser);
 
     parser_error(parser, message);
+    return invalid_token;
+}
+
+static struct mtr_token consume_type(struct mtr_parser* parser) {
+    if (parser->token.type >= MTR_TOKEN_U8 && parser->token.type <= MTR_TOKEN_BOOL)
+        return advance(parser);
+
+    parser_error(parser, "Expected type.");
     return invalid_token;
 }
 
@@ -209,15 +219,39 @@ static struct mtr_expr* expression(struct mtr_parser* parser) {
 
 // ========================================================================
 
-static struct mtr_decl statement(struct mtr_parser* parser) {
-    struct mtr_decl decl;
-    decl.statement.expression = expression(parser);
-    return decl;
+static struct mtr_decl* declaration(struct mtr_parser* parser);
+
+static struct mtr_decl* block(struct mtr_parser* parser) {
+
+
+    skip_newline_and_comments(parser);
+
+    struct mtr_decl* node = NULL;
+
+    if (!CHECK(MTR_TOKEN_CURLY_R))
+        node = declaration(parser);
+
+    skip_newline_and_comments(parser);
+
+    consume(parser, MTR_TOKEN_CURLY_R, "Expected '}'.");
+    return  node;
 }
 
-static struct mtr_decl func_decl(struct mtr_parser* parser) {
-    struct mtr_decl decl = allocate_decl(MTR_DECL_FUNC);
-    struct mtr_fn_decl* node = &decl.function;
+static struct mtr_decl* statement(struct mtr_parser* parser) {
+
+    if (CHECK(MTR_TOKEN_CURLY_L)) {
+        advance(parser);
+        return block(parser);
+    }
+
+    struct mtr_stmt* node = allocate_decl(MTR_DECL_STATEMENT);
+    node->expression = expression(parser);
+    return (struct mtr_decl*)  node;
+}
+
+static struct mtr_decl* func_decl(struct mtr_parser* parser) {
+
+    struct mtr_fn_decl* node = allocate_decl(MTR_DECL_FUNC);
 
     advance(parser);
 
@@ -225,26 +259,49 @@ static struct mtr_decl func_decl(struct mtr_parser* parser) {
     consume(parser, MTR_TOKEN_PAREN_L, "Expected '('.");
 
     u8 argc = 0;
-    while (argc < 255) {
+    struct mtr_var_decl vars[255];
+    while (argc < 255 && !CHECK(MTR_TOKEN_PAREN_R)) {
+        struct mtr_var_decl* var = vars + argc++;
+        var->var_type = consume_type(parser);
+        var->name = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
+
         if (CHECK(MTR_TOKEN_PAREN_R))
             break;
-        if (CHECK(MTR_TOKEN_COMMA))
-            ++argc;
-        advance(parser);
+
+        consume(parser, MTR_TOKEN_COMMA, "Expected ','.");
     }
 
-    if (argc >= 255) {
+    if (argc > 255)
         parser_error(parser, "Exceded maximum number of arguments (255)");
+
+    consume(parser, MTR_TOKEN_PAREN_R, "Expected ')'."); // need to check again in case we broke out of the loop because of arg count
+
+    node->args.argc = argc;
+
+    if (argc > 0) {
+        node->args.argv = malloc(sizeof(struct mtr_var_decl) * argc);
+        if (NULL == node->args.argv)
+            MTR_LOG_ERROR("Bad allocation.");
+        else
+            memcpy(node->args.argv, vars, sizeof(struct mtr_var_decl) * argc);
     }
 
-    consume(parser, MTR_TOKEN_PAREN_R, "Expected ')'.");
     consume(parser, MTR_TOKEN_ARROW, "Expected '->'.");
-    return decl;
+
+    node->return_type = consume_type(parser);
+
+    skip_newline_and_comments(parser);
+
+    consume(parser, MTR_TOKEN_CURLY_L, "Expected '{'.");
+
+    node->body = block(parser);
+
+    return (struct mtr_decl*)  node;
 }
 
-static struct mtr_decl var_decl(struct mtr_parser* parser) {
-    struct mtr_decl decl = allocate_decl(MTR_DECL_VAR_DECL);
-    struct mtr_var_decl* node = &decl.variable;
+static struct mtr_decl* var_decl(struct mtr_parser* parser) {
+
+    struct mtr_var_decl* node = allocate_decl(MTR_DECL_VAR_DECL);
 
     node->var_type = advance(parser); // because we are here we alredy know its a type!
     node->name = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
@@ -256,10 +313,12 @@ static struct mtr_decl var_decl(struct mtr_parser* parser) {
 
     consume(parser, MTR_TOKEN_SEMICOLON, "Expected ';'.");
 
-    return decl;
+    return (struct mtr_decl*)  node;
 }
 
-static struct mtr_decl declaration(struct mtr_parser* parser) {
+static struct mtr_decl* declaration(struct mtr_parser* parser) {
+
+
     switch (parser->token.type)
     {
     case MTR_TOKEN_U8:
@@ -285,62 +344,60 @@ static struct mtr_decl declaration(struct mtr_parser* parser) {
 
 // ========================================================================
 
-struct mtr_program mtr_parse(struct mtr_parser* parser) {
+struct mtr_ast mtr_parse(struct mtr_parser* parser) {
 
     advance(parser);
     skip_newline_and_comments(parser);
 
-    struct mtr_program program = mtr_new_program();
+    struct mtr_ast ast = mtr_new_ast();
 
     while (parser->token.type != MTR_TOKEN_EOF) {
-        struct mtr_decl decl = declaration(parser);
-        mtr_write_decl(&program, decl);
+        struct mtr_decl* decl = declaration(parser);
+        mtr_write_decl(&ast, decl);
 
         skip_newline_and_comments(parser);
     }
 
-    return program;
+    return ast;
 }
 
 // =======================================================================
 
-#include "string.h"
-
-struct mtr_program mtr_new_program() {
-    struct mtr_program program = {
+struct mtr_ast mtr_new_ast() {
+    struct mtr_ast ast = {
         .capacity = 8,
         .size = 0,
         .declarations = NULL
     };
 
-    void* temp = malloc(sizeof(struct mtr_decl) * 8);
+    void* temp = malloc(sizeof(struct mtr_decl*) * 8);
     if (NULL == temp) {
         MTR_LOG_ERROR("Bad allocation.");
-        return program;
+        return ast;
     }
 
-    program.declarations = temp;
-    return program;
+    ast.declarations = temp;
+    return ast;
 }
 
-void mtr_write_decl(struct mtr_program* program, struct mtr_decl declaration) {
-    if (program->size == program->capacity) {
-        size_t new_cap = program->capacity * 2;
+void mtr_write_decl(struct mtr_ast* ast, struct mtr_decl* declaration) {
+    if (ast->size == ast->capacity) {
+        size_t new_cap = ast->capacity * 2;
 
-        void* temp = malloc(sizeof(struct mtr_decl) * new_cap);
+        void* temp = malloc(sizeof(struct mtr_decl*) * new_cap);
         if (NULL == temp) {
             MTR_LOG_ERROR("Bad allocation.");
             return;
         }
 
-        memcpy(temp, program->declarations, sizeof(struct mtr_decl) * program->size);
+        memcpy(temp, ast->declarations, sizeof(struct mtr_decl*) * ast->size);
 
-        free(program->declarations);
-        program->declarations = temp;
-        program->capacity = new_cap;
+        free(ast->declarations);
+        ast->declarations = temp;
+        ast->capacity = new_cap;
     }
 
-    program->declarations[program->size++] = declaration;
+    ast->declarations[ast->size++] = declaration;
 }
 
 // =======================================================================
@@ -424,6 +481,47 @@ static void print_expr(struct mtr_expr* node) {
 void mtr_print_expr(struct mtr_expr* node) {
     MTR_LOG_DEBUG("Expression: ");
     print_expr(node);
+    MTR_PRINT_DEBUG("\n");
+}
+
+static void print_decl(struct mtr_decl* decl);
+
+static void print_var(struct mtr_var_decl* dec) {
+
+}
+
+static void print_stmt(struct mtr_stmt* decl) {
+    mtr_print_expr(decl->expression);
+}
+
+static void print_func(struct mtr_fn_decl* decl) {
+    MTR_PRINT_DEBUG("function: %.*s(", (u32)decl->name.length, decl->name.start);
+
+    for (u32 i = 0; i < decl->args.argc - 1; ++i) {
+        struct mtr_var_decl param = decl->args.argv[i];
+        MTR_PRINT_DEBUG("%s %.*s, ", mtr_token_type_to_str(param.var_type.type), (u32)param.name.length, param.name.start);
+    }
+
+    if (decl->args.argc > 0) {
+        struct mtr_var_decl param = decl->args.argv[decl->args.argc-1];
+        MTR_PRINT_DEBUG("%s %.*s", mtr_token_type_to_str(param.var_type.type), (u32)param.name.length, param.name.start);
+    }
+
+    MTR_PRINT_DEBUG(") -> %s", mtr_token_type_to_str(decl->return_type.type));
+}
+
+static void print_decl(struct mtr_decl* decl) {
+    switch (decl->type)
+    {
+    case MTR_DECL_FUNC:      return print_func((struct mtr_fn_decl*) decl);
+    case MTR_DECL_STATEMENT: return print_stmt((struct mtr_stmt*) decl);
+    case MTR_DECL_VAR_DECL:  return print_var((struct mtr_var_decl*) decl);
+    }
+}
+
+void mtr_print_decl(struct mtr_decl* decl) {
+    MTR_LOG_DEBUG("Declaration: ");
+    print_decl(decl);
     MTR_PRINT_DEBUG("\n");
 }
 

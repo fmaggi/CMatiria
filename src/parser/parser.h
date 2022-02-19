@@ -15,6 +15,6 @@ struct mtr_parser {
 
 struct mtr_parser mtr_parser_init(struct mtr_scanner scanner);
 
-struct mtr_program mtr_parse(struct mtr_parser* parser);
+struct mtr_ast mtr_parse(struct mtr_parser* parser);
 
 #endif

@@ -47,7 +47,7 @@ enum mtr_token_type {
 struct mtr_token {
     enum mtr_token_type type;
     const char* start;
-    size_t length;
+    u32 length;
     u32 char_idx;
 };
 
