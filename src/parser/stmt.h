@@ -23,20 +23,21 @@ struct mtr_block {
 };
 
 struct mtr_var_decl {
-    struct mtr_token var_type;
     struct mtr_token name;
     struct mtr_expr* value;
+    enum mtr_token_type var_type;
 };
 
 struct mtr_fn_decl {
     struct mtr_token name;
-    struct mtr_token return_type;
-    struct mtr_stmt* body;
 
     struct {
         struct mtr_var_decl* argv;
         u8 argc;
     } args;
+
+    struct mtr_stmt* body;
+    enum mtr_token_type return_type;
 };
 
 struct mtr_expr_stmt {
