@@ -223,7 +223,6 @@ static struct mtr_decl* declaration(struct mtr_parser* parser);
 
 static struct mtr_decl* block(struct mtr_parser* parser) {
 
-
     skip_newline_and_comments(parser);
 
     struct mtr_decl* node = NULL;
@@ -317,7 +316,6 @@ static struct mtr_decl* var_decl(struct mtr_parser* parser) {
 }
 
 static struct mtr_decl* declaration(struct mtr_parser* parser) {
-
 
     switch (parser->token.type)
     {
