@@ -9,8 +9,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-static void* allocate_expr(enum mtr_expr_type type) {
-    struct mtr_expr* node = malloc(sizeof(struct mtr_expr));
+#define ALLOCATE_EXPR(type, expr) allocate_expr(type, sizeof(struct expr))
+
+static void* allocate_expr(enum mtr_expr_type type, size_t size) {
+    struct mtr_expr* node = malloc(size);
     node->type = type;
     return node;
 }
@@ -184,14 +186,14 @@ static struct mtr_expr* parse_precedence(struct mtr_parser* parser, enum precede
 }
 
 static struct mtr_expr* unary(struct mtr_parser* parser, struct mtr_token op) {
-    struct mtr_unary* node = allocate_expr(MTR_EXPR_UNARY);
+    struct mtr_unary* node = ALLOCATE_EXPR(MTR_EXPR_UNARY, mtr_unary);
     node->operator = op.type;
     node->right = parse_precedence(parser, rules[op.type].precedence + 1);
     return (struct mtr_expr*) node;
 }
 
 static struct mtr_expr* binary(struct mtr_parser* parser, struct mtr_token op, struct mtr_expr* left) {
-    struct mtr_binary* node = allocate_expr(MTR_EXPR_BINARY);
+    struct mtr_binary* node = ALLOCATE_EXPR(MTR_EXPR_BINARY, mtr_binary);
     node->left = left;
     node->operator = op.type;
     node->right = parse_precedence(parser, rules[op.type].precedence + 1);
@@ -199,14 +201,14 @@ static struct mtr_expr* binary(struct mtr_parser* parser, struct mtr_token op, s
 }
 
 static struct mtr_expr* grouping(struct mtr_parser* parser, struct mtr_token token) {
-    struct mtr_grouping* node = allocate_expr(MTR_EXPR_GROUPING);
+    struct mtr_grouping* node = ALLOCATE_EXPR(MTR_EXPR_GROUPING, mtr_grouping);
     node->expression = expression(parser);
     consume(parser, MTR_TOKEN_PAREN_R, "Expected ')'.");
     return (struct mtr_expr*) node;
 }
 
 static struct mtr_expr* primary(struct mtr_parser* parser, struct mtr_token primary) {
-    struct mtr_primary* node = allocate_expr(MTR_EXPR_PRIMARY);
+    struct mtr_primary* node = ALLOCATE_EXPR(MTR_EXPR_PRIMARY, mtr_primary);
     node->token = primary;
     return (struct mtr_expr*) node;
 }
@@ -278,6 +280,7 @@ static struct mtr_stmt func_decl(struct mtr_parser* parser) {
     consume(parser, MTR_TOKEN_PAREN_R, "Expected ')'."); // need to check again in case we broke out of the loop because of arg count
 
     node->args.argc = argc;
+    node->args.argv = NULL;
 
     if (argc > 0) {
         node->args.argv = malloc(sizeof(struct mtr_var_decl) * argc);

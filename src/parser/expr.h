@@ -10,39 +10,31 @@ enum mtr_expr_type {
     MTR_EXPR_UNARY
 };
 
-struct mtr_expr;
+struct mtr_expr {
+    enum mtr_expr_type type;
+};
 
 struct mtr_unary {
+    struct mtr_expr expr_;
     struct mtr_expr* right;
     enum mtr_token_type operator;
 };
 
 struct mtr_primary {
+    struct mtr_expr expr_;
     struct mtr_token token;
 };
 
 struct mtr_grouping {
+    struct mtr_expr expr_;
     struct mtr_expr* expression;
 };
 
 struct mtr_binary {
+    struct mtr_expr expr_;
     struct mtr_expr* right;
     struct mtr_expr* left;
     enum mtr_token_type operator;
-};
-
-// I use a union here because Im thinking about allocating exprs in a linear array in the future.
-// It uses more memory and the logic is a bit messier but it could be faster
-struct mtr_expr {
-
-    union {
-        struct mtr_binary binary;
-        struct mtr_unary unary;
-        struct mtr_primary primary;
-        struct mtr_grouping grouping;
-    };
-
-    enum mtr_expr_type type;
 };
 
 void mtr_print_expr(struct mtr_expr* node);
