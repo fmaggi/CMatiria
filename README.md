@@ -14,6 +14,6 @@ Currently it scans the source code and builds an ast out of it
 - [x] Parse expressions
 - [x] Parse variable declarations
 - [x] Parse function declarations
-- [ ] Parse 'if' statements and loops
+- [x] Parse 'if' statements and loops
 - [ ] Parse 'structs'
 - [ ] etc.
