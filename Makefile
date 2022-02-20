@@ -18,12 +18,13 @@ ifeq ($(config), debug)
 	CFLAGS += -DDEBUG -g -pg
 	LFLAGS += -pg -g
 else
-	CFLAGS += -O2
+	CFLAGS += -O2 -m64 -Ofast -ffast-math -flto -mllvm -polly -mllvm -polly-parallel -mllvm -polly-omp-backend=LLVM
+	LFLAGS += -flto
 endif
 
 $(MATIRIA): $(OBJS)
 	@echo [EXE] $(MATIRIA)
-	@$(CC) -o $@ $^
+	@$(CC) -o $@ $^ $(LFLAGS)
 
 %.o: %.c
 	@echo [CC] $<
