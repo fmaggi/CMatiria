@@ -2,6 +2,7 @@
 #define _MTR_LOG_H
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #define MTR_PRE    "\033["
 #define MTR_SUF    "m"
