@@ -258,6 +258,8 @@ static struct mtr_token scan_comment(struct mtr_scanner* scanner) {
 
 // ================ DEBUG ===============
 
+#ifndef NDEBUG
+
 #include "core/log.h"
 
 void mtr_print_token(struct mtr_token token) {
@@ -330,3 +332,5 @@ const char* mtr_token_type_to_str(enum mtr_token_type type) {
     }
     return "invalid";
 }
+
+#endif

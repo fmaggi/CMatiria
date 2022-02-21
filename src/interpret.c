@@ -103,7 +103,10 @@ static struct mtr_object eval_binary(struct mtr_expr* expr) {
         l.as.integer /= r.as.integer;
         break;
     default:
+#ifndef NDEBUG
         MTR_LOG_ERROR("Invalid binary operator %s", mtr_token_type_to_str(b->operator));
+#endif
+        break;
     }
 
     return l;

@@ -23,6 +23,12 @@ bool mtr_compile(const char* source) {
 
     // mtr_interpret(ast);
 
+#ifndef NDEBUG
+
+    mtr_print_stmt(ast.statements);
+
+#endif
+
     mtr_delete_ast(&ast);
     return true;
 }

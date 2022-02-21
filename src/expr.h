@@ -37,8 +37,13 @@ struct mtr_binary {
     enum mtr_token_type operator;
 };
 
-void mtr_print_expr(struct mtr_expr* node);
 
 void mtr_free_expr(struct mtr_expr* node);
+
+#ifndef NDEBUG
+
+void mtr_print_expr(struct mtr_expr* node);
+
+#endif
 
 #endif

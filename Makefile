@@ -15,10 +15,10 @@ ifndef config
 endif
 
 ifeq ($(config), debug)
-	CFLAGS += -DDEBUG -g -pg
+	CFLAGS += -g -pg
 	LFLAGS += -pg -g
 else
-	CFLAGS += -O2 -m64 -Ofast -ffast-math -flto -mllvm -polly -mllvm -polly-parallel -mllvm -polly-omp-backend=LLVM
+	CFLAGS += -DNDEBUG -O2 -m64 -Ofast -ffast-math -flto -mllvm -polly -mllvm -polly-parallel -mllvm -polly-omp-backend=LLVM
 	LFLAGS += -flto
 endif
 

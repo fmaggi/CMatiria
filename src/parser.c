@@ -465,12 +465,10 @@ struct mtr_ast mtr_new_ast() {
     };
 
     void* temp = malloc(sizeof(struct mtr_stmt) * 8);
-    if (NULL == temp) {
+    if (NULL == temp)
         MTR_LOG_ERROR("Bad allocation.");
-        return ast;
-    }
-
-    ast.statements = temp;
+    else
+        ast.statements = temp;
     return ast;
 }
 
@@ -565,6 +563,8 @@ void mtr_free_expr(struct mtr_expr* node) {
 }
 
 // ======================= DEBUG =========================================
+
+#ifndef NDEBUG
 
 static void print_expr(struct mtr_expr* parser);
 
@@ -669,5 +669,7 @@ void mtr_print_stmt(struct mtr_stmt* decl) {
     print_stmt(decl);
     MTR_PRINT_DEBUG("\n");
 }
+
+#endif
 
 #undef CHECK
