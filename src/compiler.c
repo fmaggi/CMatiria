@@ -19,6 +19,21 @@ bool mtr_compile(const char* source) {
 
     struct mtr_symbol_table table = mtr_load_symbols(ast);
 
+    MTR_LOG_DEBUG("Done");
+
+    // for (size_t i = 0; i < table.capacity; ++i) {
+    //     struct mtr_entry e = table.entries[i];
+    //     if (e.key == NULL)
+    //         continue;
+    //     // mtr_delete_symbol(&table, e.key, strlen(e.key));
+    //     // mtr_insert_symbol(&table, e.key, strlen(e.key), e.symbol);
+    // }
+
+    for (size_t i = 0; i < table.capacity; ++i) {
+        struct mtr_entry* e = table.entries + i;
+        MTR_LOG_TRACE("%s", e->key);
+    }
+
     mtr_delete_symbol_table(&table);
 
     mtr_delete_ast(&ast);

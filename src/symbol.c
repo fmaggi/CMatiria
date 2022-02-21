@@ -52,16 +52,20 @@ static u32 hash(const char* key, size_t length) {
 
 static struct mtr_entry* find_entry(struct mtr_entry* entries, const char* key, size_t length, size_t cap, bool return_tombstone) {
     u32 hash_ = hash(key, length);
-    u32 index = hash_ % cap;
+    u32 start_index = hash_ % cap;
 
+    u32 index = start_index;
     struct mtr_entry* entry = entries + index;
 
-    while (entry->key != NULL && ((entry->key != tombstone) && return_tombstone)) {
+    while (entry->key != NULL && !((entry->key == tombstone) && return_tombstone)) {
         size_t s = strlen(entry->key);
-
         if (s == length && hash(entry->key, s) == hash_ && memcmp(key, entry->key, s) == 0)
             break;
+
         index = (index + 1) % cap;
+        if (index == start_index)
+            return NULL;
+
         entry = entries + index;
     }
 
@@ -120,18 +124,20 @@ void mtr_insert_symbol(struct mtr_symbol_table* table, const char* key, size_t l
 
 struct mtr_symbol* mtr_get_symbol(const struct mtr_symbol_table* table, const char* key, size_t length) {
     struct mtr_entry* entry = find_entry(table->entries, key, length, table->capacity, false);
-    if (entry->key == NULL) {
+    if (NULL == entry || NULL == entry->key) {
         return NULL;
     }
+    MTR_ASSERT(entry->key != tombstone, "key should not be tombstone");
     return &entry->symbol;
 }
 
 
 void mtr_delete_symbol(const struct mtr_symbol_table* table, const char* key, size_t length) {
     struct mtr_entry* entry = find_entry(table->entries, key, length, table->capacity, false);
-    if (entry->key == NULL) {
+    if (NULL == entry || NULL == entry->key) {
         return;
     }
+    MTR_ASSERT(entry->key != tombstone, "key should not be tombstone");
     entry->key = tombstone;
 }
 
