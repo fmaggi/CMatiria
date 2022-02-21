@@ -7,6 +7,8 @@
 
 #define LOAD_FACTOR 0.75
 
+static char* tombstone = "__@tombstone@__@mangled@__";
+
 struct mtr_symbol_table mtr_new_symbol_table() {
     struct mtr_symbol_table t = {
         .entries = NULL,
@@ -28,7 +30,7 @@ struct mtr_symbol_table mtr_new_symbol_table() {
 void mtr_delete_symbol_table(struct mtr_symbol_table* table) {
     for (size_t i = 0; i < table->capacity; ++i) {
         struct mtr_entry* old = table->entries + i;
-        if (old->key == NULL)
+        if (old->key == NULL || old->key == tombstone)
             continue;
         free(old->key);
     }
@@ -40,21 +42,21 @@ void mtr_delete_symbol_table(struct mtr_symbol_table* table) {
 }
 
 static u32 hash(const char* key, size_t length) {
-  u32 hash = 2166136261u;
-  for (int i = 0; i < length; i++) {
-    hash ^= (u8)key[i];
-    hash *= 16777619;
-  }
-  return hash;
+    u32 hash = 2166136261u;
+    for (size_t i = 0; i < length; i++) {
+        hash ^= (u8)key[i];
+        hash *= 16777619;
+    }
+    return hash;
 }
 
-static struct mtr_entry* find_entry(struct mtr_entry* entries, const char* key, size_t length, size_t cap) {
+static struct mtr_entry* find_entry(struct mtr_entry* entries, const char* key, size_t length, size_t cap, bool return_tombstone) {
     u32 hash_ = hash(key, length);
     u32 index = hash_ % cap;
 
     struct mtr_entry* entry = entries + index;
 
-    while (entry->key != NULL) {
+    while (entry->key != NULL && ((entry->key != tombstone) && return_tombstone)) {
         size_t s = strlen(entry->key);
 
         if (s == length && hash(entry->key, s) == hash_ && memcmp(key, entry->key, s) == 0)
@@ -66,49 +68,71 @@ static struct mtr_entry* find_entry(struct mtr_entry* entries, const char* key, 
     return entry;
 }
 
+static struct mtr_entry* resize_entries(struct mtr_entry* entries, size_t old_cap) {
+    size_t new_cap = old_cap * 2;
+
+    struct mtr_entry* temp = calloc(new_cap, sizeof(struct mtr_entry));
+    if (NULL == temp) {
+        MTR_LOG_ERROR("Bad allocation.");
+        free(entries);
+        return NULL;
+    }
+
+    for (size_t i = 0; i < old_cap; ++i) {
+        struct mtr_entry* old = entries + i;
+        if (old->key == NULL)
+            continue;
+        struct mtr_entry* entry = find_entry(temp, old->key, strlen(old->key), new_cap, true);
+        entry->key = old->key;
+        entry->symbol = old->symbol;
+    }
+
+    return temp;
+}
+
 void mtr_insert_symbol(struct mtr_symbol_table* table, const char* key, size_t length, struct mtr_symbol symbol) {
-    struct mtr_entry* entry = find_entry(table->entries, key, length, table->capacity);
+    struct mtr_entry* entry = find_entry(table->entries, key, length, table->capacity, true);
     entry->symbol = symbol;
-    if (entry->key != NULL) {
+    bool is_tombstone = entry->key == tombstone;
+
+    if (entry->key != NULL && !is_tombstone) {
         return;
     }
+
     entry->key = malloc(length+1);
     memcpy(entry->key, key, length);
     entry->key[length] = 0;
 
+    if (is_tombstone) {
+        return;
+    }
+
     table->size += 1;
     if (table->size >= table->capacity * LOAD_FACTOR) {
-        struct mtr_entry* old_entries = table->entries;
-        size_t new_cap = table->capacity * 2;
-
-        void* temp = calloc(new_cap, sizeof(struct mtr_entry));
-        if (NULL == temp) {
-            MTR_LOG_ERROR("Bad allocation.");
-            free(old_entries);
-            return;
+        table->entries = resize_entries(table->entries, table->capacity);
+        table->capacity *= 2;
+        if (NULL == table->entries) {
+            table->capacity = 0;
+            table->size = 0;
         }
-
-        for (size_t i = 0; i < table->capacity; ++i) {
-            struct mtr_entry* old = table->entries + i;
-            if (old->key == NULL)
-                continue;
-            struct mtr_entry* entry = find_entry(temp, old->key, strlen(old->key), new_cap);
-            entry->key = old->key;
-            entry->symbol = old->symbol;
-        }
-
-        free(old_entries);
-        table->capacity = new_cap;
-        table->entries = temp;
     }
 }
 
 struct mtr_symbol* mtr_get_symbol(const struct mtr_symbol_table* table, const char* key, size_t length) {
-    struct mtr_entry* entry = find_entry(table->entries, key, length, table->capacity);
+    struct mtr_entry* entry = find_entry(table->entries, key, length, table->capacity, false);
     if (entry->key == NULL) {
         return NULL;
     }
     return &entry->symbol;
+}
+
+
+void mtr_delete_symbol(const struct mtr_symbol_table* table, const char* key, size_t length) {
+    struct mtr_entry* entry = find_entry(table->entries, key, length, table->capacity, false);
+    if (entry->key == NULL) {
+        return;
+    }
+    entry->key = tombstone;
 }
 
 enum mtr_data_type_e mtr_get_data_type(enum mtr_token_type type) {

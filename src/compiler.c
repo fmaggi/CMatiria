@@ -19,15 +19,6 @@ bool mtr_compile(const char* source) {
 
     struct mtr_symbol_table table = mtr_load_symbols(ast);
 
-    for (size_t i = 0; i < table.capacity; ++i) {
-        struct mtr_entry* e = table.entries + i;
-        if (e->key == NULL)
-            continue;
-
-        MTR_LOG_DEBUG("%s: %u", e->key, e->symbol.is_callable);
-    }
-
-
     mtr_delete_symbol_table(&table);
 
     mtr_delete_ast(&ast);

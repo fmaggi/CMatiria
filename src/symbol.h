@@ -55,6 +55,7 @@ void mtr_delete_symbol_table(struct mtr_symbol_table* table);
 
 void mtr_insert_symbol(struct mtr_symbol_table* table, const char* key, size_t length, struct mtr_symbol symbol);
 struct mtr_symbol* mtr_get_symbol(const struct mtr_symbol_table* table, const char* key, size_t length);
+void mtr_delete_symbol(const struct mtr_symbol_table* table, const char* key, size_t length);
 
 struct mtr_symbol_table mtr_load_symbols(struct mtr_ast ast);
 
