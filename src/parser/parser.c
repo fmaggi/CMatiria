@@ -76,16 +76,16 @@ struct mtr_parser mtr_parser_init(struct mtr_scanner scanner) {
 static struct mtr_expr* expression(struct mtr_parser* parser);
 
 enum precedence {
-    MTR_PRECEDENCE_NONE,
-    MTR_PRECEDENCE_ASSIGN,
-    MTR_PRECEDENCE_LOGIC,
-    MTR_PRECEDENCE_EQUALITY,
-    MTR_PRECEDENCE_COMPARISON,
-    MTR_PRECEDENCE_TERM,
-    MTR_PRECEDENCE_FACTOR,
-    MTR_PRECEDENCE_UNARY,
-    MTR_PRECEDENCE_CALL,
-    MTR_PRECEDENCE_PRIMARY
+    NONE,
+    ASSIGN,
+    LOGIC,
+    EQUALITY,
+    COMPARISON,
+    TERM,
+    FACTOR,
+    UNARY,
+    CALL,
+    PRIMARY
 };
 
 typedef struct mtr_expr* (*prefix_fn)(struct mtr_parser*, struct mtr_token);
@@ -102,44 +102,44 @@ static struct mtr_expr* binary(struct mtr_parser* parser, struct mtr_token op, s
 static struct mtr_expr* grouping(struct mtr_parser* parser, struct mtr_token token);
 static struct mtr_expr* primary(struct mtr_parser* parser, struct mtr_token primary);
 
-#define NO_OP .prefix = NULL, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE
+#define NO_OP .prefix = NULL, .infix = NULL, .precedence = NONE
 
 static const struct parser_rule rules[] = {
-    [MTR_TOKEN_PLUS] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_TERM },
-    [MTR_TOKEN_MINUS] = { .prefix = unary, .infix = binary, .precedence = MTR_PRECEDENCE_TERM },
-    [MTR_TOKEN_STAR] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_FACTOR },
-    [MTR_TOKEN_SLASH] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_FACTOR },
-    [MTR_TOKEN_PERCENT] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_FACTOR },
-    [MTR_TOKEN_COMMA] = { .prefix = NULL, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE },
-    [MTR_TOKEN_COLON] = { .prefix = NULL, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE },
-    [MTR_TOKEN_SEMICOLON] = { .prefix = NULL, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE },
-    [MTR_TOKEN_DOT] = { .prefix = NULL, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE },
-    [MTR_TOKEN_PAREN_L] = { .prefix = grouping, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE },
+    [MTR_TOKEN_PLUS] = { .prefix = NULL, .infix = binary, .precedence = TERM },
+    [MTR_TOKEN_MINUS] = { .prefix = unary, .infix = binary, .precedence = TERM },
+    [MTR_TOKEN_STAR] = { .prefix = NULL, .infix = binary, .precedence = FACTOR },
+    [MTR_TOKEN_SLASH] = { .prefix = NULL, .infix = binary, .precedence = FACTOR },
+    [MTR_TOKEN_PERCENT] = { .prefix = NULL, .infix = binary, .precedence = FACTOR },
+    [MTR_TOKEN_COMMA] = { .prefix = NULL, .infix = NULL, .precedence = NONE },
+    [MTR_TOKEN_COLON] = { .prefix = NULL, .infix = NULL, .precedence = NONE },
+    [MTR_TOKEN_SEMICOLON] = { .prefix = NULL, .infix = NULL, .precedence = NONE },
+    [MTR_TOKEN_DOT] = { .prefix = NULL, .infix = NULL, .precedence = NONE },
+    [MTR_TOKEN_PAREN_L] = { .prefix = grouping, .infix = NULL, .precedence = NONE },
     [MTR_TOKEN_PAREN_R] = { NO_OP },
     [MTR_TOKEN_SQR_L] = { NO_OP },
     [MTR_TOKEN_SQR_R] = { NO_OP },
     [MTR_TOKEN_CURLY_L] = { NO_OP },
     [MTR_TOKEN_CURLY_R] = { NO_OP },
-    [MTR_TOKEN_BANG] = { .prefix = unary, .infix = NULL, .precedence = MTR_PRECEDENCE_UNARY },
-    [MTR_TOKEN_EQUAL] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_ASSIGN }, // not sure about this one;
-    [MTR_TOKEN_GREATER] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_COMPARISON },
-    [MTR_TOKEN_LESS] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_COMPARISON },
+    [MTR_TOKEN_BANG] = { .prefix = unary, .infix = NULL, .precedence = UNARY },
+    [MTR_TOKEN_EQUAL] = { .prefix = NULL, .infix = binary, .precedence = ASSIGN }, // not sure about this one;
+    [MTR_TOKEN_GREATER] = { .prefix = NULL, .infix = binary, .precedence = COMPARISON },
+    [MTR_TOKEN_LESS] = { .prefix = NULL, .infix = binary, .precedence = COMPARISON },
     [MTR_TOKEN_ARROW] = { NO_OP },
-    [MTR_TOKEN_BANG_EQUAL] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_EQUALITY },
-    [MTR_TOKEN_EQUAL_EQUAL] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_EQUALITY },
-    [MTR_TOKEN_GREATER_EQUAL] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_COMPARISON },
-    [MTR_TOKEN_LESS_EQUAL] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_COMPARISON },
-    [MTR_TOKEN_DOUBLE_SLASH] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_FACTOR },
-    [MTR_TOKEN_STRING] = { .prefix = primary, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE },
-    [MTR_TOKEN_INT] = { .prefix = primary, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE },
-    [MTR_TOKEN_FLOAT] = { .prefix = primary, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE },
-    [MTR_TOKEN_AND] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_LOGIC },
-    [MTR_TOKEN_OR] = { .prefix = NULL, .infix = binary, .precedence = MTR_PRECEDENCE_LOGIC },
+    [MTR_TOKEN_BANG_EQUAL] = { .prefix = NULL, .infix = binary, .precedence = EQUALITY },
+    [MTR_TOKEN_EQUAL_EQUAL] = { .prefix = NULL, .infix = binary, .precedence = EQUALITY },
+    [MTR_TOKEN_GREATER_EQUAL] = { .prefix = NULL, .infix = binary, .precedence = COMPARISON },
+    [MTR_TOKEN_LESS_EQUAL] = { .prefix = NULL, .infix = binary, .precedence = COMPARISON },
+    [MTR_TOKEN_DOUBLE_SLASH] = { .prefix = NULL, .infix = binary, .precedence = FACTOR },
+    [MTR_TOKEN_STRING] = { .prefix = primary, .infix = NULL, .precedence = NONE },
+    [MTR_TOKEN_INT] = { .prefix = primary, .infix = NULL, .precedence = NONE },
+    [MTR_TOKEN_FLOAT] = { .prefix = primary, .infix = NULL, .precedence = NONE },
+    [MTR_TOKEN_AND] = { .prefix = NULL, .infix = binary, .precedence = LOGIC },
+    [MTR_TOKEN_OR] = { .prefix = NULL, .infix = binary, .precedence = LOGIC },
     [MTR_TOKEN_STRUCT] = { NO_OP },
     [MTR_TOKEN_IF] = { NO_OP },
     [MTR_TOKEN_ELSE] = { NO_OP },
-    [MTR_TOKEN_TRUE] = { .prefix = primary, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE },
-    [MTR_TOKEN_FALSE] = { .prefix = primary, .infix = NULL, .precedence = MTR_PRECEDENCE_NONE },
+    [MTR_TOKEN_TRUE] = { .prefix = primary, .infix = NULL, .precedence = NONE },
+    [MTR_TOKEN_FALSE] = { .prefix = primary, .infix = NULL, .precedence = NONE },
     [MTR_TOKEN_FN] = { NO_OP },
     [MTR_TOKEN_RETURN] = { NO_OP },
     [MTR_TOKEN_WHILE] = { NO_OP },
@@ -155,7 +155,7 @@ static const struct parser_rule rules[] = {
     [MTR_TOKEN_F32] = { NO_OP },
     [MTR_TOKEN_F64] = { NO_OP },
     [MTR_TOKEN_BOOL] = { NO_OP },
-    [MTR_TOKEN_IDENTIFIER] = { .prefix = primary, .infix = NULL, .precedence = MTR_PRECEDENCE_PRIMARY },
+    [MTR_TOKEN_IDENTIFIER] = { .prefix = primary, .infix = NULL, .precedence = PRIMARY },
     [MTR_TOKEN_COMMENT] = { NO_OP },
     [MTR_TOKEN_EOF] = { NO_OP },
     [MTR_TOKEN_INVALID] = { NO_OP }
@@ -211,7 +211,7 @@ static struct mtr_expr* primary(struct mtr_parser* parser, struct mtr_token prim
 }
 
 static struct mtr_expr* expression(struct mtr_parser* parser) {
-    return parse_precedence(parser, MTR_PRECEDENCE_ASSIGN);
+    return parse_precedence(parser, ASSIGN);
 }
 
 // ========================================================================
@@ -559,7 +559,9 @@ static void print_block(struct mtr_block* block) {
 }
 
 static void print_var(struct mtr_var_decl* decl) {
-
+    MTR_PRINT_DEBUG("var: %s %.*s = ", mtr_token_type_to_str(decl->var_type), (u32)decl->name.length, decl->name.start);
+    if (decl->value)
+        mtr_print_expr(decl->value);
 }
 
 static void print_if(struct mtr_if* decl) {

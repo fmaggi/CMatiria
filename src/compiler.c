@@ -3,6 +3,7 @@
 #include "scanner/scanner.h"
 #include "parser/parser.h"
 #include "interpreter/interpret.h"
+#include "sema/type_analysis.h"
 
 #include "core/file.h"
 #include "core/log.h"
@@ -15,8 +16,12 @@ bool mtr_compile(const char* source) {
 
     struct mtr_ast ast = mtr_parse(&parser);
 
-    if (!parser.had_error)
-        mtr_interpret(ast);
+    if (!parser.had_error) {
+        bool x = mtr_type_check(ast);
+        MTR_LOG_DEBUG("%u", x);
+    }
+
+    mtr_interpret(ast);
 
     mtr_delete_ast(&ast);
     return true;
