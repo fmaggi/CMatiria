@@ -31,7 +31,7 @@ bool mtr_compile(const char* source) {
 
     for (size_t i = 0; i < table.capacity; ++i) {
         struct mtr_entry* e = table.entries + i;
-        MTR_LOG_TRACE("%s", e->key);
+        MTR_LOG_TRACE("%.*s", (u32)e->length, e->key);
     }
 
     mtr_delete_symbol_table(&table);

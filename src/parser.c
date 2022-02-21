@@ -26,7 +26,7 @@ static struct mtr_stmt allocate_stmt(enum mtr_stmt_type type) {
 static void parser_error(struct mtr_parser* parser, const char* message) {
     parser->had_error = true;
     if (!parser->panic)
-        mtr_report_error(parser->token, message, parser->scanner.source);
+        mtr_report_error(parser->token.start, message, parser->scanner.source);
     parser->panic = true;
 }
 

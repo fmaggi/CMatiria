@@ -40,8 +40,9 @@ struct mtr_symbol {
 };
 
 struct mtr_entry {
-    char* key;
     struct mtr_symbol symbol;
+    const char* key;
+    size_t length;
 };
 
 struct mtr_symbol_table {

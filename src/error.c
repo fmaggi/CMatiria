@@ -5,10 +5,10 @@
 
 #include <string.h>
 
-void mtr_report_error(struct mtr_token token, const char* message, const char* const source) {
+void mtr_report_error(const char* token, const char* message, const char* const source) {
     const char* c = source;
-    const char* t = token.start;
-    if (token.type == MTR_TOKEN_EOF) {
+    const char* t = token;
+    if (*token == '\0') {
         --t;
         if (*t == '\n')
             --t;

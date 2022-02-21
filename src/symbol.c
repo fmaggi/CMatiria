@@ -7,7 +7,7 @@
 
 #define LOAD_FACTOR 0.75
 
-static char* tombstone = "__@tombstone@__@mangled@__";
+static const char* tombstone = "__@tombstone@__@mangled@__";
 
 struct mtr_symbol_table mtr_new_symbol_table() {
     struct mtr_symbol_table t = {
@@ -28,13 +28,6 @@ struct mtr_symbol_table mtr_new_symbol_table() {
 }
 
 void mtr_delete_symbol_table(struct mtr_symbol_table* table) {
-    for (size_t i = 0; i < table->capacity; ++i) {
-        struct mtr_entry* old = table->entries + i;
-        if (old->key == NULL || old->key == tombstone)
-            continue;
-        free(old->key);
-    }
-
     table->entries = 0;
     table->size = 0;
     free(table->entries);
@@ -58,7 +51,7 @@ static struct mtr_entry* find_entry(struct mtr_entry* entries, const char* key, 
     struct mtr_entry* entry = entries + index;
 
     while (entry->key != NULL && !((entry->key == tombstone) && return_tombstone)) {
-        size_t s = strlen(entry->key);
+        size_t s = entry->length;
         if (s == length && hash(entry->key, s) == hash_ && memcmp(key, entry->key, s) == 0)
             break;
 
@@ -86,9 +79,10 @@ static struct mtr_entry* resize_entries(struct mtr_entry* entries, size_t old_ca
         struct mtr_entry* old = entries + i;
         if (old->key == NULL)
             continue;
-        struct mtr_entry* entry = find_entry(temp, old->key, strlen(old->key), new_cap, true);
+        struct mtr_entry* entry = find_entry(temp, old->key, old->length, new_cap, true);
         entry->key = old->key;
         entry->symbol = old->symbol;
+        entry->length = old->length;
     }
 
     return temp;
@@ -103,9 +97,8 @@ void mtr_insert_symbol(struct mtr_symbol_table* table, const char* key, size_t l
         return;
     }
 
-    entry->key = malloc(length+1);
-    memcpy(entry->key, key, length);
-    entry->key[length] = 0;
+    entry->key = key;
+    entry->length = length;
 
     if (is_tombstone) {
         return;
@@ -127,7 +120,7 @@ struct mtr_symbol* mtr_get_symbol(const struct mtr_symbol_table* table, const ch
     if (NULL == entry || NULL == entry->key) {
         return NULL;
     }
-    MTR_ASSERT(entry->key != tombstone, "key should not be tombstone");
+    MTR_ASSERT(entry->key != tombstone, "key should not be tombstone at get");
     return &entry->symbol;
 }
 
@@ -137,8 +130,9 @@ void mtr_delete_symbol(const struct mtr_symbol_table* table, const char* key, si
     if (NULL == entry || NULL == entry->key) {
         return;
     }
-    MTR_ASSERT(entry->key != tombstone, "key should not be tombstone");
+    MTR_ASSERT(entry->key != tombstone, "key should not be tombstone at delete");
     entry->key = tombstone;
+    entry->length = strlen(tombstone);
 }
 
 enum mtr_data_type_e mtr_get_data_type(enum mtr_token_type type) {
