@@ -16,12 +16,12 @@ bool mtr_compile(const char* source) {
 
     struct mtr_ast ast = mtr_parse(&parser);
 
-    if (!parser.had_error) {
-        bool x = mtr_type_check(ast);
-        MTR_LOG_DEBUG("%u", x);
-    }
+    // if (!parser.had_error) {
+    //     bool x = mtr_type_check(ast);
+    //     MTR_LOG_DEBUG("%s", x ? "all ok" : "type error");
+    // }
 
-    mtr_interpret(ast);
+    // mtr_interpret(ast);
 
     mtr_delete_ast(&ast);
     return true;

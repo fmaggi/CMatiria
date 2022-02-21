@@ -25,7 +25,9 @@ static struct mtr_stmt allocate_stmt(enum mtr_stmt_type type) {
 
 static void parser_error(struct mtr_parser* parser, const char* message) {
     parser->had_error = true;
-    mtr_report_error(parser->token, message, parser->scanner.source);
+    if (!parser->panic)
+        mtr_report_error(parser->token, message, parser->scanner.source);
+    parser->panic = true;
 }
 
 #define CHECK(token_type) (parser->token.type == token_type)
@@ -65,10 +67,39 @@ static struct mtr_token consume_type(struct mtr_parser* parser) {
 struct mtr_parser mtr_parser_init(struct mtr_scanner scanner) {
     struct mtr_parser parser = {
         .scanner = scanner,
-        .had_error = false
+        .had_error = false,
+        .panic = false
     };
 
     return parser;
+}
+
+static void synchronize(struct mtr_parser* parser) {
+    if (!parser->panic)
+        return;
+
+    parser->panic = false;
+    while (!CHECK(MTR_TOKEN_EOF)) {
+        switch (parser->token.type)
+        {
+        case MTR_TOKEN_U8:
+        case MTR_TOKEN_U16:
+        case MTR_TOKEN_U32:
+        case MTR_TOKEN_U64:
+        case MTR_TOKEN_I8:
+        case MTR_TOKEN_I16:
+        case MTR_TOKEN_I32:
+        case MTR_TOKEN_I64:
+        case MTR_TOKEN_F32:
+        case MTR_TOKEN_F64:
+        case MTR_TOKEN_BOOL:
+        case MTR_TOKEN_FN:
+        case MTR_TOKEN_CURLY_L:
+            return;
+        default:
+            advance(parser);
+        }
+    }
 }
 
 // ======================== EXPR =============================
@@ -214,7 +245,7 @@ static struct mtr_expr* expression(struct mtr_parser* parser) {
     return parse_precedence(parser, ASSIGN);
 }
 
-// ========================================================================
+// ============================ STMT =====================================
 
 static struct mtr_stmt declaration(struct mtr_parser* parser);
 
@@ -304,7 +335,8 @@ static struct mtr_stmt func_decl(struct mtr_parser* parser) {
 
     u32 argc = 0;
     struct mtr_var_decl vars[255];
-    while (argc < 255 && !CHECK(MTR_TOKEN_PAREN_R)) {
+    bool cont = true;
+    while (argc < 255 && !CHECK(MTR_TOKEN_PAREN_R) && cont) {
         struct mtr_var_decl* var = vars + argc++;
         var->var_type = consume_type(parser).type;
         var->name = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
@@ -313,7 +345,7 @@ static struct mtr_stmt func_decl(struct mtr_parser* parser) {
         if (CHECK(MTR_TOKEN_PAREN_R))
             break;
 
-        consume(parser, MTR_TOKEN_COMMA, "Expected ','.");
+        cont = consume(parser, MTR_TOKEN_COMMA, "Expected ','.").type == MTR_TOKEN_COMMA;
     }
 
     if (argc > 255)
@@ -360,6 +392,7 @@ static struct mtr_stmt var_decl(struct mtr_parser* parser) {
 }
 
 static struct mtr_stmt declaration(struct mtr_parser* parser) {
+    synchronize(parser);
     switch (parser->token.type)
     {
     case MTR_TOKEN_U8:
@@ -381,6 +414,30 @@ static struct mtr_stmt declaration(struct mtr_parser* parser) {
     }
 }
 
+static struct mtr_stmt global_declaration(struct mtr_parser* parser) {
+    switch (parser->token.type)
+    {
+    case MTR_TOKEN_U8:
+    case MTR_TOKEN_U16:
+    case MTR_TOKEN_U32:
+    case MTR_TOKEN_U64:
+    case MTR_TOKEN_I8:
+    case MTR_TOKEN_I16:
+    case MTR_TOKEN_I32:
+    case MTR_TOKEN_I64:
+    case MTR_TOKEN_F32:
+    case MTR_TOKEN_F64:
+    case MTR_TOKEN_BOOL:
+        return var_decl(parser);
+    case MTR_TOKEN_FN:
+        return func_decl(parser);
+    default:
+        break;
+    }
+    parser_error(parser, "Expected declaration.");
+    exit(-1);
+}
+
 // ========================================================================
 
 struct mtr_ast mtr_parse(struct mtr_parser* parser) {
@@ -389,7 +446,7 @@ struct mtr_ast mtr_parse(struct mtr_parser* parser) {
     struct mtr_ast ast = mtr_new_ast();
 
     while (parser->token.type != MTR_TOKEN_EOF) {
-        struct mtr_stmt stmt = declaration(parser);
+        struct mtr_stmt stmt = global_declaration(parser);
         mtr_write_stmt(&ast, stmt);
     }
 
@@ -397,6 +454,8 @@ struct mtr_ast mtr_parse(struct mtr_parser* parser) {
 }
 
 // =======================================================================
+
+#include "core/memory.h"
 
 struct mtr_ast mtr_new_ast() {
     struct mtr_ast ast = {
@@ -418,17 +477,11 @@ struct mtr_ast mtr_new_ast() {
 void mtr_write_stmt(struct mtr_ast* ast, struct mtr_stmt statement) {
     if (ast->size == ast->capacity) {
         size_t new_cap = ast->capacity * 2;
-
-        void* temp = malloc(sizeof(struct mtr_stmt) * new_cap);
-        if (NULL == temp) {
-            MTR_LOG_ERROR("Bad allocation.");
+        ast->statements = mtr_resize_array(ast->statements, ast->capacity, new_cap, sizeof(struct mtr_stmt));
+        if (NULL == ast->statements) {
+            ast->capacity = 0;
             return;
         }
-
-        memcpy(temp, ast->statements, sizeof(struct mtr_stmt) * ast->size);
-
-        free(ast->statements);
-        ast->statements = temp;
         ast->capacity = new_cap;
     }
 
