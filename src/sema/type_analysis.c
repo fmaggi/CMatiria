@@ -52,56 +52,56 @@ static enum var_type expression(struct mtr_expr* expr) {
     }
 }
 
-static enum var_type var_decl(struct mtr_var_decl* decl) {
+static bool var_decl(struct mtr_var_decl* decl) {
     enum var_type type = get_var_type(decl->var_type);
     if (decl->value) {
         if (type != expression(decl->value)) {
             MTR_LOG_ERROR("Invalid Type.");
-            return ERROR;
+            return false;
         }
     }
 
-    return type;
+    return true;
 }
 
-static enum var_type func_decl(struct mtr_fn_decl* decl) {
+static bool func_decl(struct mtr_fn_decl* decl) {
     return mtr_type_check(decl->body.statements);
 }
 
-static enum var_type block(struct mtr_block* block) {
+static bool block(struct mtr_block* block) {
     return mtr_type_check(block->statements);
 }
 
-static enum var_type if_stmt(struct mtr_if* stmt) {
-    enum var_type e = expression(stmt->condition);
-    if (e == ERROR)
-        return ERROR;
+static bool if_stmt(struct mtr_if* stmt) {
+    bool c = expression(stmt->condition) != ERROR;
+    bool t = block(&stmt->then);
+    bool e = block(&stmt->else_b);
 
-    enum var_type t = block(&stmt->else_b);
-    enum var_type eb = block(&stmt->then);
-
-    if (t == ERROR || eb == ERROR)
-        return ERROR;
-
-    return e;
+    return c && t && e;
 }
 
-static enum var_type while_stmt(struct mtr_while* stmt) {
-    IMPLEMENT
-    return ERROR;
+static bool while_stmt(struct mtr_while* stmt) {
+    bool c = expression(stmt->condition) != ERROR;
+    bool b = block(&stmt->body);
+
+    return c && b;
 }
 
-static enum var_type statement(struct mtr_stmt* stmt) {
+static bool expr_stmt(struct mtr_expr_stmt* stmt) {
+    return expression(stmt->expression) != ERROR;
+}
+
+static bool statement(struct mtr_stmt* stmt) {
     switch (stmt->type)
     {
     case MTR_STMT_VAR_DECL:   return var_decl((struct mtr_var_decl*) stmt);
-    case MTR_STMT_EXPRESSION: return expression(stmt->expr.expression);
+    case MTR_STMT_EXPRESSION: return expr_stmt((struct mtr_expr_stmt*) stmt);
     case MTR_STMT_FUNC:       return func_decl((struct mtr_fn_decl*) stmt);
     case MTR_STMT_BLOCK:      return block((struct mtr_block*) stmt);
     case MTR_STMT_IF:         return if_stmt((struct mtr_if*) stmt);
     case MTR_STMT_WHILE:      return while_stmt((struct mtr_while*) stmt);
     }
-    return ERROR;
+    return false;
 }
 
 bool mtr_type_check(struct mtr_ast ast) {
@@ -110,7 +110,7 @@ bool mtr_type_check(struct mtr_ast ast) {
 
     for (size_t i = 0; i < ast.size; ++i) {
         struct mtr_stmt* s = ast.statements + i;
-        ok = ok && (bool) statement(s);
+        ok = ok && statement(s);
     }
 
     return ok;

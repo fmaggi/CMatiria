@@ -1,8 +1,8 @@
 #include "compiler.h"
 
-#include "scanner/scanner.h"
-#include "parser/parser.h"
-#include "interpreter/interpret.h"
+#include "scanner.h"
+#include "parser.h"
+#include "interpret.h"
 #include "sema/type_analysis.h"
 
 #include "core/file.h"

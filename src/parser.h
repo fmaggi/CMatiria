@@ -1,7 +1,7 @@
 #ifndef _MTR_PARSER_H
 #define _MTR_PARSER_H
 
-#include "scanner/scanner.h"
+#include "scanner.h"
 #include "expr.h"
 #include "stmt.h"
 

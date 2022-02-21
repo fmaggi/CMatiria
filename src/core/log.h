@@ -45,7 +45,6 @@
     #define MTR_ASSERT(x, m) if (!(x)) { MTR_LOG_ERROR((m)); exit(-1); }
 
     #define IMPLEMENT MTR_LOG_WARN("%s function needs to be implemented!", __func__);
-
 #else
 
     #define MTR_LOG_DEBUG(...)
