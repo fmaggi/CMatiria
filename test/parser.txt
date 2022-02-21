@@ -1,3 +1,15 @@
+fn count() -> u64 {
+
+}
+
+i64 f = 3;
+
+bool x = 3;
+
+u32 k = x;
+
 fn main(i32 x, i32 y) -> u32 {
     x = 3;
 }
+
+u32 count;

@@ -514,7 +514,8 @@ void mtr_delete_ast(struct mtr_ast* ast) {
             mtr_free_expr(s->while_s.condition);
             break;
         case MTR_STMT_VAR_DECL:
-            mtr_free_expr(s->variable.value);
+            if (s->variable.value)
+                mtr_free_expr(s->variable.value);
             s->variable.value = NULL;
             break;
         }

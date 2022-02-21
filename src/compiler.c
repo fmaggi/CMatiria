@@ -2,13 +2,14 @@
 
 #include "scanner.h"
 #include "parser.h"
-#include "interpret.h"
+#include "symbol.h"
 #include "sema/type_analysis.h"
 
 #include "core/file.h"
 #include "core/log.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 bool mtr_compile(const char* source) {
     struct mtr_scanner scanner = mtr_scanner_init(source);
@@ -16,18 +17,18 @@ bool mtr_compile(const char* source) {
 
     struct mtr_ast ast = mtr_parse(&parser);
 
-    // if (!parser.had_error) {
-    //     bool x = mtr_type_check(ast);
-    //     MTR_LOG_DEBUG("%s", x ? "all ok" : "type error");
-    // }
+    struct mtr_symbol_table table = mtr_load_symbols(ast);
 
-    // mtr_interpret(ast);
+    for (size_t i = 0; i < table.capacity; ++i) {
+        struct mtr_entry* e = table.entries + i;
+        if (e->key == NULL)
+            continue;
 
-#ifndef NDEBUG
+        MTR_LOG_DEBUG("%s: %u", e->key, e->symbol.is_callable);
+    }
 
-    mtr_print_stmt(ast.statements);
 
-#endif
+    mtr_delete_symbol_table(&table);
 
     mtr_delete_ast(&ast);
     return true;
