@@ -55,7 +55,9 @@ static struct mtr_entry* find_entry(struct mtr_entry* entries, const char* key, 
     struct mtr_entry* entry = entries + index;
 
     while (entry->key != NULL) {
-        if (hash(entry->key, strlen(entry->key)) == hash_)
+        size_t s = strlen(entry->key);
+
+        if (s == length && hash(entry->key, s) == hash_ && memcmp(key, entry->key, s) == 0)
             break;
         index = (index + 1) % cap;
         entry = entries + index;
