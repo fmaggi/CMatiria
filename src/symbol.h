@@ -58,6 +58,7 @@ struct mtr_scope {
 };
 
 struct mtr_scope mtr_new_scope(struct mtr_scope* parent);
+void mtr_delete_scope(struct mtr_scope* scope);
 
 struct mtr_symbol* mtr_scope_find(const struct mtr_scope* scope, const char* key, size_t length);
 

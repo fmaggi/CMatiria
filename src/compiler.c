@@ -15,7 +15,6 @@
 FILE* mtr_output_file = NULL;
 
 bool mtr_compile(const char* source) {
-
     if (NULL == mtr_output_file) {
         mtr_output_file = stdout;
     }

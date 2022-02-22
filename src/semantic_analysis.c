@@ -92,7 +92,7 @@ static bool analyze_fn(struct mtr_fn_decl* stmt, struct mtr_scope* parent, const
 
     all_ok = analyze_block(&stmt->body, &scope, source) && all_ok;
 
-    mtr_delete_symbol_table(&scope.symbols);
+    mtr_delete_scope(&scope);
     return all_ok;
 }
 
@@ -116,15 +116,14 @@ static bool analyze_if(struct mtr_if* stmt, struct mtr_scope* parent, const char
 
     struct mtr_scope then = mtr_new_scope(parent);
     bool then_ok = analyze_block(&stmt->then, &then, source);
-
-    mtr_delete_symbol_table(&then.symbols);
+    mtr_delete_scope(&then);
 
 
     bool e_ok = true;
     if (stmt->else_b.statements.size > 0) {
         struct mtr_scope e = mtr_new_scope(parent);
         e_ok = analyze_block(&stmt->else_b, &e, source);
-        mtr_delete_symbol_table(&e.symbols);
+        mtr_delete_scope(&e);
     }
 
     return condition_ok && then_ok && e_ok;
@@ -136,7 +135,7 @@ static bool analyze_while(struct mtr_while* stmt, struct mtr_scope* parent, cons
     struct mtr_scope body = mtr_new_scope(parent);
     bool body_ok = analyze_block(&stmt->body, &body, source);
 
-    mtr_delete_symbol_table(&body.symbols);
+    mtr_delete_scope(&body);
 
     return condition_ok && body_ok;
 }

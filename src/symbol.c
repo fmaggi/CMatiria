@@ -29,7 +29,7 @@ struct mtr_symbol_table mtr_new_symbol_table() {
 }
 
 void mtr_delete_symbol_table(struct mtr_symbol_table* table) {
-    table->entries = 0;
+    table->capacity = 0;
     table->size = 0;
     free(table->entries);
     table->entries = NULL;
@@ -158,6 +158,10 @@ struct mtr_scope mtr_new_scope(struct mtr_scope* parent) {
         .symbols = mtr_new_symbol_table()
     };
     return scope;
+}
+
+void mtr_delete_scope(struct mtr_scope* scope) {
+    mtr_delete_symbol_table(&scope->symbols);
 }
 
 struct mtr_symbol* mtr_scope_find(const struct mtr_scope* scope, const char* key, size_t length) {
