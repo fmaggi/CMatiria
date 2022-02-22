@@ -1,7 +1,6 @@
 #include "semantic_analysis.h"
 
-#include "error.h"
-
+#include "core/report.h"
 #include "core/log.h"
 
 static bool load_global_var(struct mtr_var_decl* stmt, struct mtr_scope* scope, const char* const source) {

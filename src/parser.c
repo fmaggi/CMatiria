@@ -1,9 +1,9 @@
 #include "parser.h"
 
-#include "core/log.h"
 #include "core/types.h"
 
-#include "error.h"
+#include "core/report.h"
+#include "core/log.h"
 
 #include <stdio.h>
 #include <stdlib.h>
