@@ -5,10 +5,17 @@
 
 #include <string.h>
 
-void mtr_report_error(const char* token, const char* message, const char* const source) {
+struct report {
+    u32 line;
+    u32 column;
+    u32 eol_index;
+    const char* line_start;
+};
+
+static struct report locate(struct mtr_token token, const char* const source) {
     const char* c = source;
-    const char* t = token;
-    if (*token == '\0') {
+    const char* t = token.start;
+    if (*token.start == '\0') {
         --t;
         if (*t == '\n')
             --t;
@@ -35,10 +42,43 @@ void mtr_report_error(const char* token, const char* message, const char* const 
 
     u32 eol_index = line_end - line_start;
 
-    MTR_LOG_ERROR("[%i:%i]: %s", line, column, message);
-    MTR_LOG("\t%.*s", eol_index, line_start);
+    struct report r;
+    r.line = line;
+    r.column = column;
+    r.eol_index = eol_index;
+    r.line_start = line_start;
+    return r;
+}
+
+void mtr_report_error(struct mtr_token token, const char* message, const char* const source) {
+    struct report r = locate(token, source);
+
+    MTR_LOG_ERROR("[%i:%i]: %s", r.line, r.column, message);
+    MTR_LOG("\t%.*s", r.eol_index, r.line_start);
 
     char buf[256];
     memset(buf, ' ', 256);
-    MTR_LOG(MTR_BOLD_DARK(MTR_GREEN) "\t%.*s%s" MTR_RESET, column, buf, "^---");
+    MTR_LOG(MTR_BOLD_DARK(MTR_GREEN) "\t%.*s%s" MTR_RESET, r.column, buf, "^---");
+}
+
+void mtr_report_warning(struct mtr_token token, const char* message, const char* const source) {
+    struct report r = locate(token, source);
+
+    MTR_LOG_WARN("[%i:%i]: %s", r.line, r.column, message);
+    MTR_LOG("\t%.*s", r.eol_index, r.line_start);
+
+    char buf[256];
+    memset(buf, ' ', 256);
+    MTR_LOG(MTR_BOLD_DARK(MTR_GREEN) "\t%.*s%s" MTR_RESET, r.column, buf, "^---");
+}
+
+void mtr_report_message(struct mtr_token token, const char* message, const char* const source) {
+    struct report r = locate(token, source);
+
+    MTR_LOG_INFO("[%i:%i]: %s", r.line, r.column, message);
+    MTR_LOG("\t%.*s", r.eol_index, r.line_start);
+
+    char buf[256];
+    memset(buf, ' ', 256);
+    MTR_LOG(MTR_BOLD_DARK(MTR_GREEN) "\t%.*s%s" MTR_RESET, r.column, buf, "^---");
 }

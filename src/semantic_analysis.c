@@ -4,16 +4,15 @@
 
 #include "core/log.h"
 
-static bool load_global(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* const source);
-
 static bool load_global_var(struct mtr_var_decl* stmt, struct mtr_scope* scope, const char* const source) {
     struct mtr_symbol s;
-    s.is_callable = false;
+    s.token = stmt->name;
     s.type.type = mtr_get_data_type(stmt->var_type);
 
     struct mtr_symbol* symbol = mtr_scope_find(scope, stmt->name.start, stmt->name.length);
     if (NULL != symbol) {
-        mtr_report_error(stmt->name.start, "Redefinition of name.", source);
+        mtr_report_error(stmt->name, "Redefinition of name.", source);
+        mtr_report_message(symbol->token, "Previuosly defined here.", source);
         return false;
     }
 
@@ -23,12 +22,13 @@ static bool load_global_var(struct mtr_var_decl* stmt, struct mtr_scope* scope, 
 
 static bool load_global_fn(struct mtr_fn_decl* stmt, struct mtr_scope* scope, const char* const source) {
     struct mtr_symbol s;
-    s.is_callable = true;
+    s.token = stmt->name;
     s.type.type = mtr_get_data_type(stmt->return_type);
 
     struct mtr_symbol* symbol = mtr_scope_find(scope, stmt->name.start, stmt->name.length);
     if (NULL != symbol) {
-        mtr_report_error(stmt->name.start, "Redefinition of name.", source);
+        mtr_report_error(stmt->name, "Redefinition of name.", source);
+        mtr_report_message(symbol->token, "Previuosly defined here.", source);
         return false;
     }
 

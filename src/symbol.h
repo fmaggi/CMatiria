@@ -30,13 +30,7 @@ struct mtr_data_type {
 
 struct mtr_symbol {
     struct mtr_data_type type;
-    union {
-        u64 integer;
-        f64 floating;
-        bool boolean;
-        char* user_defined;
-    } as;
-    bool is_callable;
+    struct mtr_token token;
 };
 
 struct mtr_entry {
