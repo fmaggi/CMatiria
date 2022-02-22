@@ -24,7 +24,7 @@ endif
 
 $(MATIRIA): $(OBJS)
 	@echo [EXE] $(MATIRIA)
-	@$(CC) -o $@ $^ $(LFLAGS)
+	@$(CC) -o $@ $^ $(LFLAGS) $(CFLAGS)
 
 %.o: %.c
 	@echo [CC] $<

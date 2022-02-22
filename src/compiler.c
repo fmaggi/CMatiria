@@ -22,12 +22,9 @@ bool mtr_compile(const char* source) {
         return false;
 
     struct mtr_package package = mtr_new_package(source, ast);
-
     bool all_ok = mtr_perform_semantic_analysis(&package);
 
-    if (!all_ok)
-        return false;
-
+    mtr_delete_symbol_table(&package.globals.symbols);
     mtr_delete_ast(&ast);
     return true;
 }

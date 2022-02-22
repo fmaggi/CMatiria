@@ -17,6 +17,7 @@ struct mtr_symbol_table mtr_new_symbol_table() {
     };
 
     void* temp = calloc(8, sizeof(struct mtr_entry));
+
     if (NULL != temp) {
         t.capacity = 8;
         t.entries = temp;
@@ -67,10 +68,11 @@ static struct mtr_entry* find_entry(struct mtr_entry* entries, const char* key, 
 
 static struct mtr_entry* resize_entries(struct mtr_entry* entries, size_t old_cap) {
     size_t new_cap = old_cap * 2;
-
     struct mtr_entry* temp = calloc(new_cap, sizeof(struct mtr_entry));
+
     if (NULL == temp) {
         MTR_LOG_ERROR("Bad allocation.");
+        free(temp);
         free(entries);
         return NULL;
     }
@@ -84,7 +86,7 @@ static struct mtr_entry* resize_entries(struct mtr_entry* entries, size_t old_ca
         entry->symbol = old->symbol;
         entry->length = old->length;
     }
-
+    free(entries);
     return temp;
 }
 
@@ -108,10 +110,6 @@ void mtr_symbol_table_insert(struct mtr_symbol_table* table, const char* key, si
     if (table->size >= table->capacity * LOAD_FACTOR) {
         table->entries = resize_entries(table->entries, table->capacity);
         table->capacity *= 2;
-        if (NULL == table->entries) {
-            table->capacity = 0;
-            table->size = 0;
-        }
     }
 }
 

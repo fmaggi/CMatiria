@@ -5,7 +5,7 @@
 
 struct mtr_package {
     struct mtr_ast ast;
-    struct mtr_scope global_scope;
+    struct mtr_scope globals;
     const char* const source;
 };
 

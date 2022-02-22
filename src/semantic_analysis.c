@@ -54,7 +54,7 @@ bool mtr_perform_semantic_analysis(struct mtr_package* package) {
 
     for (size_t i = 0; i < package->ast.size; ++i) {
         struct mtr_stmt* global = package->ast.statements + i;
-        all_ok = all_ok && load_global(global, &package->global_scope, package->source);
+        all_ok = load_global(global, &package->globals, package->source) && all_ok;
     }
 
     return true;
