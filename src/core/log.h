@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+extern FILE* mtr_output_file;
+
 #define MTR_PRE    "\033["
 #define MTR_SUF    "m"
 
@@ -28,19 +30,19 @@
 #define MTR_ERROR_PRE MTR_BOLD_DARK(MTR_RED) "Error: " MTR_RESET
 #define MTR_DEBUG_PRE  MTR_BOLD_DARK(MTR_BLUE) "Debug: " MTR_RESET
 
-#define MTR_LOG(...)       (printf(__VA_ARGS__), putc('\n', stdout))
+#define MTR_LOG(...)       (fprintf(mtr_output_file, __VA_ARGS__), putc('\n', mtr_output_file))
 
-#define MTR_LOG_INFO(...)  (printf((MTR_INFO_PRE) ), MTR_LOG(__VA_ARGS__))
-#define MTR_LOG_TRACE(...) (printf((MTR_TRACE_PRE)), MTR_LOG(__VA_ARGS__))
-#define MTR_LOG_WARN(...)  (printf((MTR_WARN_PRE) ), MTR_LOG(__VA_ARGS__))
-#define MTR_LOG_ERROR(...) (printf((MTR_ERROR_PRE)), MTR_LOG(__VA_ARGS__))
+#define MTR_LOG_INFO(...)  (fprintf(mtr_output_file, (MTR_INFO_PRE) ), MTR_LOG(__VA_ARGS__))
+#define MTR_LOG_TRACE(...) (fprintf(mtr_output_file, (MTR_TRACE_PRE)), MTR_LOG(__VA_ARGS__))
+#define MTR_LOG_WARN(...)  (fprintf(mtr_output_file, (MTR_WARN_PRE) ), MTR_LOG(__VA_ARGS__))
+#define MTR_LOG_ERROR(...) (fprintf(mtr_output_file, (MTR_ERROR_PRE)), MTR_LOG(__VA_ARGS__))
 
-#define MTR_PROFILE_FUNC() (printf("%s[Function call]%s %s\n", MTR_BOLD_DARK(MTR_WHITE), MTR_RESET, __func__))
+#define MTR_PROFILE_FUNC() (fprintf(mtr_output_file, "%s[Function call]%s %s\n", MTR_BOLD_DARK(MTR_WHITE), MTR_RESET, __func__))
 
 #ifndef NDEBUG
 
-    #define MTR_LOG_DEBUG(...)  (printf( (MTR_DEBUG_PRE)), MTR_LOG(__VA_ARGS__))
-    #define MTR_PRINT_DEBUG(...) (printf(__VA_ARGS__))
+    #define MTR_LOG_DEBUG(...)  (fprintf(mtr_output_file, (MTR_DEBUG_PRE)), MTR_LOG(__VA_ARGS__))
+    #define MTR_PRINT_DEBUG(...) (fprintf(mtr_output_file, __VA_ARGS__))
 
     #define MTR_ASSERT(x, m) if (!(x)) { MTR_PRINT_DEBUG(MTR_BOLD_DARK(MTR_WHITE)"[%s]: "MTR_RESET, __func__); MTR_LOG_ERROR((m)); exit(-1); }
 

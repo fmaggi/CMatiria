@@ -12,7 +12,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+FILE* mtr_output_file = NULL;
+
 bool mtr_compile(const char* source) {
+
+    if (NULL == mtr_output_file) {
+        mtr_output_file = stdout;
+    }
+
     struct mtr_scanner scanner = mtr_scanner_init(source);
     struct mtr_parser parser = mtr_parser_init(scanner);
 

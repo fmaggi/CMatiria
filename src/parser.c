@@ -608,7 +608,7 @@ static void print_stmt(struct mtr_stmt* stmt);
 
 static void print_block(struct mtr_block* block) {
     for (u32 i = 0; i < block->statements.size; ++i) {
-        print_stmt(&(block->statements.statements[i]));
+        print_stmt(block->statements.statements + i);
     }
 }
 
@@ -638,7 +638,6 @@ static void print_expr_stmt(struct mtr_expr_stmt* decl) {
 
 static void print_func(struct mtr_fn_decl* decl) {
     MTR_PRINT_DEBUG("function: %.*s(", (u32)decl->name.length, decl->name.start);
-
     if (decl->argc > 0) {
         for (u32 i = 0; i < decl->argc - 1; ++i) {
             struct mtr_var_decl param = decl->argv[i];

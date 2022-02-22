@@ -168,3 +168,19 @@ struct mtr_symbol* mtr_scope_find(const struct mtr_scope* scope, const char* key
     }
     return symbol;
 }
+
+#ifndef NDEBUG
+
+void mtr_print_scope(const struct mtr_scope* scope) {
+    while (NULL != scope) {
+        for (size_t i = 0; i < scope->symbols.capacity; ++i) {
+            struct mtr_entry* e = scope->symbols.entries + i;
+            if (e->key == NULL || e->key == tombstone)
+                continue;
+            mtr_print_token(e->symbol.token);
+        }
+        scope = scope->parent;
+    }
+}
+
+#endif

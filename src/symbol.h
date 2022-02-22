@@ -61,4 +61,10 @@ struct mtr_scope mtr_new_scope(struct mtr_scope* parent);
 
 struct mtr_symbol* mtr_scope_find(const struct mtr_scope* scope, const char* key, size_t length);
 
+#ifndef NDEBUG
+
+void mtr_print_scope(const struct mtr_scope* scope);
+
+#endif
+
 #endif

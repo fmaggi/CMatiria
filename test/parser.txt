@@ -1,20 +1,18 @@
 fn count() -> u64 {
-
+    u64 test = 3;
 }
-
-i64 f = 3;
-
-f32 count = 3;
 
 bool x = 3;
 
 u32 k = x;
 
-fn main(i32 x, i32 y) -> u32 { # hello
-    x = 3;
+fn main(i32 f, i32 y) -> u32 { # hello
+
+    f = 3;
     y = 24;
 
-    while (x < 43) {
+    while (f < 43) {
+        u64 test = x;
         y = y + 1;
         y / 32;
         y // 56;
