@@ -3,9 +3,36 @@
 #include "core/report.h"
 #include "core/log.h"
 
-static bool analyze_expr(struct mtr_expr* stmt, struct mtr_scope* scope, const char* const source) {
-    IMPLEMENT
+static bool analyze_expr(struct mtr_expr* expr, struct mtr_scope* scope, const char* const source);
+
+static bool analyze_binary(struct mtr_binary* expr, struct mtr_scope* scope, const char* const source) {
+    bool l = analyze_expr(expr->left, scope, source);
+    bool r = analyze_expr(expr->right, scope, source);
+    return l && r;
+}
+
+static bool analyze_primary(struct mtr_primary* expr, struct mtr_scope* scope, const char* const source) {
+    if (expr->token.type == MTR_TOKEN_IDENTIFIER) {
+        if (NULL == mtr_scope_find(scope, expr->token.start, expr->token.length)) {
+            mtr_report_error(expr->token, "Undeclared variable.", source);
+            return false;
+        }
+    }
     return true;
+}
+
+static bool analyze_expr(struct mtr_expr* expr, struct mtr_scope* scope, const char* const source) {
+    switch (expr->type)
+    {
+    case MTR_EXPR_BINARY:   return analyze_binary((struct mtr_binary*) expr, scope, source);
+    case MTR_EXPR_GROUPING: return analyze_expr(((struct mtr_grouping*) expr)->expression, scope, source);
+    case MTR_EXPR_UNARY:    return analyze_expr(((struct mtr_unary*) expr)->right, scope, source);
+    case MTR_EXPR_PRIMARY:  return analyze_primary((struct mtr_primary*) expr, scope, source);
+    default:
+        break;
+    }
+    MTR_ASSERT(false, "Invalid stmt type.");
+    return false;
 }
 
 static bool load_fn(struct mtr_fn_decl* stmt, struct mtr_scope* scope, const char* const source) {
