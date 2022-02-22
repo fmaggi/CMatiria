@@ -1,9 +1,10 @@
 #include "compiler.h"
 
+#include "package.h"
 #include "scanner.h"
 #include "parser.h"
 #include "symbol.h"
-#include "sema/type_analysis.h"
+#include "semantic_analysis.h"
 
 #include "core/file.h"
 #include "core/log.h"
@@ -17,22 +18,15 @@ bool mtr_compile(const char* source) {
 
     struct mtr_ast ast = mtr_parse(&parser);
 
-    struct mtr_symbol_table table = mtr_load_symbols(ast);
+    if (parser.had_error)
+        return false;
 
-    // for (size_t i = 0; i < table.capacity; ++i) {
-    //     struct mtr_entry e = table.entries[i];
-    //     if (e.key == NULL)
-    //         continue;
-    //     // mtr_delete_symbol(&table, e.key, strlen(e.key));
-    //     // mtr_insert_symbol(&table, e.key, strlen(e.key), e.symbol);
-    // }
+    struct mtr_package package = mtr_new_package(source, ast);
 
-    for (size_t i = 0; i < table.capacity; ++i) {
-        struct mtr_entry* e = table.entries + i;
-        MTR_LOG_TRACE("%.*s", (u32)e->length, e->key);
-    }
+    bool all_ok = mtr_perform_semantic_analysis(&package);
 
-    mtr_delete_symbol_table(&table);
+    if (!all_ok)
+        return false;
 
     mtr_delete_ast(&ast);
     return true;

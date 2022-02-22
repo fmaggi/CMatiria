@@ -8,11 +8,11 @@ bool x = 3;
 
 u32 k = x;
 
-fn main(i32 x, i32 y) -> u32 {
+fn main(i32 x, i32 y) -> u32 { # hello
     x = 3;
 }
 
-u32 count;
-
 f32 t;
 f64 x2;
+
+f32 t;

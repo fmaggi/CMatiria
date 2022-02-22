@@ -88,7 +88,7 @@ static struct mtr_entry* resize_entries(struct mtr_entry* entries, size_t old_ca
     return temp;
 }
 
-void mtr_insert_symbol(struct mtr_symbol_table* table, const char* key, size_t length, struct mtr_symbol symbol) {
+void mtr_symbol_table_insert(struct mtr_symbol_table* table, const char* key, size_t length, struct mtr_symbol symbol) {
     struct mtr_entry* entry = find_entry(table->entries, key, length, table->capacity, true);
     entry->symbol = symbol;
     bool is_tombstone = entry->key == tombstone;
@@ -115,7 +115,7 @@ void mtr_insert_symbol(struct mtr_symbol_table* table, const char* key, size_t l
     }
 }
 
-struct mtr_symbol* mtr_get_symbol(const struct mtr_symbol_table* table, const char* key, size_t length) {
+struct mtr_symbol* mtr_symbol_table_get(const struct mtr_symbol_table* table, const char* key, size_t length) {
     struct mtr_entry* entry = find_entry(table->entries, key, length, table->capacity, false);
     if (NULL == entry || NULL == entry->key) {
         return NULL;
@@ -125,7 +125,7 @@ struct mtr_symbol* mtr_get_symbol(const struct mtr_symbol_table* table, const ch
 }
 
 
-void mtr_delete_symbol(const struct mtr_symbol_table* table, const char* key, size_t length) {
+void mtr_symbol_table_remove(const struct mtr_symbol_table* table, const char* key, size_t length) {
     struct mtr_entry* entry = find_entry(table->entries, key, length, table->capacity, false);
     if (NULL == entry || NULL == entry->key) {
         return;
@@ -154,62 +154,19 @@ enum mtr_data_type_e mtr_get_data_type(enum mtr_token_type type) {
     }
 }
 
-static void walk_stmt(struct mtr_stmt* stmt, struct mtr_symbol_table* table);
-
-static void walk_var(struct mtr_var_decl* stmt, struct mtr_symbol_table* table) {
-    struct mtr_symbol s;
-    s.is_callable = false;
-    s.type.type = mtr_get_data_type(stmt->var_type);
-
-    if (NULL != mtr_get_symbol(table, stmt->name.start, stmt->name.length))
-        MTR_LOG_ERROR("Redefinition of name");
-
-    mtr_insert_symbol(table, stmt->name.start, stmt->name.length, s);
+struct mtr_scope mtr_new_scope(struct mtr_scope* parent) {
+    struct mtr_scope scope = {
+        .parent = parent,
+        .symbols = mtr_new_symbol_table()
+    };
+    return scope;
 }
 
-static void walk_fn(struct mtr_fn_decl* stmt, struct mtr_symbol_table* table) {
-    struct mtr_symbol s;
-    s.is_callable = true;
-    s.type.type = mtr_get_data_type(stmt->return_type);
-
-    if (NULL != mtr_get_symbol(table, stmt->name.start, stmt->name.length))
-        MTR_LOG_ERROR("Redefinition of name");
-
-    mtr_insert_symbol(table, stmt->name.start, stmt->name.length, s);
-}
-
-static void walk_if(struct mtr_if* stmt, struct mtr_symbol_table* table) {
-    IMPLEMENT
-}
-
-static void walk_while(struct mtr_while* stmt, struct mtr_symbol_table* table) {
-    IMPLEMENT
-}
-
-static void walk_block(struct mtr_block* stmt, struct mtr_symbol_table* table) {
-    IMPLEMENT
-}
-
-static void walk_stmt(struct mtr_stmt* stmt, struct mtr_symbol_table* table) {
-    switch (stmt->type)
-    {
-    case MTR_STMT_VAR_DECL: return walk_var((struct mtr_var_decl*) stmt, table);
-    case MTR_STMT_FUNC:     return walk_fn((struct mtr_fn_decl*) stmt, table);
-    case MTR_STMT_IF:       return walk_if((struct mtr_if*) stmt, table);
-    case MTR_STMT_WHILE:    return walk_while((struct mtr_while*) stmt, table);
-    case MTR_STMT_BLOCK:    return walk_block((struct mtr_block*) stmt, table);
-    default:
-        break;
+struct mtr_symbol* mtr_scope_find(const struct mtr_scope* scope, const char* key, size_t length) {
+    struct mtr_symbol* symbol = mtr_symbol_table_get(&scope->symbols, key, length);
+    while (NULL == symbol && NULL != scope->parent) {
+        scope = scope->parent;
+        symbol = mtr_symbol_table_get(&scope->symbols, key, length);
     }
-}
-
-struct mtr_symbol_table mtr_load_symbols(struct mtr_ast ast) {
-    struct mtr_symbol_table table = mtr_new_symbol_table();
-
-    for (size_t i = 0; i < ast.size; ++i) {
-        struct mtr_stmt* s = ast.statements + i;
-        walk_stmt(s, &table);
-    }
-
-    return table;
+    return symbol;
 }
