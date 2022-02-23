@@ -1,7 +1,8 @@
 #ifndef _MTR_PACKAGE_H
 #define _MTR_PACKAGE_H
 
-#include "symbol.h"
+#include "scope.h"
+#include "stmt.h"
 
 struct mtr_package {
     struct mtr_ast ast;

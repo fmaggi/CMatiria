@@ -2,6 +2,7 @@
 #define _MTR_STMT_H
 
 #include "expr.h"
+#include "symbol.h"
 
 #include "core/types.h"
 
@@ -36,16 +37,14 @@ struct mtr_while {
 };
 
 struct mtr_var_decl {
-    struct mtr_token name;
+    struct mtr_symbol symbol;
     struct mtr_expr* value;
-    enum mtr_token_type var_type;
 };
 
 struct mtr_fn_decl {
-    struct mtr_token name;
     struct mtr_block body;
+    struct mtr_symbol symbol;
     struct mtr_var_decl* argv;
-    enum mtr_token_type return_type;
     u32 argc;
 };
 

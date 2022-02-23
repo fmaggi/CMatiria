@@ -57,7 +57,7 @@ static struct mtr_token consume(struct mtr_parser* parser, enum mtr_token_type t
 }
 
 static struct mtr_token consume_type(struct mtr_parser* parser) {
-    if (parser->token.type >= MTR_TOKEN_U8 && parser->token.type <= MTR_TOKEN_BOOL)
+    if ((parser->token.type >= MTR_TOKEN_U8 && parser->token.type <= MTR_TOKEN_BOOL))
         return advance(parser);
 
     parser_error(parser, "Expected type.");
@@ -215,7 +215,7 @@ static struct mtr_expr* parse_precedence(struct mtr_parser* parser, enum precede
 
 static struct mtr_expr* unary(struct mtr_parser* parser, struct mtr_token op) {
     struct mtr_unary* node = ALLOCATE_EXPR(MTR_EXPR_UNARY, mtr_unary);
-    node->operator = op.type;
+    node->operator = op;
     node->right = parse_precedence(parser, rules[op.type].precedence + 1);
     return (struct mtr_expr*) node;
 }
@@ -223,7 +223,7 @@ static struct mtr_expr* unary(struct mtr_parser* parser, struct mtr_token op) {
 static struct mtr_expr* binary(struct mtr_parser* parser, struct mtr_token op, struct mtr_expr* left) {
     struct mtr_binary* node = ALLOCATE_EXPR(MTR_EXPR_BINARY, mtr_binary);
     node->left = left;
-    node->operator = op.type;
+    node->operator = op;
     node->right = parse_precedence(parser, rules[op.type].precedence + 1);
     return (struct mtr_expr*) node;
 }
@@ -330,7 +330,7 @@ static struct mtr_stmt func_decl(struct mtr_parser* parser) {
 
     advance(parser);
 
-    node->name = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
+    node->symbol.token = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
     consume(parser, MTR_TOKEN_PAREN_L, "Expected '('.");
 
     u32 argc = 0;
@@ -338,8 +338,8 @@ static struct mtr_stmt func_decl(struct mtr_parser* parser) {
     bool cont = true;
     while (argc < 255 && !CHECK(MTR_TOKEN_PAREN_R) && cont) {
         struct mtr_var_decl* var = vars + argc++;
-        var->var_type = consume_type(parser).type;
-        var->name = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
+        var->symbol.type.type = mtr_get_data_type(consume_type(parser).type);
+        var->symbol.token = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
         var->value = NULL;
 
         if (CHECK(MTR_TOKEN_PAREN_R))
@@ -366,8 +366,7 @@ static struct mtr_stmt func_decl(struct mtr_parser* parser) {
 
     consume(parser, MTR_TOKEN_ARROW, "Expected '->'.");
 
-    node->return_type = consume_type(parser).type;
-
+    node->symbol.type.type = mtr_get_data_type(consume_type(parser).type);
     node->body = block(parser).block;
 
     return stmt;
@@ -377,8 +376,8 @@ static struct mtr_stmt var_decl(struct mtr_parser* parser) {
     struct mtr_stmt stmt = allocate_stmt(MTR_STMT_VAR_DECL);
     struct mtr_var_decl* node = &stmt.variable;
 
-    node->var_type = advance(parser).type; // because we are here we alredy know its a type!
-    node->name = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
+    node->symbol.type.type = mtr_get_data_type(advance(parser).type); // because we are here we alredy know its a type!
+    node->symbol.token = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
     node->value = NULL;
 
     if (CHECK(MTR_TOKEN_EQUAL)) {
@@ -574,12 +573,12 @@ static void print_primary(struct mtr_primary* node) {
 }
 
 static void print_unary(struct mtr_unary* node) {
-    MTR_PRINT_DEBUG("%s", mtr_token_type_to_str(node->operator));
+    // MTR_PRINT_DEBUG("%s", mtr_token_type_to_str(node->operator));
     print_expr(node->right);
 }
 
 static void print_binary(struct mtr_binary* node) {
-    MTR_PRINT_DEBUG("(%s ", mtr_token_type_to_str(node->operator));
+    // MTR_PRINT_DEBUG("(%s ", mtr_token_type_to_str(node->operator));
     print_expr(node->left);
     print_expr(node->right);
     MTR_PRINT_DEBUG(")");
@@ -613,7 +612,7 @@ static void print_block(struct mtr_block* block) {
 }
 
 static void print_var(struct mtr_var_decl* decl) {
-    MTR_PRINT_DEBUG("var: %s %.*s = ", mtr_token_type_to_str(decl->var_type), (u32)decl->name.length, decl->name.start);
+    MTR_PRINT_DEBUG("var: %.*s = ", (u32)decl->symbol.token.length, decl->symbol.token.start);
     if (decl->value)
         mtr_print_expr(decl->value);
 }
@@ -637,18 +636,18 @@ static void print_expr_stmt(struct mtr_expr_stmt* decl) {
 }
 
 static void print_func(struct mtr_fn_decl* decl) {
-    MTR_PRINT_DEBUG("function: %.*s(", (u32)decl->name.length, decl->name.start);
+    MTR_PRINT_DEBUG("function: %.*s(", (u32)decl->symbol.token.length, decl->symbol.token.start);
     if (decl->argc > 0) {
         for (u32 i = 0; i < decl->argc - 1; ++i) {
             struct mtr_var_decl param = decl->argv[i];
-            MTR_PRINT_DEBUG("%s %.*s, ", mtr_token_type_to_str(param.var_type), (u32)param.name.length, param.name.start);
+            MTR_PRINT_DEBUG("%.*s, ", (u32)param.symbol.token.length, param.symbol.token.start);
         }
 
         struct mtr_var_decl param = decl->argv[decl->argc-1];
-        MTR_PRINT_DEBUG("%s %.*s", mtr_token_type_to_str(param.var_type), (u32)param.name.length, param.name.start);
+        MTR_PRINT_DEBUG("%.*s", (u32)param.symbol.token.length, param.symbol.token.start);
     }
 
-    MTR_PRINT_DEBUG(") -> %s\n", mtr_token_type_to_str(decl->return_type));
+    MTR_PRINT_DEBUG(") -> type\n");
     print_block(&decl->body);
 }
 

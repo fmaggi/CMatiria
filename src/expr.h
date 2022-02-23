@@ -17,7 +17,7 @@ struct mtr_expr {
 struct mtr_unary {
     struct mtr_expr expr_;
     struct mtr_expr* right;
-    enum mtr_token_type operator;
+    struct mtr_token operator;
 };
 
 struct mtr_primary {
@@ -34,7 +34,7 @@ struct mtr_binary {
     struct mtr_expr expr_;
     struct mtr_expr* right;
     struct mtr_expr* left;
-    enum mtr_token_type operator;
+    struct mtr_token operator;
 };
 
 

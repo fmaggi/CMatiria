@@ -6,8 +6,7 @@ bool x = 3;
 
 u32 k = x;
 
-fn main(i32 f, i32 y) -> u32 { # hello
-
+fn main(i32 f, f32 y) -> u32 { # hello
     f = 3;
     y = 24;
 
@@ -20,7 +19,7 @@ fn main(i32 f, i32 y) -> u32 { # hello
         y // 56;
         7 % 3;
     }
-}
+ }
 
 f32 t;
 f64 x2;

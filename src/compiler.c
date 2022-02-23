@@ -24,13 +24,15 @@ bool mtr_compile(const char* source) {
 
     struct mtr_ast ast = mtr_parse(&parser);
 
-    if (parser.had_error)
+    if (parser.had_error){
         return false;
+    }
 
     struct mtr_package package = mtr_new_package(source, ast);
+
     bool all_ok = mtr_perform_semantic_analysis(&package);
 
-    mtr_delete_symbol_table(&package.globals.symbols);
+    mtr_delete_scope(&package.globals);
     mtr_delete_ast(&ast);
     return true;
 }
