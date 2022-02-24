@@ -94,7 +94,10 @@ static void synchronize(struct mtr_parser* parser) {
         case MTR_TOKEN_F64:
         case MTR_TOKEN_BOOL:
         case MTR_TOKEN_FN:
+        case MTR_TOKEN_IF:
+        case MTR_TOKEN_WHILE:
         case MTR_TOKEN_CURLY_L:
+        case MTR_TOKEN_CURLY_R:
             return;
         default:
             advance(parser);
@@ -257,6 +260,7 @@ static struct mtr_stmt block(struct mtr_parser* parser) {
 
     while(!CHECK(MTR_TOKEN_CURLY_R) && !CHECK(MTR_TOKEN_EOF)) {
         struct mtr_stmt s = declaration(parser);
+        synchronize(parser);
         mtr_write_stmt(&node->statements, s);
     }
 
@@ -305,17 +309,7 @@ static struct mtr_stmt while_stmt(struct mtr_parser* parser) {
     return stmt;
 }
 
-static struct mtr_stmt statement(struct mtr_parser* parser) {
-    switch (parser->token.type)
-    {
-    case MTR_TOKEN_IF:      return if_stmt(parser);
-    case MTR_TOKEN_WHILE:   return while_stmt(parser);
-    case MTR_TOKEN_CURLY_L: return block(parser);
-
-    default:
-        break;
-    }
-
+static struct mtr_stmt assignment(struct mtr_parser* parser) {
     struct mtr_stmt stmt = allocate_stmt(MTR_STMT_ASSIGNMENT);
     struct mtr_assignment* node = &stmt.assignment;
     node->variable = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected a name.");
@@ -323,6 +317,17 @@ static struct mtr_stmt statement(struct mtr_parser* parser) {
     node->expression = expression(parser);
     consume(parser, MTR_TOKEN_SEMICOLON, "Expected ';'.");
     return stmt;
+}
+
+static struct mtr_stmt statement(struct mtr_parser* parser) {
+    switch (parser->token.type)
+    {
+    case MTR_TOKEN_IF:      return if_stmt(parser);
+    case MTR_TOKEN_WHILE:   return while_stmt(parser);
+    case MTR_TOKEN_CURLY_L: return block(parser);
+    default:
+        return assignment(parser);
+    }
 }
 
 static struct mtr_stmt func_decl(struct mtr_parser* parser) {
@@ -392,7 +397,6 @@ static struct mtr_stmt var_decl(struct mtr_parser* parser) {
 }
 
 static struct mtr_stmt declaration(struct mtr_parser* parser) {
-    synchronize(parser);
     switch (parser->token.type)
     {
     case MTR_TOKEN_U8:
@@ -415,8 +419,7 @@ static struct mtr_stmt declaration(struct mtr_parser* parser) {
 static struct mtr_stmt global_declaration(struct mtr_parser* parser) {
     switch (parser->token.type)
     {
-    case MTR_TOKEN_FN:
-        return func_decl(parser);
+    case MTR_TOKEN_FN: return func_decl(parser);
     default:
         break;
     }

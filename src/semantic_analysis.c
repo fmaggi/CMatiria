@@ -133,11 +133,14 @@ static bool analyze_assignment(struct mtr_assignment* stmt, struct mtr_scope* pa
         .token = stmt->variable
     };
     struct mtr_symbol* s = mtr_scope_find(parent, symbol);
+    bool var_ok = true;
     if (NULL == s) {
         mtr_report_error(stmt->variable, "Undeclared variable.", source);
-        return false;
+        var_ok = false;
     }
-    return analyze_expr(stmt->expression, parent, source).type == s->type.type;
+
+    struct mtr_data_type expr = analyze_expr(stmt->expression, parent, source);
+    return var_ok && expr.type == s->type.type;
 }
 
 static bool analyze_var_decl(struct mtr_var_decl* decl, struct mtr_scope* parent, const char* const source) {
