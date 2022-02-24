@@ -108,7 +108,6 @@ static struct mtr_expr* expression(struct mtr_parser* parser);
 
 enum precedence {
     NONE,
-    ASSIGN,
     LOGIC,
     EQUALITY,
     COMPARISON,
@@ -152,7 +151,7 @@ static const struct parser_rule rules[] = {
     [MTR_TOKEN_CURLY_L] = { NO_OP },
     [MTR_TOKEN_CURLY_R] = { NO_OP },
     [MTR_TOKEN_BANG] = { .prefix = unary, .infix = NULL, .precedence = UNARY },
-    [MTR_TOKEN_EQUAL] = { .prefix = NULL, .infix = binary, .precedence = ASSIGN }, // not sure about this one;
+    [MTR_TOKEN_EQUAL] = { NO_OP },
     [MTR_TOKEN_GREATER] = { .prefix = NULL, .infix = binary, .precedence = COMPARISON },
     [MTR_TOKEN_LESS] = { .prefix = NULL, .infix = binary, .precedence = COMPARISON },
     [MTR_TOKEN_ARROW] = { NO_OP },
@@ -242,7 +241,7 @@ static struct mtr_expr* primary(struct mtr_parser* parser, struct mtr_token prim
 }
 
 static struct mtr_expr* expression(struct mtr_parser* parser) {
-    return parse_precedence(parser, ASSIGN);
+    return parse_precedence(parser, LOGIC);
 }
 
 // ============================ STMT =====================================
@@ -317,8 +316,10 @@ static struct mtr_stmt statement(struct mtr_parser* parser) {
         break;
     }
 
-    struct mtr_stmt stmt = allocate_stmt(MTR_STMT_EXPRESSION);
-    struct mtr_expr_stmt* node = &stmt.expr;
+    struct mtr_stmt stmt = allocate_stmt(MTR_STMT_ASSIGNMENT);
+    struct mtr_assignment* node = &stmt.assignment;
+    node->variable = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected a name.");
+    consume(parser, MTR_TOKEN_EQUAL, "Expected '='.");
     node->expression = expression(parser);
     consume(parser, MTR_TOKEN_SEMICOLON, "Expected ';'.");
     return stmt;
@@ -406,8 +407,6 @@ static struct mtr_stmt declaration(struct mtr_parser* parser) {
     case MTR_TOKEN_F64:
     case MTR_TOKEN_BOOL:
         return var_decl(parser);
-    case MTR_TOKEN_FN:
-        return func_decl(parser);
     default:
         return statement(parser);
     }
@@ -416,24 +415,12 @@ static struct mtr_stmt declaration(struct mtr_parser* parser) {
 static struct mtr_stmt global_declaration(struct mtr_parser* parser) {
     switch (parser->token.type)
     {
-    case MTR_TOKEN_U8:
-    case MTR_TOKEN_U16:
-    case MTR_TOKEN_U32:
-    case MTR_TOKEN_U64:
-    case MTR_TOKEN_I8:
-    case MTR_TOKEN_I16:
-    case MTR_TOKEN_I32:
-    case MTR_TOKEN_I64:
-    case MTR_TOKEN_F32:
-    case MTR_TOKEN_F64:
-    case MTR_TOKEN_BOOL:
-        return var_decl(parser);
     case MTR_TOKEN_FN:
         return func_decl(parser);
     default:
         break;
     }
-    parser_error(parser, "Expected declaration.");
+    parser_error(parser, "Expected function declaration.");
     exit(-1);
 }
 
@@ -493,9 +480,9 @@ void mtr_delete_ast(struct mtr_ast* ast) {
         case MTR_STMT_BLOCK:
             mtr_delete_ast(&s->block.statements);
             break;
-        case MTR_STMT_EXPRESSION:
-            mtr_free_expr(s->expr.expression);
-            s->expr.expression = NULL;
+        case MTR_STMT_ASSIGNMENT:
+            mtr_free_expr(s->assignment.expression);
+            s->assignment.expression = NULL;
             break;
         case MTR_STMT_FUNC:
             if (s->function.argc > 0)
@@ -631,7 +618,8 @@ static void print_while(struct mtr_while* decl) {
     print_block(&decl->body);
 }
 
-static void print_expr_stmt(struct mtr_expr_stmt* decl) {
+static void print_assignment(struct mtr_assignment* decl) {
+    MTR_PRINT_DEBUG("%.*s = ", (u32)decl->variable.length, decl->variable.start);
     mtr_print_expr(decl->expression);
 }
 
@@ -655,7 +643,7 @@ static void print_stmt(struct mtr_stmt* decl) {
     switch (decl->type)
     {
     case MTR_STMT_FUNC:       return print_func((struct mtr_fn_decl*) decl);
-    case MTR_STMT_EXPRESSION: return print_expr_stmt((struct mtr_expr_stmt*) decl);
+    case MTR_STMT_ASSIGNMENT: return print_assignment((struct mtr_assignment*) decl);
     case MTR_STMT_VAR_DECL:   return print_var((struct mtr_var_decl*) decl);
     case MTR_STMT_IF:         return print_if((struct mtr_if*) decl);
     case MTR_STMT_WHILE:      return print_while((struct mtr_while*) decl);

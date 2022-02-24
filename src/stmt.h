@@ -7,7 +7,7 @@
 #include "core/types.h"
 
 enum mtr_stmt_type {
-    MTR_STMT_EXPRESSION,
+    MTR_STMT_ASSIGNMENT,
     MTR_STMT_FUNC,
     MTR_STMT_VAR_DECL,
     MTR_STMT_IF,
@@ -48,7 +48,8 @@ struct mtr_fn_decl {
     u32 argc;
 };
 
-struct mtr_expr_stmt {
+struct mtr_assignment {
+    struct mtr_token variable;
     struct mtr_expr* expression;
 };
 
@@ -56,7 +57,7 @@ struct mtr_expr_stmt {
 // it could lead to less indirection and thus more performance but...
 struct mtr_stmt {
     union {
-        struct mtr_expr_stmt expr;
+        struct mtr_assignment assignment;
         struct mtr_fn_decl function;
         struct mtr_var_decl variable;
         struct mtr_if if_s;

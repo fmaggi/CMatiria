@@ -128,8 +128,16 @@ static bool analyze_fn(struct mtr_fn_decl* stmt, struct mtr_scope* parent, const
     return all_ok;
 }
 
-static bool analyze_expr_stmt(struct mtr_expr_stmt* stmt, struct mtr_scope* parent, const char* const source) {
-    return analyze_expr(stmt->expression, parent, source).type != MTR_DATA_INVALID;
+static bool analyze_assignment(struct mtr_assignment* stmt, struct mtr_scope* parent, const char* const source) {
+    struct mtr_symbol symbol = {
+        .token = stmt->variable
+    };
+    struct mtr_symbol* s = mtr_scope_find(parent, symbol);
+    if (NULL == s) {
+        mtr_report_error(stmt->variable, "Undeclared variable.", source);
+        return false;
+    }
+    return analyze_expr(stmt->expression, parent, source).type == s->type.type;
 }
 
 static bool analyze_var_decl(struct mtr_var_decl* decl, struct mtr_scope* parent, const char* const source) {
@@ -182,7 +190,7 @@ static bool analyze(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* 
     switch (stmt->type)
     {
     case MTR_STMT_BLOCK:      return analyze_block((struct mtr_block*) stmt, scope, source);
-    case MTR_STMT_EXPRESSION: return analyze_expr_stmt((struct mtr_expr_stmt*) stmt, scope, source);
+    case MTR_STMT_ASSIGNMENT: return analyze_assignment((struct mtr_assignment*) stmt, scope, source);
     case MTR_STMT_FUNC:       return analyze_fn((struct mtr_fn_decl*) stmt, scope, source);
     case MTR_STMT_VAR_DECL:   return analyze_var_decl((struct mtr_var_decl*) stmt, scope, source);
     case MTR_STMT_IF:         return analyze_if((struct mtr_if*) stmt, scope, source);
