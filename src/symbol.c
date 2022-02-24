@@ -17,20 +17,30 @@ enum mtr_data_type_e mtr_get_data_type(enum mtr_token_type type) {
     case MTR_TOKEN_I64:
     case MTR_TOKEN_INT:
         return MTR_DATA_INT;
+
     case MTR_TOKEN_F32:
     case MTR_TOKEN_F64:
     case MTR_TOKEN_FLOAT:
         return MTR_DATA_FLOAT;
+
     case MTR_TOKEN_BOOL:
     case MTR_TOKEN_TRUE:
     case MTR_TOKEN_FALSE:
+
+    case MTR_TOKEN_LESS:
+    case MTR_TOKEN_LESS_EQUAL:
+    case MTR_TOKEN_GREATER:
+    case MTR_TOKEN_GREATER_EQUAL:
+    case MTR_TOKEN_EQUAL_EQUAL:
+    case MTR_TOKEN_BANG_EQUAL:
         return MTR_DATA_BOOL;
+
     case MTR_TOKEN_IDENTIFIER:
         return MTR_DATA_USER_DEFINED;
     default:
         break;
     }
-    MTR_LOG_WARN("Invalid data type");
+    // MTR_LOG_WARN("Invalid data type");
     return MTR_DATA_INVALID;
 }
 

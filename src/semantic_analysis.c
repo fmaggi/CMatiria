@@ -16,16 +16,35 @@ static struct mtr_data_type analyze_binary(struct mtr_binary* expr, struct mtr_s
     struct mtr_data_type r = analyze_expr(expr->right, scope, source);
 
     if (!mtr_data_type_match(l, r)) {
-        mtr_report_error(expr->operator, "Invalid operation bewtween objects of different types.", source);
+        mtr_report_error(expr->operator, "Invalid operation between objects of different types.", source);
         return invalid_type;
     }
 
-    return  l;
+    enum mtr_data_type_e e = mtr_get_data_type(expr->operator.type);
+
+    #define CHK(token_type) (expr->operator.type == MTR_TOKEN_ ## token_type)
+
+    if (CHK(STAR) || CHK(SLASH) || CHK(PLUS) || CHK(MINUS)) {
+        e = l.type;
+    }
+
+    #undef CHK
+
+    struct mtr_data_type t = {
+        .type = e,
+        .length = l.length,
+        .user_struct = l.user_struct
+    };
+
+    return  t;
 }
 
 static struct mtr_data_type analyze_primary(struct mtr_primary* expr, struct mtr_scope* scope, const char* const source) {
     if (expr->token.type == MTR_TOKEN_IDENTIFIER) {
-        struct mtr_symbol* s = mtr_scope_find(scope, expr->token);
+        struct mtr_symbol symbol = {
+            .token = expr->token
+        };
+        struct mtr_symbol* s = mtr_scope_find(scope, symbol);
         if (NULL == s) {
             mtr_report_error(expr->token, "Undeclared variable.", source);
             return invalid_type;
@@ -53,12 +72,11 @@ static struct mtr_data_type analyze_expr(struct mtr_expr* expr, struct mtr_scope
         break;
     }
     MTR_ASSERT(false, "Invalid stmt type.");
-    struct mtr_data_type t;
-    return t;
+    return invalid_type;
 }
 
 static bool load_fn(struct mtr_fn_decl* stmt, struct mtr_scope* scope, const char* const source) {
-    struct mtr_symbol* symbol = mtr_scope_find(scope, stmt->symbol.token);
+    struct mtr_symbol* symbol = mtr_scope_find(scope, stmt->symbol);
     if (NULL != symbol) {
         mtr_report_error(stmt->symbol.token, "Redefinition of name.", source);
         mtr_report_message(symbol->token, "Previuosly defined here.", source);
@@ -70,7 +88,7 @@ static bool load_fn(struct mtr_fn_decl* stmt, struct mtr_scope* scope, const cha
 }
 
 static bool load_var(struct mtr_var_decl* stmt, struct mtr_scope* scope, const char* const source) {
-    struct mtr_symbol* symbol = mtr_scope_find(scope, stmt->symbol.token);
+    struct mtr_symbol* symbol = mtr_scope_find(scope, stmt->symbol);
     if (NULL != symbol) {
         mtr_report_error(stmt->symbol.token, "Redefinition of name.", source);
         mtr_report_message(symbol->token, "Previuosly defined here.", source);
@@ -126,12 +144,15 @@ static bool analyze_var_decl(struct mtr_var_decl* decl, struct mtr_scope* parent
 }
 
 static bool analyze_if(struct mtr_if* stmt, struct mtr_scope* parent, const char* const source) {
-    bool condition_ok = analyze_expr(stmt->condition, parent, source).type != MTR_DATA_INVALID;
+    bool condition_ok = analyze_expr(stmt->condition, parent, source).type == MTR_DATA_BOOL;
+    if (!condition_ok) {
+        MTR_LOG_ERROR("Invalid condtion.");
+        return false;
+    }
 
     struct mtr_scope then = mtr_new_scope(parent);
     bool then_ok = analyze_block(&stmt->then, &then, source);
     mtr_delete_scope(&then);
-
 
     bool e_ok = true;
     if (stmt->else_b.statements.size > 0) {
@@ -144,7 +165,11 @@ static bool analyze_if(struct mtr_if* stmt, struct mtr_scope* parent, const char
 }
 
 static bool analyze_while(struct mtr_while* stmt, struct mtr_scope* parent, const char* const source) {
-    bool condition_ok = analyze_expr(stmt->condition, parent, source).type != MTR_DATA_INVALID;
+    bool condition_ok = analyze_expr(stmt->condition, parent, source).type == MTR_DATA_BOOL;
+    if (!condition_ok) {
+        MTR_LOG_ERROR("Invalid condtion.");
+        return false;
+    }
 
     struct mtr_scope body = mtr_new_scope(parent);
     bool body_ok = analyze_block(&stmt->body, &body, source);

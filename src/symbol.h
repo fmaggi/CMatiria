@@ -14,7 +14,6 @@ enum mtr_data_type_e {
 
 enum mtr_data_type_e mtr_get_data_type(enum mtr_token_type type);
 
-
 struct mtr_data_type {
     const char* user_struct;
     size_t length;
