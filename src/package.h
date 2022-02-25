@@ -1,15 +1,19 @@
 #ifndef _MTR_PACKAGE_H
 #define _MTR_PACKAGE_H
 
-#include "scope.h"
 #include "stmt.h"
 #include "bytecode.h"
 
-struct mtr_package {
-    struct mtr_ast ast;
-    struct mtr_scope globals;
+struct mtr_globals {
+    struct gloabl_entry* entries;
+    size_t size;
+    size_t capacity;
+};
 
-    struct mtr_chunk* chunks;
+struct mtr_package {
+    struct mtr_globals indices;
+    struct mtr_chunk* functions;
+
     const char* source;
 };
 

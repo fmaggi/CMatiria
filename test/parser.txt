@@ -4,4 +4,10 @@ fn main() -> Int {  # hello
     if (x = 3) {
         x := 4;
     }
+
+    Float test;
+}
+
+fn test() -> Float {
+
 }

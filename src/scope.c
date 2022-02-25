@@ -9,6 +9,12 @@
 
 static const char* tombstone = "__@tombstone@__@mangled@__";
 
+struct symbol_entry {
+    struct mtr_symbol symbol;
+    const char* key;
+    size_t length;
+};
+
 struct mtr_symbol_table mtr_new_symbol_table() {
     struct mtr_symbol_table t = {
         .entries = NULL,
@@ -16,7 +22,7 @@ struct mtr_symbol_table mtr_new_symbol_table() {
         .size = 0
     };
 
-    void* temp = calloc(8, sizeof(struct mtr_entry));
+    void* temp = calloc(8, sizeof(struct symbol_entry));
 
     if (NULL != temp) {
         t.capacity = 8;
@@ -44,12 +50,12 @@ static u32 hash(const char* key, size_t length) {
     return hash;
 }
 
-static struct mtr_entry* find_entry(struct mtr_entry* entries, const char* key, size_t length, size_t cap, bool return_tombstone) {
+static struct symbol_entry* find_entry(struct symbol_entry* entries, const char* key, size_t length, size_t cap, bool return_tombstone) {
     u32 hash_ = hash(key, length);
     u32 start_index = hash_ % cap;
 
     u32 index = start_index;
-    struct mtr_entry* entry = entries + index;
+    struct symbol_entry* entry = entries + index;
 
     while (entry->key != NULL && !((entry->key == tombstone) && return_tombstone)) {
         if (entry->length == length && hash(entry->key, entry->length) == hash_ && memcmp(key, entry->key, entry->length) == 0)
@@ -65,9 +71,9 @@ static struct mtr_entry* find_entry(struct mtr_entry* entries, const char* key, 
     return entry;
 }
 
-static struct mtr_entry* resize_entries(struct mtr_entry* entries, size_t old_cap) {
+static struct symbol_entry* resize_entries(struct symbol_entry* entries, size_t old_cap) {
     size_t new_cap = old_cap * 2;
-    struct mtr_entry* temp = calloc(new_cap, sizeof(struct mtr_entry));
+    struct symbol_entry* temp = calloc(new_cap, sizeof(struct symbol_entry));
 
     if (NULL == temp) {
         MTR_LOG_ERROR("Bad allocation.");
@@ -77,10 +83,10 @@ static struct mtr_entry* resize_entries(struct mtr_entry* entries, size_t old_ca
     }
 
     for (size_t i = 0; i < old_cap; ++i) {
-        struct mtr_entry* old = entries + i;
+        struct symbol_entry* old = entries + i;
         if (old->key == NULL)
             continue;
-        struct mtr_entry* entry = find_entry(temp, old->key, old->length, new_cap, true);
+        struct symbol_entry* entry = find_entry(temp, old->key, old->length, new_cap, true);
         entry->key = old->key;
         entry->symbol = old->symbol;
         entry->length = old->length;
@@ -90,7 +96,7 @@ static struct mtr_entry* resize_entries(struct mtr_entry* entries, size_t old_ca
 }
 
 void mtr_symbol_table_insert(struct mtr_symbol_table* table, const char* key, size_t length, struct mtr_symbol symbol) {
-    struct mtr_entry* entry = find_entry(table->entries, key, length, table->capacity, true);
+    struct symbol_entry* entry = find_entry(table->entries, key, length, table->capacity, true);
     entry->symbol = symbol;
     bool is_tombstone = entry->key == tombstone;
 
@@ -113,7 +119,7 @@ void mtr_symbol_table_insert(struct mtr_symbol_table* table, const char* key, si
 }
 
 struct mtr_symbol* mtr_symbol_table_get(const struct mtr_symbol_table* table, const char* key, size_t length) {
-    struct mtr_entry* entry = find_entry(table->entries, key, length, table->capacity, false);
+    struct symbol_entry* entry = find_entry(table->entries, key, length, table->capacity, false);
     if (NULL == entry || NULL == entry->key) {
         return NULL;
     }
@@ -123,7 +129,7 @@ struct mtr_symbol* mtr_symbol_table_get(const struct mtr_symbol_table* table, co
 
 
 void mtr_symbol_table_remove(const struct mtr_symbol_table* table, const char* key, size_t length) {
-    struct mtr_entry* entry = find_entry(table->entries, key, length, table->capacity, false);
+    struct symbol_entry* entry = find_entry(table->entries, key, length, table->capacity, false);
     if (NULL == entry || NULL == entry->key) {
         return;
     }
@@ -162,7 +168,7 @@ void mtr_scope_add(struct mtr_scope* scope, struct mtr_symbol symbol) {
 void mtr_print_scope(const struct mtr_scope* scope) {
     while (NULL != scope) {
         for (size_t i = 0; i < scope->symbols.capacity; ++i) {
-            struct mtr_entry* e = scope->symbols.entries + i;
+            struct symbol_entry* e = scope->symbols.entries + i;
             if (e->key == NULL || e->key == tombstone)
                 continue;
             mtr_print_token(e->symbol.token);

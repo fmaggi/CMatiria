@@ -84,9 +84,9 @@ static void write_function(struct mtr_function* fn, struct mtr_chunk* chunk) {
     write_var(&fn->body.statements.statements->variable, chunk);
 }
 
-static struct mtr_chunk emit_bytecode(struct mtr_package* package) {
+static struct mtr_chunk write_bytecode(struct mtr_package* package, struct mtr_ast ast) {
     struct mtr_chunk chunk = mtr_new_chunk();
-    write_function(&package->ast.statements->function, &chunk);
+    write_function(&ast.statements->function, &chunk);
     mtr_write_chunk(&chunk, MTR_OP_RETURN);
     return chunk;
 }
@@ -105,22 +105,21 @@ bool mtr_compile(const char* source) {
         return false;
     }
 
-    struct mtr_package package = mtr_new_package(source, ast);
-    bool all_ok = mtr_validate(&package);
+    bool all_ok = mtr_validate(ast, source);
 
     if (!all_ok) {
         return false;
     }
 
-    struct mtr_chunk c = emit_bytecode(&package);
+    struct mtr_package package = mtr_new_package(source, ast);
+
+    struct mtr_chunk c = write_bytecode(&package, ast);
 
     mtr_disassemble(c, "main");
 
     struct mtr_vm vm;
 
     mtr_execute(&vm, &c);
-
-    mtr_delete_scope(&package.globals);
     mtr_delete_ast(&ast);
     return true;
 }

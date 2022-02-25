@@ -1,5 +1,7 @@
 #include "validator.h"
 
+#include "scope.h"
+
 #include "core/report.h"
 #include "core/log.h"
 
@@ -192,8 +194,8 @@ static bool analyze(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* 
     {
     case MTR_STMT_BLOCK:      return analyze_block((struct mtr_block*) stmt, scope, source);
     case MTR_STMT_ASSIGNMENT: return analyze_assignment((struct mtr_assignment*) stmt, scope, source);
-    case MTR_STMT_FN:       return analyze_fn((struct mtr_function*) stmt, scope, source);
-    case MTR_STMT_VAR:   return analyze_variable((struct mtr_variable*) stmt, scope, source);
+    case MTR_STMT_FN:         return analyze_fn((struct mtr_function*) stmt, scope, source);
+    case MTR_STMT_VAR:        return analyze_variable((struct mtr_variable*) stmt, scope, source);
     case MTR_STMT_IF:         return analyze_if((struct mtr_if*) stmt, scope, source);
     case MTR_STMT_WHILE:      return analyze_while((struct mtr_while*) stmt, scope, source);
     default:
@@ -225,13 +227,22 @@ static bool load_global(struct mtr_stmt* stmt, struct mtr_scope* scope, const ch
     return false;
 }
 
-bool mtr_validate(struct mtr_package* package) {
+bool mtr_validate(struct mtr_ast ast, const char* const source) {
     bool all_ok = true;
 
-    for (size_t i = 0; i < package->ast.size; ++i) {
-        struct mtr_stmt* s = package->ast.statements + i;
-        all_ok = global_analysis(s, &package->globals, package->source) && all_ok;
+    struct mtr_scope global = mtr_new_scope(NULL);
+
+    for (size_t i = 0; i < ast.size; ++i) {
+        struct mtr_stmt* s = ast.statements + i;
+        all_ok = load_global(s, &global, source);
     }
+
+    for (size_t i = 0; i < ast.size; ++i) {
+        struct mtr_stmt* s = ast.statements + i;
+        all_ok = global_analysis(s, &global, source) && all_ok;
+    }
+
+    mtr_delete_scope(&global);
 
     return all_ok;
 }

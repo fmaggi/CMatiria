@@ -3,14 +3,8 @@
 
 #include "symbol.h"
 
-struct mtr_entry {
-    struct mtr_symbol symbol;
-    const char* key;
-    size_t length;
-};
-
 struct mtr_symbol_table {
-    struct mtr_entry* entries;
+    struct symbol_entry* entries;
     size_t size;
     size_t capacity;
 };

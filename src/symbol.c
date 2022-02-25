@@ -37,13 +37,8 @@ enum mtr_data_type_e mtr_get_data_type(enum mtr_token_type type) {
 }
 
 bool mtr_data_type_match(struct mtr_data_type lhs, struct mtr_data_type rhs) {
-    if (lhs.type != rhs.type) {
-        return false;
-    }
-
-    if (lhs.type != MTR_DATA_USER_DEFINED) {
-        return true;
-    }
-
-    return (lhs.length == rhs.length) && (memcmp(lhs.user_struct, rhs.user_struct, lhs.length) == 0);
+    return (lhs.type == rhs.type)
+        && (
+            (lhs.type != MTR_DATA_USER_DEFINED) || (lhs.length == rhs.length) && (memcmp(lhs.user_struct, rhs.user_struct, lhs.length) == 0)
+        );
 }
