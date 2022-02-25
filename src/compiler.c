@@ -46,13 +46,20 @@ static void eval_primary(struct mtr_primary* expr, struct mtr_chunk* chunk) {
 static void eval_binary(struct mtr_binary* expr, struct mtr_chunk* chunk) {
     evaluate(expr->left, chunk);
     evaluate(expr->right, chunk);
+
     switch (expr->operator.type)
     {
     case MTR_TOKEN_PLUS:
         mtr_write_chunk(chunk, MTR_OP_PLUS_I);
         break;
+    case MTR_TOKEN_MINUS:
+        mtr_write_chunk(chunk, MTR_OP_MINUS_I);
+        break;
     case MTR_TOKEN_STAR:
         mtr_write_chunk(chunk, MTR_OP_MUL_I);
+        break;
+    case MTR_TOKEN_SLASH:
+        mtr_write_chunk(chunk, MTR_OP_DIV_I);
         break;
     default:
         break;
@@ -104,6 +111,7 @@ bool mtr_compile(const char* source) {
     if (!all_ok) {
         return false;
     }
+
     struct mtr_chunk c = emit_bytecode(&package);
 
     mtr_disassemble(c, "main");

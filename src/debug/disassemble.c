@@ -20,6 +20,12 @@ u8* mtr_disassemble_instruction(u8* instruction) {
     case MTR_OP_MUL_I:
         MTR_LOG("MUL");
         break;
+    case MTR_OP_MINUS_I:
+        MTR_LOG("MINUS");
+        break;
+    case MTR_OP_DIV_I:
+        MTR_LOG("DIV");
+        break;
     default:
         break;
     }
