@@ -4,5 +4,6 @@
 #include "bytecode.h"
 
 void mtr_disassemble(struct mtr_chunk chunk, const char* name);
+u8* mtr_disassemble_instruction(u8* instruction);
 
 #endif

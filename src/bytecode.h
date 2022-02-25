@@ -5,6 +5,10 @@
 
 enum mtr_op_code {
     MTR_OP_CONSTANT,
+    MTR_OP_PLUS_I,
+    MTR_OP_MINUS_I,
+    MTR_OP_MUL_I,
+    MTR_OP_DIV_I,
     MTR_OP_RETURN,
 };
 

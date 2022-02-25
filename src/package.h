@@ -11,7 +11,7 @@ struct mtr_package {
 
     struct mtr_chunk* chunks;
 
-    const char* const source;
+    const char* source;
 };
 
 
