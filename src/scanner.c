@@ -31,17 +31,9 @@ static const struct keyword_entry keywords[KEYWORD_COUNT] = {
     { .type = MTR_TOKEN_RETURN, .str = "return", .str_len = strlen("return") },
     { .type = MTR_TOKEN_WHILE,  .str = "while",  .str_len = strlen("while")  },
     { .type = MTR_TOKEN_FOR,    .str = "for",    .str_len = strlen("for")    },
-    { .type = MTR_TOKEN_U8,     .str = "u8",     .str_len = strlen("u8")     },
-    { .type = MTR_TOKEN_U16,    .str = "u16",    .str_len = strlen("u16")    },
-    { .type = MTR_TOKEN_U32,    .str = "u32",    .str_len = strlen("u32")    },
-    { .type = MTR_TOKEN_U64,    .str = "u64",    .str_len = strlen("u64")    },
-    { .type = MTR_TOKEN_I8,     .str = "i8" ,    .str_len = strlen("i8")     },
-    { .type = MTR_TOKEN_I16,    .str = "i16",    .str_len = strlen("i16")    },
-    { .type = MTR_TOKEN_I32,    .str = "i32",    .str_len = strlen("i32")    },
-    { .type = MTR_TOKEN_I64,    .str = "i64",    .str_len = strlen("i64")    },
-    { .type = MTR_TOKEN_F32,    .str = "f32",    .str_len = strlen("f32")    },
-    { .type = MTR_TOKEN_F64,    .str = "f64",    .str_len = strlen("f64")    },
-    { .type = MTR_TOKEN_BOOL,   .str = "bool",   .str_len = strlen("bool")   },
+    { .type = MTR_TOKEN_INT,    .str = "Int",    .str_len = strlen("Int")    },
+    { .type = MTR_TOKEN_FLOAT,  .str = "Float",  .str_len = strlen("Float")  },
+    { .type = MTR_TOKEN_BOOL,   .str = "Bool",   .str_len = strlen("Bool")   },
 };
 
 const struct mtr_token invalid_token = {
@@ -215,7 +207,7 @@ static struct mtr_token scan_string(struct mtr_scanner* scanner) {
     while (*scanner->current != '"')
         advance(scanner);
     advance(scanner); // closing "
-    return make_token(scanner, MTR_TOKEN_STRING);
+    return make_token(scanner, MTR_TOKEN_STRING_LITERAL);
 }
 
 static struct mtr_token scan_number(struct mtr_scanner* scanner) {
@@ -226,10 +218,10 @@ static struct mtr_token scan_number(struct mtr_scanner* scanner) {
         advance(scanner);
         while (is_numeric(*scanner->current))
             advance(scanner);
-        return make_token(scanner, MTR_TOKEN_FLOAT);
+        return make_token(scanner, MTR_TOKEN_FLOAT_LITERAL);
     }
 
-    return make_token(scanner, MTR_TOKEN_INT);
+    return make_token(scanner, MTR_TOKEN_INT_LITERAL);
 }
 
 static bool check_keyword(const char* start, const char* end, const struct keyword_entry k) {
@@ -265,7 +257,7 @@ static struct mtr_token scan_comment(struct mtr_scanner* scanner) {
 void mtr_print_token(struct mtr_token token) {
     const char* type = mtr_token_type_to_str(token.type);
 
-    if (token.type == MTR_TOKEN_IDENTIFIER || token.type == MTR_TOKEN_STRING || token.type == MTR_TOKEN_INT ||token.type == MTR_TOKEN_FLOAT || token.type == MTR_TOKEN_INVALID) {
+    if (token.type == MTR_TOKEN_IDENTIFIER || token.type == MTR_TOKEN_STRING_LITERAL || token.type == MTR_TOKEN_INT_LITERAL ||token.type == MTR_TOKEN_FLOAT_LITERAL || token.type == MTR_TOKEN_INVALID) {
         MTR_LOG_DEBUG("Token: %s, (%.*s)", type, (u32)token.length, token.start);
     } else {
         MTR_LOG_DEBUG("Token: %s", type);
@@ -300,9 +292,9 @@ const char* mtr_token_type_to_str(enum mtr_token_type type) {
     case MTR_TOKEN_GREATER_EQUAL: return ">=";
     case MTR_TOKEN_LESS_EQUAL:    return "<=";
     case MTR_TOKEN_DOUBLE_SLASH:  return "//";
-    case MTR_TOKEN_STRING:        return "STRING";
-    case MTR_TOKEN_INT:           return "INT";
-    case MTR_TOKEN_FLOAT:         return "FLOAT";
+    case MTR_TOKEN_STRING_LITERAL:return "STRING";
+    case MTR_TOKEN_INT_LITERAL:   return "INT";
+    case MTR_TOKEN_FLOAT_LITERAL: return "FLOAT";
     case MTR_TOKEN_AND:           return "&&";
     case MTR_TOKEN_OR:            return "||";
     case MTR_TOKEN_STRUCT:        return "struct";
@@ -314,17 +306,9 @@ const char* mtr_token_type_to_str(enum mtr_token_type type) {
     case MTR_TOKEN_RETURN:        return "return";
     case MTR_TOKEN_WHILE:         return "while";
     case MTR_TOKEN_FOR:           return "for";
-    case MTR_TOKEN_U8:            return "u8";
-    case MTR_TOKEN_U16:           return "u16";
-    case MTR_TOKEN_U32:           return "u32";
-    case MTR_TOKEN_U64:           return "u64";
-    case MTR_TOKEN_I8:            return "i8";
-    case MTR_TOKEN_I16:           return "i16";
-    case MTR_TOKEN_I32:           return "i32";
-    case MTR_TOKEN_I64:           return "i64";
-    case MTR_TOKEN_F32:           return "f32";
-    case MTR_TOKEN_F64:           return "f64";
-    case MTR_TOKEN_BOOL:          return "bool";
+    case MTR_TOKEN_INT:           return "Int";
+    case MTR_TOKEN_FLOAT:         return "Float";
+    case MTR_TOKEN_BOOL:          return "Bool";
     case MTR_TOKEN_IDENTIFIER:    return "IDENTIFIER";
     case MTR_TOKEN_COMMENT:       return "comment";
     case MTR_TOKEN_EOF:           return "EOF";

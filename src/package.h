@@ -10,10 +10,8 @@ struct mtr_package {
     struct mtr_scope globals;
 
     struct mtr_chunk* chunks;
-
     const char* source;
 };
-
 
 struct mtr_package mtr_new_package(const char* const source, struct mtr_ast ast);
 

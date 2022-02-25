@@ -7,19 +7,11 @@
 enum mtr_data_type_e mtr_get_data_type(enum mtr_token_type type) {
     switch (type)
     {
-    case MTR_TOKEN_U8:
-    case MTR_TOKEN_U16:
-    case MTR_TOKEN_U32:
-    case MTR_TOKEN_U64:
-    case MTR_TOKEN_I8:
-    case MTR_TOKEN_I16:
-    case MTR_TOKEN_I32:
-    case MTR_TOKEN_I64:
+    case MTR_TOKEN_INT_LITERAL:
     case MTR_TOKEN_INT:
         return MTR_DATA_INT;
 
-    case MTR_TOKEN_F32:
-    case MTR_TOKEN_F64:
+    case MTR_TOKEN_FLOAT_LITERAL:
     case MTR_TOKEN_FLOAT:
         return MTR_DATA_FLOAT;
 

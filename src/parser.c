@@ -57,7 +57,7 @@ static struct mtr_token consume(struct mtr_parser* parser, enum mtr_token_type t
 }
 
 static struct mtr_token consume_type(struct mtr_parser* parser) {
-    if ((parser->token.type >= MTR_TOKEN_U8 && parser->token.type <= MTR_TOKEN_BOOL))
+    if (CHECK(MTR_TOKEN_INT) || CHECK(MTR_TOKEN_FLOAT) || CHECK(MTR_TOKEN_BOOL))
         return advance(parser);
 
     parser_error(parser, "Expected type.");
@@ -82,16 +82,8 @@ static void synchronize(struct mtr_parser* parser) {
     while (!CHECK(MTR_TOKEN_EOF)) {
         switch (parser->token.type)
         {
-        case MTR_TOKEN_U8:
-        case MTR_TOKEN_U16:
-        case MTR_TOKEN_U32:
-        case MTR_TOKEN_U64:
-        case MTR_TOKEN_I8:
-        case MTR_TOKEN_I16:
-        case MTR_TOKEN_I32:
-        case MTR_TOKEN_I64:
-        case MTR_TOKEN_F32:
-        case MTR_TOKEN_F64:
+        case MTR_TOKEN_INT:
+        case MTR_TOKEN_FLOAT:
         case MTR_TOKEN_BOOL:
         case MTR_TOKEN_FN:
         case MTR_TOKEN_IF:
@@ -163,9 +155,9 @@ static const struct parser_rule rules[] = {
     [MTR_TOKEN_GREATER_EQUAL] = { .prefix = NULL, .infix = binary, .precedence = COMPARISON },
     [MTR_TOKEN_LESS_EQUAL] = { .prefix = NULL, .infix = binary, .precedence = COMPARISON },
     [MTR_TOKEN_DOUBLE_SLASH] = { .prefix = NULL, .infix = binary, .precedence = FACTOR },
-    [MTR_TOKEN_STRING] = { .prefix = primary, .infix = NULL, .precedence = NONE },
-    [MTR_TOKEN_INT] = { .prefix = primary, .infix = NULL, .precedence = NONE },
-    [MTR_TOKEN_FLOAT] = { .prefix = primary, .infix = NULL, .precedence = NONE },
+    [MTR_TOKEN_STRING_LITERAL] = { .prefix = primary, .infix = NULL, .precedence = NONE },
+    [MTR_TOKEN_INT_LITERAL] = { .prefix = primary, .infix = NULL, .precedence = NONE },
+    [MTR_TOKEN_FLOAT_LITERAL] = { .prefix = primary, .infix = NULL, .precedence = NONE },
     [MTR_TOKEN_AND] = { .prefix = NULL, .infix = binary, .precedence = LOGIC },
     [MTR_TOKEN_OR] = { .prefix = NULL, .infix = binary, .precedence = LOGIC },
     [MTR_TOKEN_STRUCT] = { NO_OP },
@@ -177,16 +169,8 @@ static const struct parser_rule rules[] = {
     [MTR_TOKEN_RETURN] = { NO_OP },
     [MTR_TOKEN_WHILE] = { NO_OP },
     [MTR_TOKEN_FOR] = { NO_OP },
-    [MTR_TOKEN_U8] = { NO_OP },
-    [MTR_TOKEN_U16] = { NO_OP },
-    [MTR_TOKEN_U32] = { NO_OP },
-    [MTR_TOKEN_U64] = { NO_OP },
-    [MTR_TOKEN_I8] = { NO_OP },
-    [MTR_TOKEN_I16] = { NO_OP },
-    [MTR_TOKEN_I32] = { NO_OP },
-    [MTR_TOKEN_I64] = { NO_OP },
-    [MTR_TOKEN_F32] = { NO_OP },
-    [MTR_TOKEN_F64] = { NO_OP },
+    [MTR_TOKEN_INT] = { NO_OP },
+    [MTR_TOKEN_FLOAT] = { NO_OP },
     [MTR_TOKEN_BOOL] = { NO_OP },
     [MTR_TOKEN_IDENTIFIER] = { .prefix = primary, .infix = NULL, .precedence = PRIMARY },
     [MTR_TOKEN_COMMENT] = { NO_OP },
@@ -399,16 +383,8 @@ static struct mtr_stmt var_decl(struct mtr_parser* parser) {
 static struct mtr_stmt declaration(struct mtr_parser* parser) {
     switch (parser->token.type)
     {
-    case MTR_TOKEN_U8:
-    case MTR_TOKEN_U16:
-    case MTR_TOKEN_U32:
-    case MTR_TOKEN_U64:
-    case MTR_TOKEN_I8:
-    case MTR_TOKEN_I16:
-    case MTR_TOKEN_I32:
-    case MTR_TOKEN_I64:
-    case MTR_TOKEN_F32:
-    case MTR_TOKEN_F64:
+    case MTR_TOKEN_INT:
+    case MTR_TOKEN_FLOAT:
     case MTR_TOKEN_BOOL:
         return var_decl(parser);
     default:

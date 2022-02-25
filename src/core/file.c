@@ -7,7 +7,7 @@
 
 char* mtr_read_file(const char* filepath) {
 
-    FILE* file = fopen(filepath, "r");
+    FILE* file = fopen(filepath, "rb");
     if (NULL == file) {
         MTR_LOG_ERROR("Unable to open file at %s", filepath);
         return NULL;
