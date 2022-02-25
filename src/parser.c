@@ -436,6 +436,7 @@ struct mtr_ast mtr_parse(struct mtr_parser* parser) {
 
     while (parser->token.type != MTR_TOKEN_EOF) {
         struct mtr_stmt stmt = global_declaration(parser);
+        synchronize(parser);
         mtr_write_stmt(&ast, stmt);
     }
 

@@ -1,4 +1,4 @@
-#include "semantic_analysis.h"
+#include "validator.h"
 
 #include "core/report.h"
 #include "core/log.h"
@@ -22,13 +22,13 @@ static struct mtr_data_type analyze_binary(struct mtr_binary* expr, struct mtr_s
 
     enum mtr_data_type_e e = mtr_get_data_type(expr->operator.type);
 
-    #define CHK(token_type) (expr->operator.type == MTR_TOKEN_ ## token_type)
+#define CHK(token_type) (expr->operator.type == MTR_TOKEN_ ## token_type)
 
     if (CHK(STAR) || CHK(SLASH) || CHK(PLUS) || CHK(MINUS)) {
         e = l.type;
     }
 
-    #undef CHK
+#undef CHK
 
     struct mtr_data_type t = {
         .type = e,
@@ -158,7 +158,6 @@ static bool analyze_if(struct mtr_if* stmt, struct mtr_scope* parent, const char
     bool condition_ok = analyze_expr(stmt->condition, parent, source).type == MTR_DATA_BOOL;
     if (!condition_ok) {
         MTR_LOG_ERROR("Invalid condtion.");
-        return false;
     }
 
     struct mtr_scope then = mtr_new_scope(parent);
@@ -179,7 +178,6 @@ static bool analyze_while(struct mtr_while* stmt, struct mtr_scope* parent, cons
     bool condition_ok = analyze_expr(stmt->condition, parent, source).type == MTR_DATA_BOOL;
     if (!condition_ok) {
         MTR_LOG_ERROR("Invalid condtion.");
-        return false;
     }
 
     struct mtr_scope body = mtr_new_scope(parent);
@@ -208,7 +206,6 @@ static bool analyze(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* 
 static bool global_analysis(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* const source) {
     switch (stmt->type)
     {
-    case MTR_STMT_VAR_DECL: return true; // global vars already added
     case MTR_STMT_FUNC: return analyze_fn((struct mtr_fn_decl*) stmt, scope, source);
     default:
         break;
@@ -220,7 +217,6 @@ static bool global_analysis(struct mtr_stmt* stmt, struct mtr_scope* scope, cons
 static bool load_global(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* const source) {
     switch (stmt->type)
     {
-    case MTR_STMT_VAR_DECL: return load_var((struct mtr_var_decl*) stmt, scope, source);
     case MTR_STMT_FUNC:     return load_fn((struct mtr_fn_decl*) stmt, scope, source);
     default:
         break;
@@ -229,13 +225,8 @@ static bool load_global(struct mtr_stmt* stmt, struct mtr_scope* scope, const ch
     return false;
 }
 
-bool mtr_perform_semantic_analysis(struct mtr_package* package) {
+bool mtr_validate(struct mtr_package* package) {
     bool all_ok = true;
-
-    for (size_t i = 0; i < package->ast.size; ++i) {
-        struct mtr_stmt* global = package->ast.statements + i;
-        all_ok = load_global(global, &package->globals, package->source) && all_ok;
-    }
 
     for (size_t i = 0; i < package->ast.size; ++i) {
         struct mtr_stmt* s = package->ast.statements + i;

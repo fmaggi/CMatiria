@@ -18,7 +18,7 @@ ifeq ($(config), debug)
 	CFLAGS += -g -pg
 	LFLAGS += -pg -g
 else
-	CFLAGS += -DNDEBUG -O2 -m64 -Ofast -ffast-math -flto -mllvm -polly -mllvm -polly-parallel -mllvm -polly-omp-backend=LLVM
+	CFLAGS += -DNDEBUG -O2 -m64 -Ofast -ffast-math -flto
 	LFLAGS += -flto
 endif
 

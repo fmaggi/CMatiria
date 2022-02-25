@@ -30,7 +30,8 @@ extern FILE* mtr_output_file;
 #define MTR_ERROR_PRE MTR_BOLD_DARK(MTR_RED) "Error: " MTR_RESET
 #define MTR_DEBUG_PRE  MTR_BOLD_DARK(MTR_BLUE) "Debug: " MTR_RESET
 
-#define MTR_LOG(...)       (fprintf(mtr_output_file, __VA_ARGS__), putc('\n', mtr_output_file))
+#define MTR_PRINT(...)     (fprintf(mtr_output_file, __VA_ARGS__))
+#define MTR_LOG(...)       (MTR_PRINT(__VA_ARGS__), putc('\n', mtr_output_file))
 
 #define MTR_LOG_INFO(...)  (fprintf(mtr_output_file, (MTR_INFO_PRE) ), MTR_LOG(__VA_ARGS__))
 #define MTR_LOG_TRACE(...) (fprintf(mtr_output_file, (MTR_TRACE_PRE)), MTR_LOG(__VA_ARGS__))

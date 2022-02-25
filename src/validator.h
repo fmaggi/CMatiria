@@ -5,6 +5,6 @@
 
 #include "core/types.h"
 
-bool mtr_perform_semantic_analysis(struct mtr_package* package);
+bool mtr_validate(struct mtr_package* package);
 
 #endif
