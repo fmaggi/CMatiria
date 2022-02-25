@@ -34,6 +34,7 @@ static u64 evaluate(struct mtr_expr* expr) {
 static void write_var(struct mtr_var_decl* var, struct mtr_chunk* chunk) {
     mtr_write_chunk(chunk, MTR_OP_CONSTANT);
     u64 value = evaluate(var->value);
+    // this is definetly dangerous, but fun :). it probably breaks for big endian
     mtr_write_chunk(chunk, (u8) (value >> 0));
     mtr_write_chunk(chunk, (u8) (value >> 8));
     mtr_write_chunk(chunk, (u8) (value >> 16));
