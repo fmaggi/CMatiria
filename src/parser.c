@@ -146,12 +146,12 @@ static const struct parser_rule rules[] = {
     [MTR_TOKEN_CURLY_L] = { NO_OP },
     [MTR_TOKEN_CURLY_R] = { NO_OP },
     [MTR_TOKEN_BANG] = { .prefix = unary, .infix = NULL, .precedence = UNARY },
-    [MTR_TOKEN_EQUAL] = { NO_OP },
+    [MTR_TOKEN_ASSIGN] = { NO_OP },
     [MTR_TOKEN_GREATER] = { .prefix = NULL, .infix = binary, .precedence = COMPARISON },
     [MTR_TOKEN_LESS] = { .prefix = NULL, .infix = binary, .precedence = COMPARISON },
     [MTR_TOKEN_ARROW] = { NO_OP },
     [MTR_TOKEN_BANG_EQUAL] = { .prefix = NULL, .infix = binary, .precedence = EQUALITY },
-    [MTR_TOKEN_EQUAL_EQUAL] = { .prefix = NULL, .infix = binary, .precedence = EQUALITY },
+    [MTR_TOKEN_EQUAL] = { .prefix = NULL, .infix = binary, .precedence = EQUALITY },
     [MTR_TOKEN_GREATER_EQUAL] = { .prefix = NULL, .infix = binary, .precedence = COMPARISON },
     [MTR_TOKEN_LESS_EQUAL] = { .prefix = NULL, .infix = binary, .precedence = COMPARISON },
     [MTR_TOKEN_DOUBLE_SLASH] = { .prefix = NULL, .infix = binary, .precedence = FACTOR },
@@ -297,7 +297,7 @@ static struct mtr_stmt assignment(struct mtr_parser* parser) {
     struct mtr_stmt stmt = allocate_stmt(MTR_STMT_ASSIGNMENT);
     struct mtr_assignment* node = &stmt.assignment;
     node->variable = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected a name.");
-    consume(parser, MTR_TOKEN_EQUAL, "Expected '='.");
+    consume(parser, MTR_TOKEN_ASSIGN, "Expected ':='.");
     node->expression = expression(parser);
     consume(parser, MTR_TOKEN_SEMICOLON, "Expected ';'.");
     return stmt;
@@ -370,12 +370,12 @@ static struct mtr_stmt var_decl(struct mtr_parser* parser) {
     node->symbol.token = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
     node->value = NULL;
 
-    if (CHECK(MTR_TOKEN_EQUAL)) {
+    if (CHECK(MTR_TOKEN_ASSIGN)) {
         advance(parser);
         node->value = expression(parser);
     }
 
-    consume(parser, MTR_TOKEN_SEMICOLON, "Expected ';'.");
+    consume(parser, MTR_TOKEN_SEMICOLON, "Expected ';' or ':='.");
 
     return stmt;
 }

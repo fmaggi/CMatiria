@@ -23,7 +23,7 @@ enum mtr_data_type_e mtr_get_data_type(enum mtr_token_type type) {
     case MTR_TOKEN_LESS_EQUAL:
     case MTR_TOKEN_GREATER:
     case MTR_TOKEN_GREATER_EQUAL:
-    case MTR_TOKEN_EQUAL_EQUAL:
+    case MTR_TOKEN_EQUAL:
     case MTR_TOKEN_BANG_EQUAL:
         return MTR_DATA_BOOL;
 

@@ -86,7 +86,12 @@ struct mtr_token mtr_next_token(struct mtr_scanner* scanner) {
 
     case '%': return make_token(scanner, MTR_TOKEN_PERCENT);
     case ',': return make_token(scanner, MTR_TOKEN_COMMA);
-    case ':': return make_token(scanner, MTR_TOKEN_COLON);
+    case ':':
+        if (current == '=') {
+            advance(scanner);
+            return make_token(scanner, MTR_TOKEN_ASSIGN);
+        }
+        return make_token(scanner, MTR_TOKEN_COLON);
     case ';': return make_token(scanner, MTR_TOKEN_SEMICOLON);
     case '.': return make_token(scanner, MTR_TOKEN_DOT);
     case '(': return make_token(scanner, MTR_TOKEN_PAREN_L);
@@ -105,12 +110,7 @@ struct mtr_token mtr_next_token(struct mtr_scanner* scanner) {
         }
         return make_token(scanner, MTR_TOKEN_BANG);
 
-    case '=':
-        if (current == '=') {
-            advance(scanner);
-            return make_token(scanner, MTR_TOKEN_EQUAL_EQUAL);
-        }
-        return make_token(scanner, MTR_TOKEN_EQUAL);
+    case '=': return make_token(scanner, MTR_TOKEN_EQUAL);
 
     case '>':
         if (current == '=') {
@@ -283,12 +283,12 @@ const char* mtr_token_type_to_str(enum mtr_token_type type) {
     case MTR_TOKEN_CURLY_L:       return "{";
     case MTR_TOKEN_CURLY_R:       return "}";
     case MTR_TOKEN_BANG:          return "!";
-    case MTR_TOKEN_EQUAL:         return "=";
+    case MTR_TOKEN_ASSIGN:        return ":=";
     case MTR_TOKEN_GREATER:       return ">";
     case MTR_TOKEN_LESS:          return "<";
     case MTR_TOKEN_ARROW:         return "->";
     case MTR_TOKEN_BANG_EQUAL:    return "!=";
-    case MTR_TOKEN_EQUAL_EQUAL:   return "==";
+    case MTR_TOKEN_EQUAL:         return "=";
     case MTR_TOKEN_GREATER_EQUAL: return ">=";
     case MTR_TOKEN_LESS_EQUAL:    return "<=";
     case MTR_TOKEN_DOUBLE_SLASH:  return "//";
