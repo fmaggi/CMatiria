@@ -315,8 +315,8 @@ static struct mtr_stmt statement(struct mtr_parser* parser) {
 }
 
 static struct mtr_stmt func_decl(struct mtr_parser* parser) {
-    struct mtr_stmt stmt = allocate_stmt(MTR_STMT_FUNC);
-    struct mtr_fn_decl* node = &stmt.function;
+    struct mtr_stmt stmt = allocate_stmt(MTR_STMT_FN);
+    struct mtr_function* node = &stmt.function;
 
     advance(parser);
 
@@ -324,10 +324,10 @@ static struct mtr_stmt func_decl(struct mtr_parser* parser) {
     consume(parser, MTR_TOKEN_PAREN_L, "Expected '('.");
 
     u32 argc = 0;
-    struct mtr_var_decl vars[255];
+    struct mtr_variable vars[255];
     bool cont = true;
     while (argc < 255 && !CHECK(MTR_TOKEN_PAREN_R) && cont) {
-        struct mtr_var_decl* var = vars + argc++;
+        struct mtr_variable* var = vars + argc++;
         var->symbol.type.type = mtr_get_data_type(consume_type(parser).type);
         var->symbol.token = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
         var->value = NULL;
@@ -347,11 +347,11 @@ static struct mtr_stmt func_decl(struct mtr_parser* parser) {
     node->argv = NULL;
 
     if (argc > 0) {
-        node->argv = malloc(sizeof(struct mtr_var_decl) * argc);
+        node->argv = malloc(sizeof(struct mtr_variable) * argc);
         if (NULL == node->argv)
             MTR_LOG_ERROR("Bad allocation.");
         else
-            memcpy(node->argv, vars, sizeof(struct mtr_var_decl) * argc);
+            memcpy(node->argv, vars, sizeof(struct mtr_variable) * argc);
     }
 
     consume(parser, MTR_TOKEN_ARROW, "Expected '->'.");
@@ -362,9 +362,9 @@ static struct mtr_stmt func_decl(struct mtr_parser* parser) {
     return stmt;
 }
 
-static struct mtr_stmt var_decl(struct mtr_parser* parser) {
-    struct mtr_stmt stmt = allocate_stmt(MTR_STMT_VAR_DECL);
-    struct mtr_var_decl* node = &stmt.variable;
+static struct mtr_stmt variable(struct mtr_parser* parser) {
+    struct mtr_stmt stmt = allocate_stmt(MTR_STMT_VAR);
+    struct mtr_variable* node = &stmt.variable;
 
     node->symbol.type.type = mtr_get_data_type(advance(parser).type); // because we are here we alredy know its a type!
     node->symbol.token = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
@@ -386,7 +386,7 @@ static struct mtr_stmt declaration(struct mtr_parser* parser) {
     case MTR_TOKEN_INT:
     case MTR_TOKEN_FLOAT:
     case MTR_TOKEN_BOOL:
-        return var_decl(parser);
+        return variable(parser);
     default:
         return statement(parser);
     }
@@ -464,7 +464,7 @@ void mtr_delete_ast(struct mtr_ast* ast) {
             mtr_free_expr(s->assignment.expression);
             s->assignment.expression = NULL;
             break;
-        case MTR_STMT_FUNC:
+        case MTR_STMT_FN:
             if (s->function.argc > 0)
                 free(s->function.argv);
             s->function.argv = NULL;
@@ -479,7 +479,7 @@ void mtr_delete_ast(struct mtr_ast* ast) {
             mtr_delete_ast(&s->while_s.body.statements);
             mtr_free_expr(s->while_s.condition);
             break;
-        case MTR_STMT_VAR_DECL:
+        case MTR_STMT_VAR:
             if (s->variable.value)
                 mtr_free_expr(s->variable.value);
             s->variable.value = NULL;
@@ -578,7 +578,7 @@ static void print_block(struct mtr_block* block) {
     }
 }
 
-static void print_var(struct mtr_var_decl* decl) {
+static void print_var(struct mtr_variable* decl) {
     MTR_PRINT_DEBUG("var: %.*s = ", (u32)decl->symbol.token.length, decl->symbol.token.start);
     if (decl->value)
         mtr_print_expr(decl->value);
@@ -603,15 +603,15 @@ static void print_assignment(struct mtr_assignment* decl) {
     mtr_print_expr(decl->expression);
 }
 
-static void print_func(struct mtr_fn_decl* decl) {
+static void print_func(struct mtr_function* decl) {
     MTR_PRINT_DEBUG("function: %.*s(", (u32)decl->symbol.token.length, decl->symbol.token.start);
     if (decl->argc > 0) {
         for (u32 i = 0; i < decl->argc - 1; ++i) {
-            struct mtr_var_decl param = decl->argv[i];
+            struct mtr_variable param = decl->argv[i];
             MTR_PRINT_DEBUG("%.*s, ", (u32)param.symbol.token.length, param.symbol.token.start);
         }
 
-        struct mtr_var_decl param = decl->argv[decl->argc-1];
+        struct mtr_variable param = decl->argv[decl->argc-1];
         MTR_PRINT_DEBUG("%.*s", (u32)param.symbol.token.length, param.symbol.token.start);
     }
 
@@ -622,9 +622,9 @@ static void print_func(struct mtr_fn_decl* decl) {
 static void print_stmt(struct mtr_stmt* decl) {
     switch (decl->type)
     {
-    case MTR_STMT_FUNC:       return print_func((struct mtr_fn_decl*) decl);
+    case MTR_STMT_FN:         return print_func((struct mtr_function*) decl);
     case MTR_STMT_ASSIGNMENT: return print_assignment((struct mtr_assignment*) decl);
-    case MTR_STMT_VAR_DECL:   return print_var((struct mtr_var_decl*) decl);
+    case MTR_STMT_VAR:        return print_var((struct mtr_variable*) decl);
     case MTR_STMT_IF:         return print_if((struct mtr_if*) decl);
     case MTR_STMT_WHILE:      return print_while((struct mtr_while*) decl);
     case MTR_STMT_BLOCK:      return print_block((struct mtr_block*) decl);

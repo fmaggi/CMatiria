@@ -8,8 +8,8 @@
 
 enum mtr_stmt_type {
     MTR_STMT_ASSIGNMENT,
-    MTR_STMT_FUNC,
-    MTR_STMT_VAR_DECL,
+    MTR_STMT_FN,
+    MTR_STMT_VAR,
     MTR_STMT_IF,
     MTR_STMT_WHILE,
     MTR_STMT_BLOCK
@@ -36,15 +36,15 @@ struct mtr_while {
     struct mtr_expr* condition;
 };
 
-struct mtr_var_decl {
+struct mtr_variable {
     struct mtr_symbol symbol;
     struct mtr_expr* value;
 };
 
-struct mtr_fn_decl {
+struct mtr_function {
     struct mtr_block body;
     struct mtr_symbol symbol;
-    struct mtr_var_decl* argv;
+    struct mtr_variable* argv;
     u32 argc;
 };
 
@@ -58,8 +58,8 @@ struct mtr_assignment {
 struct mtr_stmt {
     union {
         struct mtr_assignment assignment;
-        struct mtr_fn_decl function;
-        struct mtr_var_decl variable;
+        struct mtr_function function;
+        struct mtr_variable variable;
         struct mtr_if if_s;
         struct mtr_while while_s;
         struct mtr_block block;

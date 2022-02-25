@@ -76,11 +76,11 @@ static void evaluate(struct mtr_expr* expr, struct mtr_chunk* chunk) {
     }
 }
 
-static void write_var(struct mtr_var_decl* var, struct mtr_chunk* chunk) {
+static void write_var(struct mtr_variable* var, struct mtr_chunk* chunk) {
     evaluate(var->value, chunk);
 }
 
-static void write_function(struct mtr_fn_decl* fn, struct mtr_chunk* chunk) {
+static void write_function(struct mtr_function* fn, struct mtr_chunk* chunk) {
     write_var(&fn->body.statements.statements->variable, chunk);
 }
 

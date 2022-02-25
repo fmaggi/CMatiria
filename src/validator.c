@@ -75,7 +75,7 @@ static struct mtr_data_type analyze_expr(struct mtr_expr* expr, struct mtr_scope
     return invalid_type;
 }
 
-static bool load_fn(struct mtr_fn_decl* stmt, struct mtr_scope* scope, const char* const source) {
+static bool load_fn(struct mtr_function* stmt, struct mtr_scope* scope, const char* const source) {
     struct mtr_symbol* symbol = mtr_scope_find(scope, stmt->symbol);
     if (NULL != symbol) {
         mtr_report_error(stmt->symbol.token, "Redefinition of name.", source);
@@ -87,7 +87,7 @@ static bool load_fn(struct mtr_fn_decl* stmt, struct mtr_scope* scope, const cha
     return true;
 }
 
-static bool load_var(struct mtr_var_decl* stmt, struct mtr_scope* scope, const char* const source) {
+static bool load_var(struct mtr_variable* stmt, struct mtr_scope* scope, const char* const source) {
     struct mtr_symbol* symbol = mtr_scope_find(scope, stmt->symbol);
     if (NULL != symbol) {
         mtr_report_error(stmt->symbol.token, "Redefinition of name.", source);
@@ -112,13 +112,13 @@ static bool analyze_block(struct mtr_block* block, struct mtr_scope* parent, con
     return all_ok;
 }
 
-static bool analyze_fn(struct mtr_fn_decl* stmt, struct mtr_scope* parent, const char* const source) {
+static bool analyze_fn(struct mtr_function* stmt, struct mtr_scope* parent, const char* const source) {
     bool all_ok = true;
 
     struct mtr_scope scope = mtr_new_scope(parent);
 
     for (size_t i = 0; i < stmt->argc; ++i) {
-        struct mtr_var_decl* arg = stmt->argv + i;
+        struct mtr_variable* arg = stmt->argv + i;
         all_ok = load_var(arg, &scope, source) && all_ok;
     }
 
@@ -143,7 +143,7 @@ static bool analyze_assignment(struct mtr_assignment* stmt, struct mtr_scope* pa
     return var_ok && expr.type == s->type.type;
 }
 
-static bool analyze_var_decl(struct mtr_var_decl* decl, struct mtr_scope* parent, const char* const source) {
+static bool analyze_variable(struct mtr_variable* decl, struct mtr_scope* parent, const char* const source) {
     bool expr = true;
     if (decl->value) {
         struct mtr_data_type type = analyze_expr(decl->value, parent, source);
@@ -192,8 +192,8 @@ static bool analyze(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* 
     {
     case MTR_STMT_BLOCK:      return analyze_block((struct mtr_block*) stmt, scope, source);
     case MTR_STMT_ASSIGNMENT: return analyze_assignment((struct mtr_assignment*) stmt, scope, source);
-    case MTR_STMT_FUNC:       return analyze_fn((struct mtr_fn_decl*) stmt, scope, source);
-    case MTR_STMT_VAR_DECL:   return analyze_var_decl((struct mtr_var_decl*) stmt, scope, source);
+    case MTR_STMT_FN:       return analyze_fn((struct mtr_function*) stmt, scope, source);
+    case MTR_STMT_VAR:   return analyze_variable((struct mtr_variable*) stmt, scope, source);
     case MTR_STMT_IF:         return analyze_if((struct mtr_if*) stmt, scope, source);
     case MTR_STMT_WHILE:      return analyze_while((struct mtr_while*) stmt, scope, source);
     default:
@@ -206,7 +206,7 @@ static bool analyze(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* 
 static bool global_analysis(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* const source) {
     switch (stmt->type)
     {
-    case MTR_STMT_FUNC: return analyze_fn((struct mtr_fn_decl*) stmt, scope, source);
+    case MTR_STMT_FN: return analyze_fn((struct mtr_function*) stmt, scope, source);
     default:
         break;
     }
@@ -217,7 +217,7 @@ static bool global_analysis(struct mtr_stmt* stmt, struct mtr_scope* scope, cons
 static bool load_global(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* const source) {
     switch (stmt->type)
     {
-    case MTR_STMT_FUNC:     return load_fn((struct mtr_fn_decl*) stmt, scope, source);
+    case MTR_STMT_FN:     return load_fn((struct mtr_function*) stmt, scope, source);
     default:
         break;
     }
