@@ -27,7 +27,7 @@ static void dump_expr(struct mtr_expr* expr, u32 offset) {
     {
     case MTR_EXPR_PRIMARY: {
         struct mtr_primary* p = (struct mtr_primary*) expr;
-        MTR_PRINT_DEBUG("%.*s", (u32)p->token.length, p->token.start);
+        MTR_PRINT_DEBUG("%.*s", (u32)p->symbol.token.length, p->symbol.token.start);
         break;
     }
     case MTR_EXPR_UNARY: {
@@ -113,7 +113,7 @@ static void dump_while(struct mtr_while* stmt, u32 offset) {
 }
 
 static void dump_assignment(struct mtr_assignment* stmt, u32 offset) {
-    MTR_PRINT_DEBUG("%.*s", (u32)stmt->variable.length, stmt->variable.start);
+    MTR_PRINT_DEBUG("%.*s", (u32)stmt->variable.token.length, stmt->variable.token.start);
     MTR_PRINT_DEBUG(" := ");
     dump_expr(stmt->expression, 0);
     MTR_PRINT_DEBUG(";\n");

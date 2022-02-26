@@ -42,18 +42,22 @@ static struct mtr_data_type analyze_binary(struct mtr_binary* expr, struct mtr_s
 }
 
 static struct mtr_data_type analyze_primary(struct mtr_primary* expr, struct mtr_scope* scope, const char* const source) {
-    if (expr->token.type == MTR_TOKEN_IDENTIFIER) {
-        struct mtr_symbol* s = mtr_scope_find(scope, expr->token);
+    if (expr->symbol.token.type == MTR_TOKEN_IDENTIFIER) {
+        struct mtr_symbol* s = mtr_scope_find(scope, expr->symbol.token);
         if (NULL == s) {
-            mtr_report_error(expr->token, "Undeclared variable.", source);
+            mtr_report_error(expr->symbol.token, "Undeclared variable.", source);
             return invalid_type;
         }
+        expr->symbol.index = s->index;
+        expr->symbol.type = s->type;
         return s->type;
     }
 
+    expr->symbol.type.type = mtr_get_data_type(expr->symbol.token.type);
+
     struct mtr_data_type t = {
         .length = 0,
-        .type = mtr_get_data_type(expr->token.type),
+        .type = expr->symbol.type.type,
         .user_struct = NULL
     };
 
@@ -94,7 +98,7 @@ static bool load_var(struct mtr_variable* stmt, struct mtr_scope* scope, const c
         return false;
     }
 
-    mtr_symbol_table_insert(&scope->symbols, stmt->symbol.token.start, stmt->symbol.token.length, stmt->symbol);
+    mtr_scope_add(scope, stmt->symbol);
     return true;
 }
 
@@ -128,10 +132,10 @@ static bool analyze_fn(struct mtr_function* stmt, struct mtr_scope* parent, cons
 }
 
 static bool analyze_assignment(struct mtr_assignment* stmt, struct mtr_scope* parent, const char* const source) {
-    struct mtr_symbol* s = mtr_scope_find(parent, stmt->variable);
+    struct mtr_symbol* s = mtr_scope_find(parent, stmt->variable.token);
     bool var_ok = true;
     if (NULL == s) {
-        mtr_report_error(stmt->variable, "Undeclared variable.", source);
+        mtr_report_error(stmt->variable.token, "Undeclared variable.", source);
         var_ok = false;
     }
 

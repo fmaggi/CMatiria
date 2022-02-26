@@ -3,17 +3,24 @@
 #include "core/log.h"
 
 u8* mtr_disassemble_instruction(u8* instruction) {
+
+#define READ(type) *((type*)((void*)instruction)); instruction += sizeof(type)
     switch (*instruction++)
     {
     case MTR_OP_RETURN:
         MTR_LOG("RETURN");
         break;
-    case MTR_OP_CONSTANT: {
-            u64 constant = *((u64*)instruction);
-            instruction += 8;
-            MTR_LOG("CONSTANT -> %lu", constant);
-        }
+    case MTR_OP_INT: {
+        u64 constant = READ(u64);
+        MTR_LOG("INT -> %lu", constant);
         break;
+    }
+
+    case MTR_OP_FLOAT: {
+        f64 constant = READ(f64);
+        MTR_LOG("FLOAT -> %f", constant);
+        break;
+    }
 
     case MTR_OP_NIL:
         MTR_LOG("NIL");
@@ -25,19 +32,20 @@ u8* mtr_disassemble_instruction(u8* instruction) {
     case MTR_OP_DIV_I:   MTR_LOG("DIV");   break;
 
     case MTR_OP_GET: {
-        instruction += 2;
-        MTR_LOG("GET");
+        u16 index = READ(u16);
+        MTR_LOG("GET at %u", index);
         break;
     }
     case  MTR_OP_SET: {
-        instruction += 2;
-        MTR_LOG("SET");
+        u16 index = READ(u16);
+        MTR_LOG("SET at %u", index);
         break;
     }
     default:
         break;
     }
     return instruction;
+#undef READ
 }
 
 void mtr_disassemble(struct mtr_chunk chunk, const char* name) {

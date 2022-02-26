@@ -49,7 +49,7 @@ struct mtr_function {
 };
 
 struct mtr_assignment {
-    struct mtr_token variable;
+    struct mtr_symbol variable;
     struct mtr_expr* expression;
 };
 

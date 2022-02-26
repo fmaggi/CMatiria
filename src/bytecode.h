@@ -4,16 +4,22 @@
 #include "core/types.h"
 
 enum mtr_op_code {
-    MTR_OP_CONSTANT,
+    MTR_OP_INT,
+    MTR_OP_FLOAT,
+
     MTR_OP_NIL,
+
     MTR_OP_NOT,
     MTR_OP_NEGATE,
+
     MTR_OP_PLUS_I,
     MTR_OP_MINUS_I,
     MTR_OP_MUL_I,
     MTR_OP_DIV_I,
+
     MTR_OP_GET,
     MTR_OP_SET,
+
     MTR_OP_RETURN,
 };
 

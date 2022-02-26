@@ -2,6 +2,7 @@
 #define _MTR_EXPR_H
 
 #include "token.h"
+#include "symbol.h"
 
 enum mtr_expr_type {
     MTR_EXPR_BINARY,
@@ -22,7 +23,7 @@ struct mtr_unary {
 
 struct mtr_primary {
     struct mtr_expr expr_;
-    struct mtr_token token;
+    struct mtr_symbol symbol;
 };
 
 struct mtr_grouping {

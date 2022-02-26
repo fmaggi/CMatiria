@@ -21,20 +21,30 @@ static u8* execute_instruction(struct mtr_vm* vm, u8* ip) {
         push(vm, res);                                                 \
     } while (false)
 
+#define READ(type) *((type*)((void*)ip)); ip += sizeof(type)
+
     switch (*ip++)
     {
         case MTR_OP_RETURN:
             mtr_print_value(pop(vm));
             break;
-        case MTR_OP_CONSTANT: {
-            const mtr_value constant = MTR_INT_VAL( *((u64*)ip) );
-            ip += 8;
+
+        case MTR_OP_INT: {
+            u64 value = READ(u64);
+            const mtr_value constant = MTR_INT_VAL(value);
+            push(vm, constant);
+            break;
+        }
+
+        case MTR_OP_FLOAT: {
+            f64 value = READ(f64);
+            const mtr_value constant = MTR_FLOAT_VAL(value);
             push(vm, constant);
             break;
         }
 
         case MTR_OP_NIL: {
-            const mtr_value c = { .integer = 0 };
+            const mtr_value c = MTR_INT_VAL(0);
             push(vm, c);
             break;
         }
@@ -45,15 +55,13 @@ static u8* execute_instruction(struct mtr_vm* vm, u8* ip) {
         case MTR_OP_DIV_I:   BINARY_OP(/, integer); break;
 
         case MTR_OP_GET: {
-            u16 index = *((u16*)ip);
-            ip += 2;
+            u16 index = READ(u16);
             push(vm, vm->stack[index]);
             break;
         }
 
         case MTR_OP_SET: {
-            u16 index = *((u16*)ip);
-            ip += 2;
+            u16 index = READ(u16);
             vm->stack[index] = *vm->stack_top;
             break;
         }
@@ -64,6 +72,7 @@ static u8* execute_instruction(struct mtr_vm* vm, u8* ip) {
     return ip;
 
 #undef BINARY_OP
+#undef READ
 }
 
 static bool run(struct mtr_vm* vm) {

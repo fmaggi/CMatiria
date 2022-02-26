@@ -223,7 +223,7 @@ static struct mtr_expr* grouping(struct mtr_parser* parser, struct mtr_token tok
 
 static struct mtr_expr* primary(struct mtr_parser* parser, struct mtr_token primary) {
     struct mtr_primary* node = ALLOCATE_EXPR(MTR_EXPR_PRIMARY, mtr_primary);
-    node->token = primary;
+    node->symbol.token = primary;
     return (struct mtr_expr*) node;
 }
 
@@ -296,7 +296,7 @@ static struct mtr_stmt while_stmt(struct mtr_parser* parser) {
 static struct mtr_stmt assignment(struct mtr_parser* parser) {
     struct mtr_stmt stmt = allocate_stmt(MTR_STMT_ASSIGNMENT);
     struct mtr_assignment* node = &stmt.assignment;
-    node->variable = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected a name.");
+    node->variable.token = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected a name.");
     consume(parser, MTR_TOKEN_ASSIGN, "Expected ':='.");
     node->expression = expression(parser);
     consume(parser, MTR_TOKEN_SEMICOLON, "Expected ';'.");
