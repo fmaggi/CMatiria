@@ -60,7 +60,7 @@ void mtr_disassemble(struct mtr_chunk chunk, const char* name) {
 void mtr_dump_stack(mtr_value* stack, mtr_value* top) {
     MTR_LOG("========== STACK ===========");
     while(stack != top) {
-        MTR_LOG("[%lu]", stack->integer);
+        MTR_LOG("[%f]", stack->floating);
         stack++;
     }
     MTR_LOG("============================");

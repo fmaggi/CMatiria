@@ -95,8 +95,7 @@ static void write_primary(struct mtr_chunk* chunk,struct mtr_primary* expr) {
     case MTR_DATA_FLOAT: {
         mtr_write_chunk(chunk, MTR_OP_FLOAT);
         f64 value = evaluate_float(expr->symbol.token);
-        void* ptr = &value;
-        write_u64(chunk, *((u64*)ptr));
+        write_u64(chunk, *((u64*)((void*)&value)));
         break;
     }
     default:
