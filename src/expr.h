@@ -18,7 +18,7 @@ struct mtr_expr {
 struct mtr_unary {
     struct mtr_expr expr_;
     struct mtr_expr* right;
-    struct mtr_token operator;
+    struct mtr_symbol operator;
 };
 
 struct mtr_primary {
@@ -35,7 +35,7 @@ struct mtr_binary {
     struct mtr_expr expr_;
     struct mtr_expr* right;
     struct mtr_expr* left;
-    struct mtr_token operator;
+    struct mtr_symbol operator;
 };
 
 void mtr_free_expr(struct mtr_expr* node);

@@ -32,7 +32,7 @@ static void dump_expr(struct mtr_expr* expr, u32 offset) {
     }
     case MTR_EXPR_UNARY: {
         struct mtr_unary* u = (struct mtr_unary*) expr;
-        MTR_PRINT_DEBUG("%s", mtr_token_type_to_str(u->operator.type));
+        MTR_PRINT_DEBUG("%s", mtr_token_type_to_str(u->operator.token.type));
         dump_expr(u->right, 0);
         break;
     }
@@ -45,7 +45,7 @@ static void dump_expr(struct mtr_expr* expr, u32 offset) {
     }
     case MTR_EXPR_BINARY: {
         struct mtr_binary* b = (struct mtr_binary*) expr;
-        MTR_PRINT_DEBUG("(%s ", mtr_token_type_to_str(b->operator.type));
+        MTR_PRINT_DEBUG("(%s ", mtr_token_type_to_str(b->operator.token.type));
         dump_expr(b->left, 0);
         MTR_PRINT_DEBUG(" ");
         dump_expr(b->right, 0);

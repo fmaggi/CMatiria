@@ -10,8 +10,6 @@ typedef union {
     char* string;
 } mtr_value;
 
-void mtr_print_value(mtr_value value);
-
 #define MTR_INT_VAL(value)   { .integer = value }
 #define MTR_FLOAT_VAL(value) { .floating = value }
 #define MTR_BOOL_VAL(value)  { .boolean = value }
@@ -19,5 +17,7 @@ void mtr_print_value(mtr_value value);
 #define MTR_AS_INT(value)   value.integer
 #define MTR_AS_FLOAT(value) value.floating
 #define MTR_AS_BOOL(value)  value.boolean
+
+#define MTR_NIL MTR_INT_VAL(0)
 
 #endif

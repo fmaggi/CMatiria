@@ -11,20 +11,20 @@ static const struct mtr_data_type invalid_type = {
     .user_struct = NULL
 };
 
-static struct mtr_data_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* scope, const char* const source);
+static const struct mtr_data_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* scope, const char* const source);
 
 static struct mtr_data_type analyze_binary(struct mtr_binary* expr, struct mtr_scope* scope, const char* const source) {
-    struct mtr_data_type l = analyze_expr(expr->left, scope, source);
-    struct mtr_data_type r = analyze_expr(expr->right, scope, source);
+    const struct mtr_data_type l = analyze_expr(expr->left, scope, source);
+    const struct mtr_data_type r = analyze_expr(expr->right, scope, source);
 
     if (!mtr_data_type_match(l, r)) {
-        mtr_report_error(expr->operator, "Invalid operation between objects of different types.", source);
+        mtr_report_error(expr->operator.token, "Invalid operation between objects of different types.", source);
         return invalid_type;
     }
 
-    enum mtr_data_type_e e = mtr_get_data_type(expr->operator.type);
+    enum mtr_data_type_e e = mtr_get_data_type(expr->operator.token.type);
 
-#define CHK(token_type) (expr->operator.type == MTR_TOKEN_ ## token_type)
+#define CHK(token_type) (expr->operator.token.type == MTR_TOKEN_ ## token_type)
 
     if (CHK(STAR) || CHK(SLASH) || CHK(PLUS) || CHK(MINUS)) {
         e = l.type;
@@ -32,16 +32,18 @@ static struct mtr_data_type analyze_binary(struct mtr_binary* expr, struct mtr_s
 
 #undef CHK
 
-    struct mtr_data_type t = {
+    const struct mtr_data_type t = {
         .type = e,
         .length = l.length,
         .user_struct = l.user_struct
     };
 
+    expr->operator.type = t;
+
     return  t;
 }
 
-static struct mtr_data_type analyze_primary(struct mtr_primary* expr, struct mtr_scope* scope, const char* const source) {
+static const struct mtr_data_type analyze_primary(struct mtr_primary* expr, struct mtr_scope* scope, const char* const source) {
     if (expr->symbol.token.type == MTR_TOKEN_IDENTIFIER) {
         struct mtr_symbol* s = mtr_scope_find(scope, expr->symbol.token);
         if (NULL == s) {
@@ -55,7 +57,7 @@ static struct mtr_data_type analyze_primary(struct mtr_primary* expr, struct mtr
 
     expr->symbol.type.type = mtr_get_data_type(expr->symbol.token.type);
 
-    struct mtr_data_type t = {
+    const struct mtr_data_type t = {
         .length = 0,
         .type = expr->symbol.type.type,
         .user_struct = NULL
@@ -64,12 +66,35 @@ static struct mtr_data_type analyze_primary(struct mtr_primary* expr, struct mtr
     return t;
 }
 
-static struct mtr_data_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* scope, const char* const source) {
+static const struct mtr_data_type analyze_unary(struct mtr_unary* expr, struct mtr_scope* scope, const char* const source) {
+    const struct mtr_data_type r = analyze_expr(expr->right, scope, source);
+    enum mtr_data_type_e e = mtr_get_data_type(expr->operator.token.type);
+
+#define CHK(token_type) (expr->operator.token.type == MTR_TOKEN_ ## token_type)
+
+    if (CHK(STAR) || CHK(SLASH) || CHK(PLUS) || CHK(MINUS)) {
+        e = r.type;
+    }
+
+#undef CHK
+
+    const struct mtr_data_type t = {
+        .type = e,
+        .length = r.length,
+        .user_struct = r.user_struct
+    };
+
+    expr->operator.type = r;
+
+    return  t;
+}
+
+static const struct mtr_data_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* scope, const char* const source) {
     switch (expr->type)
     {
     case MTR_EXPR_BINARY:   return analyze_binary((struct mtr_binary*) expr, scope, source);
     case MTR_EXPR_GROUPING: return analyze_expr(((struct mtr_grouping*) expr)->expression, scope, source);
-    case MTR_EXPR_UNARY:    return analyze_expr(((struct mtr_unary*) expr)->right, scope, source);
+    case MTR_EXPR_UNARY:    return analyze_unary(((struct mtr_unary*) expr), scope, source);
     case MTR_EXPR_PRIMARY:  return analyze_primary((struct mtr_primary*) expr, scope, source);
     default:
         break;
@@ -79,7 +104,7 @@ static struct mtr_data_type analyze_expr(struct mtr_expr* expr, struct mtr_scope
 }
 
 static bool load_fn(struct mtr_function* stmt, struct mtr_scope* scope, const char* const source) {
-    struct mtr_symbol* symbol = mtr_scope_find(scope, stmt->symbol.token);
+    const struct mtr_symbol* symbol = mtr_scope_find(scope, stmt->symbol.token);
     if (NULL != symbol) {
         mtr_report_error(stmt->symbol.token, "Redefinition of name.", source);
         mtr_report_message(symbol->token, "Previuosly defined here.", source);
@@ -91,7 +116,7 @@ static bool load_fn(struct mtr_function* stmt, struct mtr_scope* scope, const ch
 }
 
 static bool load_var(struct mtr_variable* stmt, struct mtr_scope* scope, const char* const source) {
-    struct mtr_symbol* symbol = mtr_scope_find(scope, stmt->symbol.token);
+    const struct mtr_symbol* symbol = mtr_scope_find(scope, stmt->symbol.token);
     if (NULL != symbol) {
         mtr_report_error(stmt->symbol.token, "Redefinition of name.", source);
         mtr_report_message(symbol->token, "Previuosly defined here.", source);
@@ -132,21 +157,21 @@ static bool analyze_fn(struct mtr_function* stmt, struct mtr_scope* parent, cons
 }
 
 static bool analyze_assignment(struct mtr_assignment* stmt, struct mtr_scope* parent, const char* const source) {
-    struct mtr_symbol* s = mtr_scope_find(parent, stmt->variable.token);
+    const struct mtr_symbol* s = mtr_scope_find(parent, stmt->variable.token);
     bool var_ok = true;
     if (NULL == s) {
         mtr_report_error(stmt->variable.token, "Undeclared variable.", source);
         var_ok = false;
     }
 
-    struct mtr_data_type expr = analyze_expr(stmt->expression, parent, source);
-    return var_ok && expr.type == s->type.type;
+    const struct mtr_data_type expr = analyze_expr(stmt->expression, parent, source);
+    return var_ok && mtr_data_type_match(expr, stmt->variable.type);
 }
 
 static bool analyze_variable(struct mtr_variable* decl, struct mtr_scope* parent, const char* const source) {
     bool expr = true;
     if (decl->value) {
-        struct mtr_data_type type = analyze_expr(decl->value, parent, source);
+        const struct mtr_data_type type = analyze_expr(decl->value, parent, source);
         expr = mtr_data_type_match(decl->symbol.type, type);
     }
 

@@ -26,10 +26,15 @@ u8* mtr_disassemble_instruction(u8* instruction) {
         MTR_LOG("NIL");
         break;
 
-    case MTR_OP_PLUS_I:  MTR_LOG("PLUS");  break;
-    case MTR_OP_MUL_I:   MTR_LOG("MUL");   break;
-    case MTR_OP_MINUS_I: MTR_LOG("MINUS"); break;
-    case MTR_OP_DIV_I:   MTR_LOG("DIV");   break;
+    case MTR_OP_ADD_I: MTR_LOG("ADD"); break;
+    case MTR_OP_SUB_I: MTR_LOG("SUB"); break;
+    case MTR_OP_MUL_I: MTR_LOG("MUL"); break;
+    case MTR_OP_DIV_I: MTR_LOG("DIV"); break;
+
+    case MTR_OP_ADD_F: MTR_LOG("fADD"); break;
+    case MTR_OP_SUB_F: MTR_LOG("fSUB"); break;
+    case MTR_OP_MUL_F: MTR_LOG("fMUL"); break;
+    case MTR_OP_DIV_F: MTR_LOG("fDIV"); break;
 
     case MTR_OP_GET: {
         u16 index = READ(u16);

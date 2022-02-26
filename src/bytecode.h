@@ -12,10 +12,15 @@ enum mtr_op_code {
     MTR_OP_NOT,
     MTR_OP_NEGATE,
 
-    MTR_OP_PLUS_I,
-    MTR_OP_MINUS_I,
+    MTR_OP_ADD_I,
+    MTR_OP_SUB_I,
     MTR_OP_MUL_I,
     MTR_OP_DIV_I,
+
+    MTR_OP_ADD_F,
+    MTR_OP_SUB_F,
+    MTR_OP_MUL_F,
+    MTR_OP_DIV_F,
 
     MTR_OP_GET,
     MTR_OP_SET,

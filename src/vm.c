@@ -3,6 +3,14 @@
 #include "core/log.h"
 #include "debug/disassemble.h"
 
+void dump_value(mtr_value value, enum mtr_data_type_e type) {
+    if (type == MTR_DATA_FLOAT) {
+        MTR_LOG_DEBUG("%f", value.floating);
+    } else {
+        MTR_LOG_DEBUG("%li", value.integer);
+    }
+}
+
 static mtr_value pop(struct mtr_vm* vm) {
     return *(--vm->stack_top);
 }
@@ -26,42 +34,47 @@ static u8* execute_instruction(struct mtr_vm* vm, u8* ip) {
     switch (*ip++)
     {
         case MTR_OP_RETURN:
-            mtr_print_value(pop(vm));
+            dump_value(pop(vm), MTR_DATA_FLOAT);
             break;
 
         case MTR_OP_INT: {
-            i64 value = READ(i64);
+            const i64 value = READ(i64);
             const mtr_value constant = MTR_INT_VAL(value);
             push(vm, constant);
             break;
         }
 
         case MTR_OP_FLOAT: {
-            f64 value = READ(f64);
+            const f64 value = READ(f64);
             const mtr_value constant = MTR_FLOAT_VAL(value);
             push(vm, constant);
             break;
         }
 
         case MTR_OP_NIL: {
-            const mtr_value c = MTR_INT_VAL(0);
+            const mtr_value c = MTR_NIL;
             push(vm, c);
             break;
         }
 
-        case MTR_OP_PLUS_I:  BINARY_OP(+, integer); break;
-        case MTR_OP_MINUS_I: BINARY_OP(-, integer); break;
-        case MTR_OP_MUL_I:   BINARY_OP(*, integer); break;
-        case MTR_OP_DIV_I:   BINARY_OP(/, integer); break;
+        case MTR_OP_ADD_I: BINARY_OP(+, integer); break;
+        case MTR_OP_SUB_I: BINARY_OP(-, integer); break;
+        case MTR_OP_MUL_I: BINARY_OP(*, integer); break;
+        case MTR_OP_DIV_I: BINARY_OP(/, integer); break;
+
+        case MTR_OP_ADD_F: BINARY_OP(+, floating); break;
+        case MTR_OP_SUB_F: BINARY_OP(-, floating); break;
+        case MTR_OP_MUL_F: BINARY_OP(*, floating); break;
+        case MTR_OP_DIV_F: BINARY_OP(/, floating); break;
 
         case MTR_OP_GET: {
-            u16 index = READ(u16);
+            const u16 index = READ(u16);
             push(vm, vm->stack[index]);
             break;
         }
 
         case MTR_OP_SET: {
-            u16 index = READ(u16);
+            const u16 index = READ(u16);
             vm->stack[index] = *vm->stack_top;
             break;
         }
@@ -91,8 +104,4 @@ bool mtr_execute(struct mtr_vm* vm, struct mtr_package* package) {
         return false;
     }
     return run(vm);
-}
-
-void mtr_print_value(mtr_value value) {
-    MTR_LOG_DEBUG("%li", value.integer);
 }

@@ -90,14 +90,14 @@ static void write_primary(struct mtr_chunk* chunk,struct mtr_primary* expr) {
     case MTR_DATA_INT: {
         mtr_write_chunk(chunk, MTR_OP_INT);
         u64 value = evaluate_int(expr->symbol.token);
-        write_u64(chunk, AS(i64, value));
+        write_u64(chunk, AS(u64, value));
         break;
     }
 
     case MTR_DATA_FLOAT: {
         mtr_write_chunk(chunk, MTR_OP_FLOAT);
         f64 value = evaluate_float(expr->symbol.token);
-        write_u64(chunk, AS(f64, value));
+        write_u64(chunk, AS(u64, value));
         break;
     }
     default:
@@ -111,19 +111,35 @@ static void write_binary(struct mtr_chunk* chunk, struct mtr_binary* expr) {
     write_expr(chunk, expr->left);
     write_expr(chunk, expr->right);
 
-    switch (expr->operator.type)
+    switch (expr->operator.token.type)
     {
     case MTR_TOKEN_PLUS:
-        mtr_write_chunk(chunk, MTR_OP_PLUS_I);
+        if (expr->operator.type.type == MTR_DATA_INT) {
+            mtr_write_chunk(chunk, MTR_OP_ADD_I);
+        } else {
+            mtr_write_chunk(chunk, MTR_OP_ADD_F);
+        }
         break;
     case MTR_TOKEN_MINUS:
-        mtr_write_chunk(chunk, MTR_OP_MINUS_I);
+        if (expr->operator.type.type == MTR_DATA_INT) {
+            mtr_write_chunk(chunk, MTR_OP_SUB_I);
+        } else {
+            mtr_write_chunk(chunk, MTR_OP_SUB_F);
+        }
         break;
     case MTR_TOKEN_STAR:
-        mtr_write_chunk(chunk, MTR_OP_MUL_I);
+        if (expr->operator.type.type == MTR_DATA_INT) {
+            mtr_write_chunk(chunk, MTR_OP_MUL_I);
+        } else {
+            mtr_write_chunk(chunk, MTR_OP_MUL_F);
+        }
         break;
     case MTR_TOKEN_SLASH:
-        mtr_write_chunk(chunk, MTR_OP_DIV_I);
+        if (expr->operator.type.type == MTR_DATA_INT) {
+            mtr_write_chunk(chunk, MTR_OP_DIV_I);
+        } else {
+            mtr_write_chunk(chunk, MTR_OP_DIV_F);
+        }
         break;
     default:
         break;
@@ -133,7 +149,7 @@ static void write_binary(struct mtr_chunk* chunk, struct mtr_binary* expr) {
 static void write_unary(struct mtr_chunk* chunk, struct mtr_unary* unary) {
     write_expr(chunk, unary->right);
 
-    switch (unary->operator.type)
+    switch (unary->operator.token.type)
     {
     case MTR_TOKEN_BANG:
         mtr_write_chunk(chunk, MTR_OP_NOT);
