@@ -90,7 +90,18 @@ static void write_binary(struct mtr_chunk* chunk, struct mtr_binary* expr, struc
 }
 
 static void write_unary(struct mtr_chunk* chunk, struct mtr_unary* unary, struct mtr_scope* scope) {
-
+    write_expr(chunk, unary->right, scope);
+    switch (unary->operator.type)
+    {
+    case MTR_TOKEN_BANG:
+        mtr_write_chunk(chunk, MTR_OP_NOT);
+        break;
+    case MTR_TOKEN_MINUS:
+        mtr_write_chunk(chunk, MTR_OP_NEGATE);
+        break;
+    default:
+        break;
+    }
 }
 
 static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr, struct mtr_scope* scope) {
