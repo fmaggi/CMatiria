@@ -11,8 +11,8 @@ u8* mtr_disassemble_instruction(u8* instruction) {
         MTR_LOG("RETURN");
         break;
     case MTR_OP_INT: {
-        u64 constant = READ(u64);
-        MTR_LOG("INT -> %lu", constant);
+        i64 constant = READ(i64);
+        MTR_LOG("INT -> %li", constant);
         break;
     }
 

@@ -30,7 +30,7 @@ static u8* execute_instruction(struct mtr_vm* vm, u8* ip) {
             break;
 
         case MTR_OP_INT: {
-            u64 value = READ(u64);
+            i64 value = READ(i64);
             const mtr_value constant = MTR_INT_VAL(value);
             push(vm, constant);
             break;
@@ -94,5 +94,5 @@ bool mtr_execute(struct mtr_vm* vm, struct mtr_package* package) {
 }
 
 void mtr_print_value(mtr_value value) {
-    MTR_LOG_DEBUG("%lu", value.integer);
+    MTR_LOG_DEBUG("%li", value.integer);
 }

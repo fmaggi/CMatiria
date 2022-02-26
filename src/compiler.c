@@ -41,7 +41,7 @@ static f64 evaluate_float(struct mtr_token token) {
 
     u32 i = 1;
     while (c != token.start + token.length) {
-        f64 x = (float)(*c - '0') / (float)(i * 10);
+        f64 x = (f64)(*c - '0') / (f64)(i * 10);
         s += x;
         c++;
         i++;
@@ -83,24 +83,28 @@ static void write_primary(struct mtr_chunk* chunk,struct mtr_primary* expr) {
         return;
     }
 
+    #define AS(type, value) *((type*)((void*)&value))
+
     switch (expr->symbol.type.type)
     {
     case MTR_DATA_INT: {
         mtr_write_chunk(chunk, MTR_OP_INT);
         u64 value = evaluate_int(expr->symbol.token);
-        write_u64(chunk, value);
+        write_u64(chunk, AS(i64, value));
         break;
     }
 
     case MTR_DATA_FLOAT: {
         mtr_write_chunk(chunk, MTR_OP_FLOAT);
         f64 value = evaluate_float(expr->symbol.token);
-        write_u64(chunk, *((u64*)((void*)&value)));
+        write_u64(chunk, AS(f64, value));
         break;
     }
     default:
         break;
     }
+
+    #undef AS
 }
 
 static void write_binary(struct mtr_chunk* chunk, struct mtr_binary* expr) {

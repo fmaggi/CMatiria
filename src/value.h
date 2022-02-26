@@ -4,7 +4,7 @@
 #include "core/types.h"
 
 typedef union {
-    u64 integer;
+    i64 integer;
     f64 floating;
     bool boolean;
     char* string;
