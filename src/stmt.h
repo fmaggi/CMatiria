@@ -71,10 +71,4 @@ struct mtr_ast mtr_new_ast();
 void mtr_write_stmt(struct mtr_ast* ast, struct mtr_stmt declaration);
 void mtr_delete_ast(struct mtr_ast* ast);
 
-#ifndef NDEBUG
-
-void mtr_print_stmt(struct mtr_stmt* decl);
-
-#endif
-
 #endif

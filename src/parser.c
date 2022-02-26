@@ -403,6 +403,8 @@ static struct mtr_stmt global_declaration(struct mtr_parser* parser) {
     exit(-1);
 }
 
+#undef CHECK
+
 // ========================================================================
 
 struct mtr_ast mtr_parse(struct mtr_parser* parser) {
@@ -528,41 +530,3 @@ void mtr_free_expr(struct mtr_expr* node) {
     case MTR_EXPR_UNARY:    return free_unary((struct mtr_unary*) node);
     }
 }
-
-// static void print_if(struct mtr_if* decl) {
-//
-// }
-
-// static void print_while(struct mtr_while* decl) {
-//     MTR_PRINT_DEBUG("while: ");
-//     mtr_print_expr(decl->condition);
-//     print_block(&decl->body);
-// }
-
-// static void print_assignment(struct mtr_assignment* decl) {
-//     MTR_PRINT_DEBUG("%.*s = ", (u32)decl->variable.length, decl->variable.start);
-//     mtr_print_expr(decl->expression);
-// }
-
-
-
-// static void print_stmt(struct mtr_stmt* decl) {
-//     switch (decl->type)
-//     {
-//     case MTR_STMT_FN:         return print_func((struct mtr_function*) decl);
-//     case MTR_STMT_ASSIGNMENT: return print_assignment((struct mtr_assignment*) decl);
-//     case MTR_STMT_VAR:        return print_var((struct mtr_variable*) decl);
-//     case MTR_STMT_IF:         return print_if((struct mtr_if*) decl);
-//     case MTR_STMT_WHILE:      return print_while((struct mtr_while*) decl);
-//     case MTR_STMT_BLOCK:      return print_block((struct mtr_block*) decl);
-//     }
-// }
-
-// void mtr_print_stmt(struct mtr_stmt* decl) {
-//     MTR_LOG_DEBUG("Declaration: ");
-//     print_stmt(decl);
-//     MTR_PRINT_DEBUG("\n");
-// }
-
-
-#undef CHECK
