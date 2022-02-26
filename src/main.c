@@ -7,6 +7,13 @@
 
 #include <stdlib.h>
 
+
+static void print(const char** var) {
+    MTR_LOG_WARN("%s", *var);
+}
+
+#define TRACE __attribute__((cleanup(print))) const char* hello = "hello\0"
+
 int main(int argc, char* argv[])
 {
     char* source = mtr_read_file(argv[1]);

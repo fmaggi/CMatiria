@@ -423,8 +423,6 @@ struct mtr_ast mtr_parse(struct mtr_parser* parser) {
 
 // =======================================================================
 
-#include "core/memory.h"
-
 struct mtr_ast mtr_new_ast() {
     struct mtr_ast ast = {
         .capacity = 8,
@@ -443,7 +441,7 @@ struct mtr_ast mtr_new_ast() {
 void mtr_write_stmt(struct mtr_ast* ast, struct mtr_stmt statement) {
     if (ast->size == ast->capacity) {
         size_t new_cap = ast->capacity * 2;
-        ast->statements = mtr_resize_array(ast->statements, ast->capacity, new_cap, sizeof(struct mtr_stmt));
+        ast->statements = realloc(ast->statements, new_cap);
         if (NULL == ast->statements) {
             ast->capacity = 0;
             return;

@@ -1,7 +1,6 @@
 #include "bytecode.h"
 
 #include "core/log.h"
-#include "core/memory.h"
 
 #include <stdlib.h>
 
@@ -31,7 +30,7 @@ void mtr_delete_chunk(struct mtr_chunk* chunk) {
 void mtr_write_chunk(struct mtr_chunk* chunk, u8 bytecode) {
     if (chunk->size == chunk->capacity) {
         size_t new_cap = chunk->capacity * 2;
-        chunk->bytecode = mtr_resize_array(chunk->bytecode, chunk->capacity, new_cap, sizeof(u8));
+        chunk->bytecode = realloc(chunk->bytecode, new_cap);
         if (NULL == chunk->bytecode) {
             chunk->capacity = 0;
             return;
