@@ -68,25 +68,9 @@ static const struct mtr_data_type analyze_primary(struct mtr_primary* expr, stru
 
 static const struct mtr_data_type analyze_unary(struct mtr_unary* expr, struct mtr_scope* scope, const char* const source) {
     const struct mtr_data_type r = analyze_expr(expr->right, scope, source);
-    enum mtr_data_type_e e = mtr_get_data_type(expr->operator.token.type);
-
-#define CHK(token_type) (expr->operator.token.type == MTR_TOKEN_ ## token_type)
-
-    if (CHK(STAR) || CHK(SLASH) || CHK(PLUS) || CHK(MINUS)) {
-        e = r.type;
-    }
-
-#undef CHK
-
-    const struct mtr_data_type t = {
-        .type = e,
-        .length = r.length,
-        .user_struct = r.user_struct
-    };
-
     expr->operator.type = r;
 
-    return  t;
+    return  r;
 }
 
 static const struct mtr_data_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* scope, const char* const source) {
