@@ -25,12 +25,12 @@ u8* mtr_disassemble_instruction(u8* instruction) {
     case MTR_OP_DIV_I:   MTR_LOG("DIV");   break;
 
     case MTR_OP_GET: {
-        instruction += 8;
+        instruction += 2;
         MTR_LOG("GET");
         break;
     }
     case  MTR_OP_SET: {
-        instruction += 8;
+        instruction += 2;
         MTR_LOG("SET");
         break;
     }

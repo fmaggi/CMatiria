@@ -45,15 +45,15 @@ static u8* execute_instruction(struct mtr_vm* vm, u8* ip) {
         case MTR_OP_DIV_I:   BINARY_OP(/, integer); break;
 
         case MTR_OP_GET: {
-            size_t index = *((size_t*)ip);
-            ip += 8;
+            u16 index = *((u16*)ip);
+            ip += 2;
             push(vm, vm->stack[index]);
             break;
         }
 
         case MTR_OP_SET: {
-            size_t index = *((size_t*)ip);
-            ip += 8;
+            u16 index = *((u16*)ip);
+            ip += 2;
             vm->stack[index] = *vm->stack_top;
             break;
         }

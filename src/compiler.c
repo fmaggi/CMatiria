@@ -31,6 +31,18 @@ static void write_u64(struct mtr_chunk* chunk, u64 value) {
     mtr_write_chunk(chunk, (u8) (value >> 56));
 }
 
+static void write_u32(struct mtr_chunk* chunk, u32 value) {
+    mtr_write_chunk(chunk, (u8) (value >> 0));
+    mtr_write_chunk(chunk, (u8) (value >> 8));
+    mtr_write_chunk(chunk, (u8) (value >> 16));
+    mtr_write_chunk(chunk, (u8) (value >> 24));
+}
+
+static void write_u16(struct mtr_chunk* chunk, u16 value) {
+    mtr_write_chunk(chunk, (u8) (value >> 0));
+    mtr_write_chunk(chunk, (u8) (value >> 8));
+}
+
 static u64 evaluate_int(struct mtr_token token) {
     u64 s = 0;
     for (u32 i = 0; i < token.length; ++i) {
@@ -46,7 +58,7 @@ static void write_primary(struct mtr_chunk* chunk,struct mtr_primary* expr, stru
     if (expr->token.type == MTR_TOKEN_IDENTIFIER) {
         size_t index = mtr_scope_find(scope, expr->token)->index;
         mtr_write_chunk(chunk, MTR_OP_GET);
-        write_u64(chunk, index);
+        write_u16(chunk, index);
     } else {
         mtr_write_chunk(chunk, MTR_OP_CONSTANT);
         u64 value = evaluate_int(expr->token);
@@ -119,7 +131,7 @@ static void write_assignment(struct mtr_chunk* chunk, struct mtr_assignment* stm
     write_expr(chunk, stmt->expression, scope);
     struct mtr_symbol* s = mtr_scope_find(scope, stmt->variable);
     mtr_write_chunk(chunk, MTR_OP_SET);
-    write_u64(chunk, s->index);
+    write_u16(chunk, s->index);
 }
 
 static void write(struct mtr_chunk* chunk, struct mtr_stmt* stmt, struct mtr_scope* scope) {
