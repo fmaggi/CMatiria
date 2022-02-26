@@ -188,8 +188,8 @@ static bool analyze_if(struct mtr_if* stmt, struct mtr_scope* parent, const char
     bool then_ok = analyze_block(&stmt->then, parent, source);
 
     bool e_ok = true;
-    if (stmt->else_b.statements.size > 0) {
-        e_ok = analyze_block(&stmt->else_b, parent, source);
+    if (stmt->otherwise.statements.size > 0) {
+        e_ok = analyze_block(&stmt->otherwise, parent, source);
     }
 
     return condition_ok && then_ok && e_ok;

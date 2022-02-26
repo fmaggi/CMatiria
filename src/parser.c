@@ -269,11 +269,11 @@ static struct mtr_stmt if_stmt(struct mtr_parser* parser) {
         .capacity = 0
     };
 
-    node->else_b.statements = e;
+    node->otherwise.statements = e;
 
     if (CHECK(MTR_TOKEN_ELSE)) {
         advance(parser);
-        node->else_b = block(parser).block;
+        node->otherwise = block(parser).block;
     }
 
     return stmt;
@@ -474,7 +474,7 @@ void mtr_delete_ast(struct mtr_ast* ast) {
             break;
         case MTR_STMT_IF:
             mtr_delete_ast(&s->if_s.then.statements);
-            mtr_delete_ast(&s->if_s.else_b.statements);
+            mtr_delete_ast(&s->if_s.otherwise.statements);
             mtr_free_expr(s->if_s.condition);
             break;
         case MTR_STMT_WHILE:

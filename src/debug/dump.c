@@ -100,7 +100,7 @@ static void dump_if(struct mtr_if* stmt, u32 offset) {
     MTR_PRINT_DEBUG("\n");
     dump_block(&stmt->then, offset + 1);
     MTR_PRINT_DEBUG("else: \n");
-    dump_block(&stmt->else_b, offset + 1);
+    dump_block(&stmt->otherwise, offset + 1);
     MTR_PRINT_DEBUG("\n");
 }
 

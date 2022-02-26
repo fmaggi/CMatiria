@@ -27,7 +27,7 @@ struct mtr_block {
 
 struct mtr_if {
     struct mtr_block then;
-    struct mtr_block else_b;
+    struct mtr_block otherwise;
     struct mtr_expr* condition;
 };
 
