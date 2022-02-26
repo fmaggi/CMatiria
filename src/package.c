@@ -36,3 +36,13 @@ struct mtr_chunk* mtr_package_get_chunk_by_name(struct mtr_package* package, con
     s.token.length = strlen(name);
     return mtr_package_get_chunk(package, s);
 }
+
+void mtr_delete_package(struct mtr_package* package) {
+    for (size_t i = 0; i < package->indices.symbols.size; ++i) {
+        mtr_delete_chunk(package->functions + i);
+    }
+    free(package->functions);
+    package->functions = NULL;
+    mtr_delete_scope(&package->indices);
+    free(package);
+}

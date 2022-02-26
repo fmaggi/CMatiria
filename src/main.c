@@ -15,6 +15,7 @@ int main(int argc, char* argv[])
 
     struct mtr_vm vm;
     mtr_execute(&vm, package);
+    mtr_delete_package(package);
 
     free(source);
 }
