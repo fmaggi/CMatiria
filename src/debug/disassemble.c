@@ -2,9 +2,10 @@
 
 #include "core/log.h"
 
-u8* mtr_disassemble_instruction(u8* instruction) {
-
+u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {
+    MTR_PRINT("%04d ", offset);
 #define READ(type) *((type*)((void*)instruction)); instruction += sizeof(type)
+
     switch (*instruction++)
     {
     case MTR_OP_RETURN:
@@ -18,7 +19,7 @@ u8* mtr_disassemble_instruction(u8* instruction) {
 
     case MTR_OP_FLOAT: {
         f64 constant = READ(f64);
-        MTR_LOG("FLOAT -> %f", constant);
+        MTR_LOG("FLOAT -> %.2f", constant);
         break;
     }
 
@@ -57,16 +58,15 @@ void mtr_disassemble(struct mtr_chunk chunk, const char* name) {
     MTR_LOG("====== %s =======", name);
     u8* instruction = chunk.bytecode;
     while (instruction != chunk.bytecode + chunk.size) {
-        MTR_PRINT("%04d ", (u32) (instruction - chunk.bytecode));
-        instruction = mtr_disassemble_instruction(instruction);
+        instruction = mtr_disassemble_instruction(instruction, instruction - chunk.bytecode);
     }
 }
 
 void mtr_dump_stack(mtr_value* stack, mtr_value* top) {
-    MTR_LOG("========== STACK ===========");
+    MTR_PRINT_DEBUG("[");
     while(stack != top) {
-        MTR_LOG("[%f]", stack->floating);
+        MTR_PRINT_DEBUG("%lu,", stack->integer);
         stack++;
     }
-    MTR_LOG("============================");
+    MTR_LOG("]");
 }

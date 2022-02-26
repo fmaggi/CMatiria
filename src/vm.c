@@ -5,7 +5,7 @@
 
 void dump_value(mtr_value value, enum mtr_data_type_e type) {
     if (type == MTR_DATA_FLOAT) {
-        MTR_LOG_DEBUG("%f", value.floating);
+        MTR_LOG_DEBUG("%.3f", value.floating);
     } else {
         MTR_LOG_DEBUG("%li", value.integer);
     }
@@ -34,7 +34,6 @@ static u8* execute_instruction(struct mtr_vm* vm, u8* ip) {
     switch (*ip++)
     {
         case MTR_OP_RETURN:
-            dump_value(pop(vm), MTR_DATA_FLOAT);
             break;
 
         case MTR_OP_INT: {
@@ -88,16 +87,19 @@ static u8* execute_instruction(struct mtr_vm* vm, u8* ip) {
 #undef READ
 }
 
-static bool run(struct mtr_vm* vm) {
+static i32 run(struct mtr_vm* vm) {
     vm->ip = vm->chunk->bytecode;
     vm->stack_top = vm->stack;
-    while (vm->ip != vm->chunk->bytecode + vm->chunk->size) {
-        vm->ip = execute_instruction(vm, vm->ip);
+    u8* ip = vm->ip;
+    while (ip != vm->chunk->bytecode + vm->chunk->size) {
+        mtr_disassemble_instruction(ip, ip - vm->chunk->bytecode);
+        ip = execute_instruction(vm, ip);
     }
-    return true;
+    vm->ip = ip;
+    return pop(vm).integer;
 }
 
-bool mtr_execute(struct mtr_vm* vm, struct mtr_package* package) {
+i32 mtr_execute(struct mtr_vm* vm, struct mtr_package* package) {
     vm->chunk = mtr_package_get_chunk_by_name(package, "main");
     if (NULL == vm->chunk) {
         MTR_LOG_ERROR("Did not found main.");

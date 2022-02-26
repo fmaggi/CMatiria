@@ -16,6 +16,6 @@ struct mtr_vm {
     u8* ip;
 };
 
-bool mtr_execute(struct mtr_vm* vm, struct mtr_package* package);
+i32 mtr_execute(struct mtr_vm* vm, struct mtr_package* package);
 
 #endif

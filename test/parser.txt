@@ -2,5 +2,6 @@ fn main() -> Int {  # hello
     Float x := 3.0 - 5.0;
     Float y := x * 3.0;
     Float z := (y - x) * 4.0;
+    Int w := 42;
 }
 

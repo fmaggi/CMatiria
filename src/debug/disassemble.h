@@ -5,7 +5,7 @@
 #include "bytecode.h"
 
 void mtr_disassemble(struct mtr_chunk chunk, const char* name);
-u8* mtr_disassemble_instruction(u8* instruction);
+u8* mtr_disassemble_instruction(u8* instruction, u32 offset);
 
 void mtr_dump_stack(mtr_value* stack, mtr_value* top);
 

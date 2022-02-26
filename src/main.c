@@ -3,6 +3,7 @@
 #include "compiler.h"
 #include "vm.h"
 #include "core/file.h"
+#include "core/log.h"
 
 #include <stdlib.h>
 
@@ -14,8 +15,11 @@ int main(int argc, char* argv[])
         return -1;
 
     struct mtr_vm vm;
-    mtr_execute(&vm, package);
-    mtr_delete_package(package);
+    i32 result = mtr_execute(&vm, package);
+    MTR_LOG_DEBUG("%i", result);
 
+    mtr_delete_package(package);
     free(source);
+
+    return result;
 }
