@@ -529,114 +529,40 @@ void mtr_free_expr(struct mtr_expr* node) {
     }
 }
 
-// ======================= DEBUG =========================================
+// static void print_if(struct mtr_if* decl) {
+//
+// }
 
-#ifndef NDEBUG
+// static void print_while(struct mtr_while* decl) {
+//     MTR_PRINT_DEBUG("while: ");
+//     mtr_print_expr(decl->condition);
+//     print_block(&decl->body);
+// }
 
-static void print_expr(struct mtr_expr* parser);
+// static void print_assignment(struct mtr_assignment* decl) {
+//     MTR_PRINT_DEBUG("%.*s = ", (u32)decl->variable.length, decl->variable.start);
+//     mtr_print_expr(decl->expression);
+// }
 
-static void print_primary(struct mtr_primary* node) {
-    MTR_PRINT_DEBUG("%.*s ", (u32)node->token.length, node->token.start);
-}
 
-static void print_unary(struct mtr_unary* node) {
-    // MTR_PRINT_DEBUG("%s", mtr_token_type_to_str(node->operator));
-    print_expr(node->right);
-}
 
-static void print_binary(struct mtr_binary* node) {
-    // MTR_PRINT_DEBUG("(%s ", mtr_token_type_to_str(node->operator));
-    print_expr(node->left);
-    print_expr(node->right);
-    MTR_PRINT_DEBUG(")");
-}
+// static void print_stmt(struct mtr_stmt* decl) {
+//     switch (decl->type)
+//     {
+//     case MTR_STMT_FN:         return print_func((struct mtr_function*) decl);
+//     case MTR_STMT_ASSIGNMENT: return print_assignment((struct mtr_assignment*) decl);
+//     case MTR_STMT_VAR:        return print_var((struct mtr_variable*) decl);
+//     case MTR_STMT_IF:         return print_if((struct mtr_if*) decl);
+//     case MTR_STMT_WHILE:      return print_while((struct mtr_while*) decl);
+//     case MTR_STMT_BLOCK:      return print_block((struct mtr_block*) decl);
+//     }
+// }
 
-static void print_grouping(struct mtr_grouping* node) {
-    print_expr(node->expression);
-}
+// void mtr_print_stmt(struct mtr_stmt* decl) {
+//     MTR_LOG_DEBUG("Declaration: ");
+//     print_stmt(decl);
+//     MTR_PRINT_DEBUG("\n");
+// }
 
-static void print_expr(struct mtr_expr* node) {
-    switch (node->type)
-    {
-    case MTR_EXPR_PRIMARY:  return print_primary((struct mtr_primary*) node);
-    case MTR_EXPR_BINARY:   return print_binary((struct mtr_binary*) node);
-    case MTR_EXPR_GROUPING: return print_grouping((struct mtr_grouping*) node);
-    case MTR_EXPR_UNARY:    return print_unary((struct mtr_unary*) node);
-    }
-}
-
-void mtr_print_expr(struct mtr_expr* node) {
-    print_expr(node);
-    MTR_PRINT_DEBUG("\n");
-}
-
-static void print_stmt(struct mtr_stmt* stmt);
-
-static void print_block(struct mtr_block* block) {
-    for (u32 i = 0; i < block->statements.size; ++i) {
-        print_stmt(block->statements.statements + i);
-    }
-}
-
-static void print_var(struct mtr_variable* decl) {
-    MTR_PRINT_DEBUG("var: %.*s = ", (u32)decl->symbol.token.length, decl->symbol.token.start);
-    if (decl->value)
-        mtr_print_expr(decl->value);
-}
-
-static void print_if(struct mtr_if* decl) {
-    MTR_PRINT_DEBUG("if: ");
-    mtr_print_expr(decl->condition);
-    print_block(&decl->then);
-    MTR_PRINT_DEBUG("else: \n");
-    print_block(&decl->else_b);
-}
-
-static void print_while(struct mtr_while* decl) {
-    MTR_PRINT_DEBUG("while: ");
-    mtr_print_expr(decl->condition);
-    print_block(&decl->body);
-}
-
-static void print_assignment(struct mtr_assignment* decl) {
-    MTR_PRINT_DEBUG("%.*s = ", (u32)decl->variable.length, decl->variable.start);
-    mtr_print_expr(decl->expression);
-}
-
-static void print_func(struct mtr_function* decl) {
-    MTR_PRINT_DEBUG("function: %.*s(", (u32)decl->symbol.token.length, decl->symbol.token.start);
-    if (decl->argc > 0) {
-        for (u32 i = 0; i < decl->argc - 1; ++i) {
-            struct mtr_variable param = decl->argv[i];
-            MTR_PRINT_DEBUG("%.*s, ", (u32)param.symbol.token.length, param.symbol.token.start);
-        }
-
-        struct mtr_variable param = decl->argv[decl->argc-1];
-        MTR_PRINT_DEBUG("%.*s", (u32)param.symbol.token.length, param.symbol.token.start);
-    }
-
-    MTR_PRINT_DEBUG(") -> type\n");
-    print_block(&decl->body);
-}
-
-static void print_stmt(struct mtr_stmt* decl) {
-    switch (decl->type)
-    {
-    case MTR_STMT_FN:         return print_func((struct mtr_function*) decl);
-    case MTR_STMT_ASSIGNMENT: return print_assignment((struct mtr_assignment*) decl);
-    case MTR_STMT_VAR:        return print_var((struct mtr_variable*) decl);
-    case MTR_STMT_IF:         return print_if((struct mtr_if*) decl);
-    case MTR_STMT_WHILE:      return print_while((struct mtr_while*) decl);
-    case MTR_STMT_BLOCK:      return print_block((struct mtr_block*) decl);
-    }
-}
-
-void mtr_print_stmt(struct mtr_stmt* decl) {
-    MTR_LOG_DEBUG("Declaration: ");
-    print_stmt(decl);
-    MTR_PRINT_DEBUG("\n");
-}
-
-#endif
 
 #undef CHECK

@@ -1,12 +1,6 @@
 fn main() -> Int {  # hello
     Int x := 3;
     Int y := x * 3;
-    Int z := y / x;
-
-    {
-        Int w := z + 1;
-    }
-
-    Int w := z + 3;
+    Int z := (y / x) * 4;
 }
 

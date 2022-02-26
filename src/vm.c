@@ -32,6 +32,13 @@ static u8* execute_instruction(struct mtr_vm* vm, u8* ip) {
             push(vm, constant);
             break;
         }
+
+        case MTR_OP_NIL: {
+            const mtr_value c = { .integer = 0 };
+            push(vm, c);
+            break;
+        }
+
         case MTR_OP_PLUS_I:  BINARY_OP(+, integer); break;
         case MTR_OP_MINUS_I: BINARY_OP(-, integer); break;
         case MTR_OP_MUL_I:   BINARY_OP(*, integer); break;
@@ -41,6 +48,13 @@ static u8* execute_instruction(struct mtr_vm* vm, u8* ip) {
             size_t index = *((size_t*)ip);
             ip += 8;
             push(vm, vm->stack[index]);
+            break;
+        }
+
+        case MTR_OP_SET: {
+            size_t index = *((size_t*)ip);
+            ip += 8;
+            vm->stack[index] = *vm->stack_top;
             break;
         }
         default:

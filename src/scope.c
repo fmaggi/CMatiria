@@ -143,11 +143,11 @@ void mtr_delete_scope(struct mtr_scope* scope) {
     mtr_delete_symbol_table(&scope->symbols);
 }
 
-struct mtr_symbol* mtr_scope_find(const struct mtr_scope* scope, struct mtr_symbol symbol) {
-    struct mtr_symbol* s = mtr_symbol_table_get(&scope->symbols, symbol.token.start, symbol.token.length);
+struct mtr_symbol* mtr_scope_find(const struct mtr_scope* scope, struct mtr_token token) {
+    struct mtr_symbol* s = mtr_symbol_table_get(&scope->symbols, token.start, token.length);
     while (NULL == s && NULL != scope->parent) {
         scope = scope->parent;
-        s = mtr_symbol_table_get(&scope->symbols, symbol.token.start, symbol.token.length);
+        s = mtr_symbol_table_get(&scope->symbols, token.start, token.length);
     }
     return s;
 }
@@ -157,18 +157,18 @@ void mtr_scope_add(struct mtr_scope* scope, struct mtr_symbol symbol) {
     mtr_symbol_table_insert(&scope->symbols, symbol.token.start, symbol.token.length, symbol);
 }
 
-#ifndef NDEBUG
+// #ifndef NDEBUG
 
-void mtr_print_scope(const struct mtr_scope* scope) {
-    while (NULL != scope) {
-        for (size_t i = 0; i < scope->symbols.capacity; ++i) {
-            struct symbol_entry* e = scope->symbols.entries + i;
-            if (e->key == NULL || e->key == tombstone)
-                continue;
-            mtr_print_token(e->symbol.token);
-        }
-        scope = scope->parent;
-    }
-}
+// void mtr_print_scope(const struct mtr_scope* scope) {
+//     while (NULL != scope) {
+//         for (size_t i = 0; i < scope->symbols.capacity; ++i) {
+//             struct symbol_entry* e = scope->symbols.entries + i;
+//             if (e->key == NULL || e->key == tombstone)
+//                 continue;
+//             mtr_print_token(e->symbol.token);
+//         }
+//         scope = scope->parent;
+//     }
+// }
 
-#endif
+// #endif

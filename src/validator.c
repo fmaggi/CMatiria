@@ -43,10 +43,7 @@ static struct mtr_data_type analyze_binary(struct mtr_binary* expr, struct mtr_s
 
 static struct mtr_data_type analyze_primary(struct mtr_primary* expr, struct mtr_scope* scope, const char* const source) {
     if (expr->token.type == MTR_TOKEN_IDENTIFIER) {
-        struct mtr_symbol symbol = {
-            .token = expr->token
-        };
-        struct mtr_symbol* s = mtr_scope_find(scope, symbol);
+        struct mtr_symbol* s = mtr_scope_find(scope, expr->token);
         if (NULL == s) {
             mtr_report_error(expr->token, "Undeclared variable.", source);
             return invalid_type;
@@ -78,7 +75,7 @@ static struct mtr_data_type analyze_expr(struct mtr_expr* expr, struct mtr_scope
 }
 
 static bool load_fn(struct mtr_function* stmt, struct mtr_scope* scope, const char* const source) {
-    struct mtr_symbol* symbol = mtr_scope_find(scope, stmt->symbol);
+    struct mtr_symbol* symbol = mtr_scope_find(scope, stmt->symbol.token);
     if (NULL != symbol) {
         mtr_report_error(stmt->symbol.token, "Redefinition of name.", source);
         mtr_report_message(symbol->token, "Previuosly defined here.", source);
@@ -90,7 +87,7 @@ static bool load_fn(struct mtr_function* stmt, struct mtr_scope* scope, const ch
 }
 
 static bool load_var(struct mtr_variable* stmt, struct mtr_scope* scope, const char* const source) {
-    struct mtr_symbol* symbol = mtr_scope_find(scope, stmt->symbol);
+    struct mtr_symbol* symbol = mtr_scope_find(scope, stmt->symbol.token);
     if (NULL != symbol) {
         mtr_report_error(stmt->symbol.token, "Redefinition of name.", source);
         mtr_report_message(symbol->token, "Previuosly defined here.", source);
@@ -131,10 +128,7 @@ static bool analyze_fn(struct mtr_function* stmt, struct mtr_scope* parent, cons
 }
 
 static bool analyze_assignment(struct mtr_assignment* stmt, struct mtr_scope* parent, const char* const source) {
-    struct mtr_symbol symbol = {
-        .token = stmt->variable
-    };
-    struct mtr_symbol* s = mtr_scope_find(parent, symbol);
+    struct mtr_symbol* s = mtr_scope_find(parent, stmt->variable);
     bool var_ok = true;
     if (NULL == s) {
         mtr_report_error(stmt->variable, "Undeclared variable.", source);

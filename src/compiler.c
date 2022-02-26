@@ -12,6 +12,7 @@
 #include "core/log.h"
 
 #include "debug/disassemble.h"
+#include "debug/dump.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -41,11 +42,9 @@ static u64 evaluate_int(struct mtr_token token) {
 
 static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr, struct mtr_scope* scope);
 
-static void write_primary(struct mtr_primary* expr, struct mtr_chunk* chunk, struct mtr_scope* scope) {
+static void write_primary(struct mtr_chunk* chunk,struct mtr_primary* expr, struct mtr_scope* scope) {
     if (expr->token.type == MTR_TOKEN_IDENTIFIER) {
-        struct mtr_symbol s;
-        s.token = expr->token;
-        size_t index = mtr_scope_find(scope, s)->index;
+        size_t index = mtr_scope_find(scope, expr->token)->index;
         mtr_write_chunk(chunk, MTR_OP_GET);
         write_u64(chunk, index);
     } else {
@@ -55,7 +54,7 @@ static void write_primary(struct mtr_primary* expr, struct mtr_chunk* chunk, str
     }
 }
 
-static void write_binary(struct mtr_binary* expr, struct mtr_chunk* chunk, struct mtr_scope* scope) {
+static void write_binary(struct mtr_chunk* chunk, struct mtr_binary* expr, struct mtr_scope* scope) {
     write_expr(chunk, expr->left, scope);
     write_expr(chunk, expr->right, scope);
 
@@ -78,18 +77,28 @@ static void write_binary(struct mtr_binary* expr, struct mtr_chunk* chunk, struc
     }
 }
 
+static void write_unary(struct mtr_chunk* chunk, struct mtr_unary* unary, struct mtr_scope* scope) {
+
+}
+
 static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr, struct mtr_scope* scope) {
     switch (expr->type)
     {
-    case MTR_EXPR_BINARY:  return write_binary((struct mtr_binary*) expr, chunk, scope);
-    case MTR_EXPR_PRIMARY: return write_primary((struct mtr_primary*) expr, chunk, scope);
+    case MTR_EXPR_BINARY:  return write_binary(chunk, (struct mtr_binary*) expr, scope);
+    case MTR_EXPR_PRIMARY: return write_primary(chunk, (struct mtr_primary*) expr, scope);
+    // case MTR_EXPR_UNARY:   return write_unary(chunk, (struct mtr_unary*) expr, scope);
+    case MTR_EXPR_GROUPING: return write_expr(chunk, ((struct mtr_grouping*) expr)->expression, scope);
     default:
         break;
     }
 }
 
 static void write_variable(struct mtr_chunk* chunk, struct mtr_variable* var, struct mtr_scope* scope) {
-    write_expr(chunk, var->value, scope);
+    if (var->value) {
+        write_expr(chunk, var->value, scope);
+    } else {
+        mtr_write_chunk(chunk, MTR_OP_NIL);
+    }
     mtr_scope_add(scope, var->symbol);
 }
 
@@ -106,6 +115,13 @@ static void write_block(struct mtr_chunk* chunk, struct mtr_block* stmt, struct 
     mtr_delete_scope(&scope);
 }
 
+static void write_assignment(struct mtr_chunk* chunk, struct mtr_assignment* stmt, struct mtr_scope* scope) {
+    write_expr(chunk, stmt->expression, scope);
+    struct mtr_symbol* s = mtr_scope_find(scope, stmt->variable);
+    mtr_write_chunk(chunk, MTR_OP_SET);
+    write_u64(chunk, s->index);
+}
+
 static void write(struct mtr_chunk* chunk, struct mtr_stmt* stmt, struct mtr_scope* scope) {
     switch (stmt->type)
     {
@@ -113,7 +129,7 @@ static void write(struct mtr_chunk* chunk, struct mtr_stmt* stmt, struct mtr_sco
     // case MTR_STMT_IF:    return write_if(chunk, (struct mtr_if*) stmt, scope);
     // case MTR_STMT_WHILE: return write_while(chunk, (struct mtr_while*) stmt);
     case MTR_STMT_BLOCK: return write_block(chunk, (struct mtr_block*) stmt, scope);
-    // case MTR_STMT_ASSIGNMENT: return write_assignment(chunk, (struct mtr_assignment*) stmt);
+    case MTR_STMT_ASSIGNMENT: return write_assignment(chunk, (struct mtr_assignment*) stmt, scope);
     default:
         break;
     }

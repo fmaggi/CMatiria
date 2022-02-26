@@ -26,7 +26,7 @@ struct mtr_package* mtr_new_package(const char* const source, struct mtr_ast* as
 }
 
 struct mtr_chunk* mtr_package_get_chunk(struct mtr_package* package, struct mtr_symbol symbol) {
-    const struct mtr_symbol* s = mtr_scope_find(&package->indices, symbol);
+    const struct mtr_symbol* s = mtr_scope_find(&package->indices, symbol.token);
     return package->functions + s->index;
 }
 
