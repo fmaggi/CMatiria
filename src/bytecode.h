@@ -9,6 +9,8 @@ enum mtr_op_code {
     MTR_OP_MINUS_I,
     MTR_OP_MUL_I,
     MTR_OP_DIV_I,
+    MTR_OP_GET,
+    MTR_OP_SET,
     MTR_OP_RETURN,
 };
 

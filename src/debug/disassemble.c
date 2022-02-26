@@ -14,18 +14,16 @@ u8* mtr_disassemble_instruction(u8* instruction) {
             MTR_LOG("CONSTANT -> %lu", constant);
         }
         break;
-    case MTR_OP_PLUS_I:
-        MTR_LOG("PLUS");
+
+    case MTR_OP_PLUS_I:  MTR_LOG("PLUS");  break;
+    case MTR_OP_MUL_I:   MTR_LOG("MUL");   break;
+    case MTR_OP_MINUS_I: MTR_LOG("MINUS"); break;
+    case MTR_OP_DIV_I:   MTR_LOG("DIV");   break;
+    case MTR_OP_GET: {
+        instruction += 8;
+        MTR_LOG("GET");
         break;
-    case MTR_OP_MUL_I:
-        MTR_LOG("MUL");
-        break;
-    case MTR_OP_MINUS_I:
-        MTR_LOG("MINUS");
-        break;
-    case MTR_OP_DIV_I:
-        MTR_LOG("DIV");
-        break;
+    }
     default:
         break;
     }

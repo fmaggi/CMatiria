@@ -19,6 +19,7 @@ void mtr_symbol_table_remove(const struct mtr_symbol_table* table, const char* k
 struct mtr_scope {
     struct mtr_symbol_table symbols;
     struct mtr_scope* parent;
+    size_t current;
 };
 
 struct mtr_scope mtr_new_scope(struct mtr_scope* parent);

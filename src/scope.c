@@ -1,6 +1,7 @@
 #include "scope.h"
 
 #include "core/log.h"
+#include "core/utils.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -19,7 +20,7 @@ struct mtr_symbol_table mtr_new_symbol_table() {
     struct mtr_symbol_table t = {
         .entries = NULL,
         .capacity = 0,
-        .size = 0
+        .size = 0,
     };
 
     void* temp = calloc(8, sizeof(struct symbol_entry));
@@ -39,15 +40,6 @@ void mtr_delete_symbol_table(struct mtr_symbol_table* table) {
     table->size = 0;
     free(table->entries);
     table->entries = NULL;
-}
-
-static u32 hash(const char* key, size_t length) {
-    u32 hash = 2166136261u;
-    for (size_t i = 0; i < length; i++) {
-        hash ^= (u8)key[i];
-        hash *= 16777619;
-    }
-    return hash;
 }
 
 static struct symbol_entry* find_entry(struct symbol_entry* entries, const char* key, size_t length, size_t cap, bool return_tombstone) {
@@ -141,7 +133,8 @@ void mtr_symbol_table_remove(const struct mtr_symbol_table* table, const char* k
 struct mtr_scope mtr_new_scope(struct mtr_scope* parent) {
     struct mtr_scope scope = {
         .parent = parent,
-        .symbols = mtr_new_symbol_table()
+        .symbols = mtr_new_symbol_table(),
+        .current = parent ? parent->current : 0
     };
     return scope;
 }
@@ -160,6 +153,7 @@ struct mtr_symbol* mtr_scope_find(const struct mtr_scope* scope, struct mtr_symb
 }
 
 void mtr_scope_add(struct mtr_scope* scope, struct mtr_symbol symbol) {
+    symbol.index = scope->current++;
     mtr_symbol_table_insert(&scope->symbols, symbol.token.start, symbol.token.length, symbol);
 }
 

@@ -36,6 +36,13 @@ static u8* execute_instruction(struct mtr_vm* vm, u8* ip) {
         case MTR_OP_MINUS_I: BINARY_OP(-, integer); break;
         case MTR_OP_MUL_I:   BINARY_OP(*, integer); break;
         case MTR_OP_DIV_I:   BINARY_OP(/, integer); break;
+
+        case MTR_OP_GET: {
+            size_t index = *((size_t*)ip);
+            ip += 8;
+            push(vm, vm->stack[index]);
+            break;
+        }
         default:
             break;
     }
@@ -45,15 +52,24 @@ static u8* execute_instruction(struct mtr_vm* vm, u8* ip) {
 #undef BINARY_OP
 }
 
-bool mtr_execute(struct mtr_vm* vm, struct mtr_chunk* chunk) {
-    vm->chunk = chunk;
-    vm->ip = chunk->bytecode;
+static bool run(struct mtr_vm* vm) {
+    vm->ip = vm->chunk->bytecode;
     vm->stack_top = vm->stack;
-    while (vm->ip != chunk->bytecode + chunk->size) {
+    while (vm->ip != vm->chunk->bytecode + vm->chunk->size) {
         vm->ip = execute_instruction(vm, vm->ip);
     }
     return true;
 }
+
+bool mtr_execute(struct mtr_vm* vm, struct mtr_package* package) {
+    vm->chunk = mtr_package_get_chunk_by_name(package, "main");
+    if (NULL == vm->chunk) {
+        MTR_LOG_ERROR("Did not found main.");
+        return false;
+    }
+    return run(vm);
+}
+
 
 void mtr_print_value(mtr_value value) {
     MTR_LOG_DEBUG("%lu", value.integer);

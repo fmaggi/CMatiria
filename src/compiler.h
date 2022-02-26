@@ -3,6 +3,6 @@
 
 #include "core/types.h"
 
-bool mtr_compile(const char* filepath);
+struct mtr_package* mtr_compile(const char* filepath);
 
 #endif

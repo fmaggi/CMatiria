@@ -106,10 +106,14 @@ static bool analyze(struct mtr_stmt* stmt, struct mtr_scope* parent, const char*
 static bool analyze_block(struct mtr_block* block, struct mtr_scope* parent, const char* const source) {
     bool all_ok = true;
 
+    struct mtr_scope scope = mtr_new_scope(parent);
+
     for (size_t i = 0; i < block->statements.size; ++i) {
         struct mtr_stmt* s = block->statements.statements + i;
-        all_ok = analyze(s, parent, source) && all_ok;
+        all_ok = analyze(s, &scope, source) && all_ok;
     }
+
+    mtr_delete_scope(&scope);
 
     return all_ok;
 }
@@ -117,16 +121,12 @@ static bool analyze_block(struct mtr_block* block, struct mtr_scope* parent, con
 static bool analyze_fn(struct mtr_function* stmt, struct mtr_scope* parent, const char* const source) {
     bool all_ok = true;
 
-    struct mtr_scope scope = mtr_new_scope(parent);
-
     for (size_t i = 0; i < stmt->argc; ++i) {
         struct mtr_variable* arg = stmt->argv + i;
-        all_ok = load_var(arg, &scope, source) && all_ok;
+        all_ok = load_var(arg, parent, source) && all_ok;
     }
 
-    all_ok = analyze_block(&stmt->body, &scope, source) && all_ok;
-
-    mtr_delete_scope(&scope);
+    all_ok = analyze_block(&stmt->body, parent, source) && all_ok;
     return all_ok;
 }
 
@@ -162,15 +162,11 @@ static bool analyze_if(struct mtr_if* stmt, struct mtr_scope* parent, const char
         MTR_LOG_ERROR("Invalid condtion.");
     }
 
-    struct mtr_scope then = mtr_new_scope(parent);
-    bool then_ok = analyze_block(&stmt->then, &then, source);
-    mtr_delete_scope(&then);
+    bool then_ok = analyze_block(&stmt->then, parent, source);
 
     bool e_ok = true;
     if (stmt->else_b.statements.size > 0) {
-        struct mtr_scope e = mtr_new_scope(parent);
-        e_ok = analyze_block(&stmt->else_b, &e, source);
-        mtr_delete_scope(&e);
+        e_ok = analyze_block(&stmt->else_b, parent, source);
     }
 
     return condition_ok && then_ok && e_ok;
@@ -182,9 +178,7 @@ static bool analyze_while(struct mtr_while* stmt, struct mtr_scope* parent, cons
         MTR_LOG_ERROR("Invalid condtion.");
     }
 
-    struct mtr_scope body = mtr_new_scope(parent);
-    bool body_ok = analyze_block(&stmt->body, &body, source);
-    mtr_delete_scope(&body);
+    bool body_ok = analyze_block(&stmt->body, parent, source);
 
     return condition_ok && body_ok;
 }
@@ -227,18 +221,18 @@ static bool load_global(struct mtr_stmt* stmt, struct mtr_scope* scope, const ch
     return false;
 }
 
-bool mtr_validate(struct mtr_ast ast, const char* const source) {
+bool mtr_validate(struct mtr_ast* ast, const char* const source) {
     bool all_ok = true;
 
     struct mtr_scope global = mtr_new_scope(NULL);
 
-    for (size_t i = 0; i < ast.size; ++i) {
-        struct mtr_stmt* s = ast.statements + i;
+    for (size_t i = 0; i < ast->size; ++i) {
+        struct mtr_stmt* s = ast->statements + i;
         all_ok = load_global(s, &global, source);
     }
 
-    for (size_t i = 0; i < ast.size; ++i) {
-        struct mtr_stmt* s = ast.statements + i;
+    for (size_t i = 0; i < ast->size; ++i) {
+        struct mtr_stmt* s = ast->statements + i;
         all_ok = global_analysis(s, &global, source) && all_ok;
     }
 

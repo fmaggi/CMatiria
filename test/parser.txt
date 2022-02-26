@@ -1,13 +1,12 @@
 fn main() -> Int {  # hello
-    Int x := 10 + 10 * 23 / 10 + 1 - 4;
+    Int x := 3;
+    Int y := x * 3;
+    Int z := y / x;
 
-    if (x = 3) {
-        x := 4;
+    {
+        Int w := z + 1;
     }
 
-    Float test;
+    Int w := z + 3;
 }
 
-fn test() -> Float {
-
-}

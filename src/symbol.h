@@ -25,6 +25,7 @@ bool mtr_data_type_match(struct mtr_data_type lhs, struct mtr_data_type rhs);
 struct mtr_symbol {
     struct mtr_token token;
     struct mtr_data_type type;
+    size_t index;
 };
 
 #endif

@@ -3,6 +3,7 @@
 
 #include "value.h"
 #include "bytecode.h"
+#include "package.h"
 
 #include "core/types.h"
 
@@ -15,6 +16,6 @@ struct mtr_vm {
     u8* ip;
 };
 
-bool mtr_execute(struct mtr_vm* vm, struct mtr_chunk* chunk);
+bool mtr_execute(struct mtr_vm* vm, struct mtr_package* package);
 
 #endif
