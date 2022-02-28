@@ -83,14 +83,14 @@ static void write_primary(struct mtr_chunk* chunk,struct mtr_primary* expr) {
         return;
     }
 
-    #define AS(type, value) *((type*)((void*)&value))
+    #define AS(type, value) *((type*)&value)
 
     switch (expr->symbol.type.type)
     {
     case MTR_DATA_INT: {
         mtr_write_chunk(chunk, MTR_OP_INT);
         u64 value = evaluate_int(expr->symbol.token);
-        write_u64(chunk, AS(u64, value));
+        write_u64(chunk, value);
         break;
     }
 
@@ -214,7 +214,6 @@ static void write_function(struct mtr_package* package, struct mtr_function* fn)
     struct mtr_chunk* chunk = mtr_package_get_chunk(package, fn->symbol);
     write_block(chunk, &fn->body);
     mtr_write_chunk(chunk, MTR_OP_RETURN);
-    mtr_disassemble(*chunk, "main");
 }
 
 static void write_bytecode(struct mtr_package* package, struct mtr_ast ast) {

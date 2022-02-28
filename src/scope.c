@@ -36,27 +36,23 @@ struct mtr_symbol_table mtr_new_symbol_table() {
 }
 
 void mtr_delete_symbol_table(struct mtr_symbol_table* table) {
+    free(table->entries);
     table->capacity = 0;
     table->size = 0;
-    free(table->entries);
     table->entries = NULL;
 }
 
 static struct symbol_entry* find_entry(struct symbol_entry* entries, const char* key, size_t length, size_t cap, bool return_tombstone) {
     u32 hash_ = hash(key, length);
-    u32 start_index = hash_ % cap;
+    u32 index = hash_ % cap;
 
-    u32 index = start_index;
     struct symbol_entry* entry = entries + index;
 
-    while (entry->key != NULL && !((entry->key == tombstone) && return_tombstone)) {
+    while (entry->key != NULL && !(return_tombstone && (entry->key == tombstone))) {
         if (entry->length == length && hash(entry->key, entry->length) == hash_ && memcmp(key, entry->key, entry->length) == 0)
             break;
 
         index = (index + 1) % cap;
-        if (index == start_index)
-            return NULL;
-
         entry = entries + index;
     }
 
@@ -76,7 +72,7 @@ static struct symbol_entry* resize_entries(struct symbol_entry* entries, size_t 
 
     for (size_t i = 0; i < old_cap; ++i) {
         struct symbol_entry* old = entries + i;
-        if (old->key == NULL)
+        if (old->key == NULL || old->key == tombstone)
             continue;
         struct symbol_entry* entry = find_entry(temp, old->key, old->length, new_cap, true);
         entry->key = old->key;

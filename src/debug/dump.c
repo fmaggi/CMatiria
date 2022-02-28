@@ -208,9 +208,7 @@ const char* mtr_data_type_to_str(struct mtr_data_type type) {
 
     static char buf[256];
     memset(buf, 0, 256);
-    if (type.length < 256) {
-        memcpy(buf, type.user_struct, type.length);
-    }
+    memcpy(buf, type.user_struct, type.length < 256 ? type.length : 256);
     return buf;
 }
 

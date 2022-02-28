@@ -2,7 +2,7 @@ CC = clang
 LL = llvm-ar
 
 CFLAGS = -Isrc -Werror -D_FORTIFY_SOURCE=2 -std=c17
-LFLAGS =
+EXEFLAGS =
 
 MATIRIA = matiria
 SRC_DIR = src
@@ -16,19 +16,19 @@ endif
 
 ifeq ($(config), debug)
 	CFLAGS += -g -pg
-	LFLAGS += -pg -g
+	EXEFLAGS += -g -pg
 else
-	CFLAGS += -DNDEBUG -O2 -m64 -Ofast -ffast-math -flto
-	LFLAGS += -flto
+	CFLAGS += -DNDEBUG -m64 -Ofast -ffast-math -flto -O3 -mllvm -polly -mllvm -polly-parallel
+	EXEFLAGS += -flto -lgomp -m64 -Ofast -ffast-math -flto -O3
 endif
 
 $(MATIRIA): $(OBJS)
 	@echo [EXE] $(MATIRIA)
-	@$(CC) -o $@ $^ $(LFLAGS) $(CFLAGS)
+	@$(CC) -o $@ $^ $(EXEFLAGS)
 
 %.o: %.c
 	@echo [CC] $<
-	@$(CC) -o $@ -c $< $(CFLAGS)
+	@$(CC) $(CFLAGS) -o $@ -c $<
 
 clean:
 	@rm $(OBJS) $(MATIRIA)

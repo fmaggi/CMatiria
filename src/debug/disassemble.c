@@ -4,7 +4,7 @@
 
 u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {
     MTR_PRINT("%04d ", offset);
-#define READ(type) *((type*)((void*)instruction)); instruction += sizeof(type)
+#define READ(type) *((type*)instruction); instruction += sizeof(type)
 
     switch (*instruction++)
     {

@@ -5,3 +5,6 @@ fn main() -> Int {  # hello
     Int w := 42;
 }
 
+fn test(Int x) -> Float {
+
+}

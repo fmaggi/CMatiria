@@ -29,7 +29,7 @@ static u8* execute_instruction(struct mtr_vm* vm, u8* ip) {
         push(vm, res);                                                 \
     } while (false)
 
-#define READ(type) *((type*)((void*)ip)); ip += sizeof(type)
+#define READ(type) *((type*)ip); ip += sizeof(type)
 
     switch (*ip++)
     {
