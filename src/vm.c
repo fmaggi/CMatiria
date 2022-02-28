@@ -56,6 +56,27 @@ static u8* execute_instruction(struct mtr_vm* vm, u8* ip) {
             break;
         }
 
+        case MTR_OP_NOT: {
+            const mtr_value value = pop(vm);
+            const mtr_value res = MTR_BOOL_VAL(!value.boolean);
+            push(vm, res);
+            break;
+        }
+
+        case MTR_OP_NEGATE_I: {
+            const mtr_value value = pop(vm);
+            const mtr_value res = MTR_INT_VAL(-value.integer);
+            push(vm, res);
+            break;
+        }
+
+        case MTR_OP_NEGATE_F: {
+            const mtr_value value = pop(vm);
+            const mtr_value res = MTR_FLOAT_VAL(-value.floating);
+            push(vm, res);
+            break;
+        }
+
         case MTR_OP_ADD_I: BINARY_OP(+, integer); break;
         case MTR_OP_SUB_I: BINARY_OP(-, integer); break;
         case MTR_OP_MUL_I: BINARY_OP(*, integer); break;
@@ -96,7 +117,7 @@ static i32 run(struct mtr_vm* vm) {
         ip = execute_instruction(vm, ip);
     }
     vm->ip = ip;
-    return pop(vm).integer;
+    return pop(vm).floating;
 }
 
 i32 mtr_execute(struct mtr_vm* vm, struct mtr_package* package) {

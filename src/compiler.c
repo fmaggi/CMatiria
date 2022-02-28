@@ -17,8 +17,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-FILE* mtr_output_file = NULL;
-
 static u64 evaluate_int(struct mtr_token token) {
     u64 s = 0;
     for (u32 i = 0; i < token.length; ++i) {
@@ -155,7 +153,11 @@ static void write_unary(struct mtr_chunk* chunk, struct mtr_unary* unary) {
         mtr_write_chunk(chunk, MTR_OP_NOT);
         break;
     case MTR_TOKEN_MINUS:
-        mtr_write_chunk(chunk, MTR_OP_NEGATE);
+        if (unary->operator.type.type == MTR_DATA_INT) {
+            mtr_write_chunk(chunk, MTR_OP_NEGATE_I);
+        } else {
+            mtr_write_chunk(chunk, MTR_OP_NEGATE_F);
+        }
         break;
     default:
         break;
@@ -167,7 +169,7 @@ static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr) {
     {
     case MTR_EXPR_BINARY:  return write_binary(chunk, (struct mtr_binary*) expr);
     case MTR_EXPR_PRIMARY: return write_primary(chunk, (struct mtr_primary*) expr);
-    // case MTR_EXPR_UNARY:   return write_unary(chunk, (struct mtr_unary*) expr, scope);
+    case MTR_EXPR_UNARY:   return write_unary(chunk, (struct mtr_unary*) expr);
     case MTR_EXPR_GROUPING: return write_expr(chunk, ((struct mtr_grouping*) expr)->expression);
     default:
         break;
@@ -225,10 +227,6 @@ static void write_bytecode(struct mtr_package* package, struct mtr_ast ast) {
 }
 
 struct mtr_package* mtr_compile(const char* source) {
-    if (NULL == mtr_output_file) {
-        mtr_output_file = stdout;
-    }
-
     struct mtr_scanner scanner = mtr_scanner_init(source);
     struct mtr_parser parser = mtr_parser_init(scanner);
 

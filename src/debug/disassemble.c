@@ -27,6 +27,18 @@ u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {
         MTR_LOG("NIL");
         break;
 
+    case MTR_OP_NOT:
+        MTR_LOG("NOT");
+        break;
+
+    case MTR_OP_NEGATE_I:
+        MTR_LOG("NEG");
+        break;
+
+    case MTR_OP_NEGATE_F:
+        MTR_LOG("fNEG");
+        break;
+
     case MTR_OP_ADD_I: MTR_LOG("ADD"); break;
     case MTR_OP_SUB_I: MTR_LOG("SUB"); break;
     case MTR_OP_MUL_I: MTR_LOG("MUL"); break;

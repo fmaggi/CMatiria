@@ -4,12 +4,44 @@
 
 #include "core/report.h"
 #include "core/log.h"
+#include "debug/dump.h"
 
 static const struct mtr_data_type invalid_type = {
     .length = 0,
     .type = MTR_DATA_INVALID,
     .user_struct = NULL
 };
+
+static struct mtr_data_type get_operator_type(struct mtr_token op, struct mtr_data_type lhs, struct mtr_data_type rhs) {
+    struct mtr_data_type t;
+
+    switch (op.type)
+    {
+    case MTR_TOKEN_BANG:
+    case MTR_TOKEN_EQUAL:
+    case MTR_TOKEN_BANG_EQUAL:
+    case MTR_TOKEN_LESS:
+    case MTR_TOKEN_LESS_EQUAL:
+    case MTR_TOKEN_GREATER:
+    case MTR_TOKEN_GREATER_EQUAL:
+    case MTR_TOKEN_OR:
+    case MTR_TOKEN_AND:
+        t.type = MTR_DATA_BOOL;
+        t.length = 0;
+        t.user_struct = NULL;
+        break;
+    case MTR_TOKEN_PLUS:
+    case MTR_TOKEN_MINUS:
+    case MTR_TOKEN_STAR:
+    case MTR_TOKEN_SLASH:
+        t = lhs;
+        break;
+    default:
+        t.type = MTR_DATA_INVALID;
+        break;
+    }
+    return t;
+}
 
 static const struct mtr_data_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* scope, const char* const source);
 
@@ -22,25 +54,8 @@ static struct mtr_data_type analyze_binary(struct mtr_binary* expr, struct mtr_s
         return invalid_type;
     }
 
-    enum mtr_data_type_e e = mtr_get_data_type(expr->operator.token.type);
-
-#define CHK(token_type) (expr->operator.token.type == MTR_TOKEN_ ## token_type)
-
-    if (CHK(STAR) || CHK(SLASH) || CHK(PLUS) || CHK(MINUS)) {
-        e = l.type;
-    }
-
-#undef CHK
-
-    const struct mtr_data_type t = {
-        .type = e,
-        .length = l.length,
-        .user_struct = l.user_struct
-    };
-
-    expr->operator.type = t;
-
-    return  t;
+    expr->operator.type = get_operator_type(expr->operator.token, l, r);
+    return  expr->operator.type;
 }
 
 static const struct mtr_data_type analyze_primary(struct mtr_primary* expr, struct mtr_scope* scope, const char* const source) {
@@ -68,9 +83,10 @@ static const struct mtr_data_type analyze_primary(struct mtr_primary* expr, stru
 
 static const struct mtr_data_type analyze_unary(struct mtr_unary* expr, struct mtr_scope* scope, const char* const source) {
     const struct mtr_data_type r = analyze_expr(expr->right, scope, source);
-    expr->operator.type = r;
+    struct mtr_data_type dummy;
+    expr->operator.type = get_operator_type(expr->operator.token, r, dummy);
 
-    return  r;
+    return  expr->operator.type;
 }
 
 static const struct mtr_data_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* scope, const char* const source) {
@@ -120,7 +136,8 @@ static bool analyze_block(struct mtr_block* block, struct mtr_scope* parent, con
 
     for (size_t i = 0; i < block->statements.size; ++i) {
         struct mtr_stmt* s = block->statements.statements + i;
-        all_ok = analyze(s, &scope, source) && all_ok;
+        bool s_ok = analyze(s, &scope, source);
+        all_ok = s_ok && all_ok;
     }
 
     mtr_delete_scope(&scope);
@@ -149,7 +166,14 @@ static bool analyze_assignment(struct mtr_assignment* stmt, struct mtr_scope* pa
     }
 
     const struct mtr_data_type expr = analyze_expr(stmt->expression, parent, source);
-    return var_ok && mtr_data_type_match(expr, stmt->variable.type);
+    bool expr_ok = mtr_data_type_match(expr, stmt->variable.type);
+    if (!expr_ok) {
+        mtr_report_error(stmt->variable.token, "Invalid assignement to variable of different type", source);
+    }
+
+    stmt->variable.index = s->index;
+    stmt->variable.type = s->type;
+    return var_ok && expr_ok;
 }
 
 static bool analyze_variable(struct mtr_variable* decl, struct mtr_scope* parent, const char* const source) {
@@ -157,6 +181,9 @@ static bool analyze_variable(struct mtr_variable* decl, struct mtr_scope* parent
     if (decl->value) {
         const struct mtr_data_type type = analyze_expr(decl->value, parent, source);
         expr = mtr_data_type_match(decl->symbol.type, type);
+        if (!expr) {
+            mtr_report_error(decl->symbol.token, "Invalid assignement to variable of different type", source);
+        }
     }
 
     bool loaded = load_var(decl, parent, source);

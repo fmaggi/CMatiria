@@ -10,7 +10,9 @@ enum mtr_op_code {
     MTR_OP_NIL,
 
     MTR_OP_NOT,
-    MTR_OP_NEGATE,
+
+    MTR_OP_NEGATE_I,
+    MTR_OP_NEGATE_F,
 
     MTR_OP_ADD_I,
     MTR_OP_SUB_I,
