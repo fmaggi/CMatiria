@@ -136,9 +136,9 @@ static u8* execute_instruction(struct mtr_vm* vm, u8* ip) {
             break;
         }
 
-        case MTR_OP_END_SCOPE: {
-            const u16 where = READ(u16);
-            vm->stack_top -= where;
+        case MTR_OP_POP_V: {
+            const u16 count = READ(u16);
+            vm->stack_top -= count;
             break;
         }
 

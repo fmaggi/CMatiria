@@ -35,7 +35,7 @@ enum mtr_op_code {
 
     MTR_OP_POP,
 
-    MTR_OP_END_SCOPE,
+    MTR_OP_POP_V,
 
     MTR_OP_RETURN,
 };

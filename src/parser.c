@@ -133,6 +133,8 @@ static struct mtr_expr* unary(struct mtr_parser* parser, struct mtr_token op);
 static struct mtr_expr* binary(struct mtr_parser* parser, struct mtr_token op, struct mtr_expr* left);
 static struct mtr_expr* grouping(struct mtr_parser* parser, struct mtr_token token);
 static struct mtr_expr* primary(struct mtr_parser* parser, struct mtr_token primary);
+static struct mtr_expr* literal(struct mtr_parser* parser, struct mtr_token literal);
+static struct mtr_expr* call(struct mtr_parser* parser, struct mtr_token paren, struct mtr_expr* name);
 
 #define NO_OP .prefix = NULL, .infix = NULL, .precedence = NONE
 
@@ -146,7 +148,7 @@ static const struct parser_rule rules[] = {
     [MTR_TOKEN_COLON] = { .prefix = NULL, .infix = NULL, .precedence = NONE },
     [MTR_TOKEN_SEMICOLON] = { .prefix = NULL, .infix = NULL, .precedence = NONE },
     [MTR_TOKEN_DOT] = { .prefix = NULL, .infix = NULL, .precedence = NONE },
-    [MTR_TOKEN_PAREN_L] = { .prefix = grouping, .infix = NULL, .precedence = NONE },
+    [MTR_TOKEN_PAREN_L] = { .prefix = grouping, .infix = call, .precedence = CALL },
     [MTR_TOKEN_PAREN_R] = { NO_OP },
     [MTR_TOKEN_SQR_L] = { NO_OP },
     [MTR_TOKEN_SQR_R] = { NO_OP },
@@ -162,16 +164,16 @@ static const struct parser_rule rules[] = {
     [MTR_TOKEN_GREATER_EQUAL] = { .prefix = NULL, .infix = binary, .precedence = COMPARISON },
     [MTR_TOKEN_LESS_EQUAL] = { .prefix = NULL, .infix = binary, .precedence = COMPARISON },
     [MTR_TOKEN_DOUBLE_SLASH] = { .prefix = NULL, .infix = binary, .precedence = FACTOR },
-    [MTR_TOKEN_STRING_LITERAL] = { .prefix = primary, .infix = NULL, .precedence = NONE },
-    [MTR_TOKEN_INT_LITERAL] = { .prefix = primary, .infix = NULL, .precedence = NONE },
-    [MTR_TOKEN_FLOAT_LITERAL] = { .prefix = primary, .infix = NULL, .precedence = NONE },
+    [MTR_TOKEN_STRING_LITERAL] = { .prefix = literal, .infix = NULL, .precedence = NONE },
+    [MTR_TOKEN_INT_LITERAL] = { .prefix = literal, .infix = NULL, .precedence = NONE },
+    [MTR_TOKEN_FLOAT_LITERAL] = { .prefix = literal, .infix = NULL, .precedence = NONE },
     [MTR_TOKEN_AND] = { .prefix = NULL, .infix = binary, .precedence = LOGIC },
     [MTR_TOKEN_OR] = { .prefix = NULL, .infix = binary, .precedence = LOGIC },
     [MTR_TOKEN_STRUCT] = { NO_OP },
     [MTR_TOKEN_IF] = { NO_OP },
     [MTR_TOKEN_ELSE] = { NO_OP },
-    [MTR_TOKEN_TRUE] = { .prefix = primary, .infix = NULL, .precedence = NONE },
-    [MTR_TOKEN_FALSE] = { .prefix = primary, .infix = NULL, .precedence = NONE },
+    [MTR_TOKEN_TRUE] = { .prefix = literal, .infix = NULL, .precedence = NONE },
+    [MTR_TOKEN_FALSE] = { .prefix = literal, .infix = NULL, .precedence = NONE },
     [MTR_TOKEN_FN] = { NO_OP },
     [MTR_TOKEN_RETURN] = { NO_OP },
     [MTR_TOKEN_WHILE] = { NO_OP },
@@ -231,6 +233,45 @@ static struct mtr_expr* grouping(struct mtr_parser* parser, struct mtr_token tok
 static struct mtr_expr* primary(struct mtr_parser* parser, struct mtr_token primary) {
     struct mtr_primary* node = ALLOCATE_EXPR(MTR_EXPR_PRIMARY, mtr_primary);
     node->symbol.token = primary;
+    return (struct mtr_expr*) node;
+}
+
+static struct mtr_expr* literal(struct mtr_parser* parser, struct mtr_token literal) {
+    struct mtr_literal* node = ALLOCATE_EXPR(MTR_EXPR_LITERAL, mtr_literal);
+    node->literal = literal;
+    return (struct mtr_expr*) node;
+}
+
+static struct mtr_expr* call(struct mtr_parser* parser, struct mtr_token paren, struct mtr_expr* name) {
+    if (name->type != MTR_EXPR_PRIMARY) {
+        parser_error(parser, "Expression is not callable.");
+        return NULL;
+    }
+    struct mtr_call* node = ALLOCATE_EXPR(MTR_EXPR_CALL, mtr_call);
+    node->symbol = ((struct mtr_primary*) name)->symbol;
+
+    u8 argc = 0;
+    struct mtr_expr* exprs[255];
+    bool cont = true;
+    while (argc < 255 && !CHECK(MTR_TOKEN_PAREN_R) && cont) {
+        exprs[argc++] = expression(parser);
+        if (CHECK(MTR_TOKEN_PAREN_R))
+            break;
+        cont = consume(parser, MTR_TOKEN_COMMA, "Expected ','.").type == MTR_TOKEN_COMMA;
+    }
+
+    // I think this is useless. Either that or error reporting is broken.
+    consume(parser, MTR_TOKEN_PAREN_R, "Expected ')'.");
+
+    node->argc = argc;
+    node->argv = malloc(sizeof(struct mtr_expr*) * argc);
+    if (NULL == node->argv) {
+        MTR_LOG_ERROR("Bad allocation.");
+        free(node);
+        return NULL;
+    }
+    memcpy(node->argv, exprs, sizeof(struct mtr_expr*) * argc);
+
     return (struct mtr_expr*) node;
 }
 
@@ -535,6 +576,19 @@ static void free_unary(struct mtr_unary* node) {
     free(node);
 }
 
+static void free_literal(struct mtr_literal* node) {
+    free(node);
+}
+
+static void free_call(struct mtr_call* node) {
+    if (node->argv) {
+        free(node->argv);
+        node->argv = NULL;
+        node->argc = 0;
+    }
+    free(node);
+}
+
 void mtr_free_expr(struct mtr_expr* node) {
     switch (node->type)
     {
@@ -542,5 +596,7 @@ void mtr_free_expr(struct mtr_expr* node) {
     case MTR_EXPR_GROUPING: return free_grouping((struct mtr_grouping*) node);
     case MTR_EXPR_PRIMARY:  return free_primary((struct mtr_primary*) node);
     case MTR_EXPR_UNARY:    return free_unary((struct mtr_unary*) node);
+    case MTR_EXPR_LITERAL:  return free_literal((struct mtr_literal*) node);
+    case MTR_EXPR_CALL:     return free_call((struct mtr_call*) node);
     }
 }

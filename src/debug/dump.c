@@ -52,6 +52,16 @@ static void dump_expr(struct mtr_expr* expr, u32 offset) {
         MTR_PRINT_DEBUG(")");
         break;
     }
+
+    case MTR_EXPR_CALL: {
+        IMPLEMENT
+        break;
+    }
+
+    case MTR_EXPR_LITERAL: {
+        IMPLEMENT
+        break;
+    }
     }
 }
 

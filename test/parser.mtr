@@ -1,7 +1,7 @@
 fn main() -> Int {
-    Bool x := true;
-    while (x) {
-        x := false;
-    }
-    Int y := 42;
+    Int y := x(3);
+}
+
+fn x(Int y) -> Int {
+
 }

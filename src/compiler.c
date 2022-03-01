@@ -97,33 +97,34 @@ static void write_loop(struct mtr_chunk* chunk, u16 offset) {
 static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr);
 
 static void write_primary(struct mtr_chunk* chunk,struct mtr_primary* expr) {
-    if (expr->symbol.token.type == MTR_TOKEN_IDENTIFIER) {
-        mtr_write_chunk(chunk, MTR_OP_GET);
-        write_u16(chunk, expr->symbol.index);
-        return;
-    }
+    mtr_write_chunk(chunk, MTR_OP_GET);
+    write_u16(chunk, expr->symbol.index);
+}
 
-    if (expr->symbol.token.type == MTR_TOKEN_TRUE) {
-        mtr_write_chunk(chunk, MTR_OP_TRUE);
-        return;
-    } else if (expr->symbol.token.type == MTR_TOKEN_FALSE) {
-        mtr_write_chunk(chunk, MTR_OP_FALSE);
-        return;
-    }
-
-    switch (expr->symbol.type.type)
+static void write_literal(struct mtr_chunk* chunk, struct mtr_literal* expr) {
+    switch (expr->literal.type)
     {
     case MTR_DATA_INT: {
         mtr_write_chunk(chunk, MTR_OP_INT);
-        u64 value = evaluate_int(expr->symbol.token);
+        u64 value = evaluate_int(expr->literal);
         write_u64(chunk, value);
         break;
     }
 
     case MTR_DATA_FLOAT: {
         mtr_write_chunk(chunk, MTR_OP_FLOAT);
-        f64 value = evaluate_float(expr->symbol.token);
+        f64 value = evaluate_float(expr->literal);
         write_u64(chunk, AS(u64, value));
+        break;
+    }
+
+    case MTR_TOKEN_TRUE: {
+        mtr_write_chunk(chunk, MTR_OP_TRUE);
+        break;
+    }
+
+    case MTR_TOKEN_FALSE: {
+        mtr_write_chunk(chunk, MTR_OP_FALSE);
         break;
     }
     default:
@@ -195,8 +196,10 @@ static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr) {
     {
     case MTR_EXPR_BINARY:  return write_binary(chunk, (struct mtr_binary*) expr);
     case MTR_EXPR_PRIMARY: return write_primary(chunk, (struct mtr_primary*) expr);
+    case MTR_EXPR_LITERAL: return write_literal(chunk, (struct mtr_literal*) expr);
     case MTR_EXPR_UNARY:   return write_unary(chunk, (struct mtr_unary*) expr);
     case MTR_EXPR_GROUPING: return write_expr(chunk, ((struct mtr_grouping*) expr)->expression);
+    case MTR_EXPR_CALL: return;
     default:
         break;
     }
@@ -218,7 +221,7 @@ static void write_block(struct mtr_chunk* chunk, struct mtr_block* stmt) {
         write(chunk, s);
     }
 
-    mtr_write_chunk(chunk, MTR_OP_END_SCOPE);
+    mtr_write_chunk(chunk, MTR_OP_POP_V);
     write_u16(chunk, stmt->var_count);
 }
 

@@ -20,7 +20,7 @@ struct mtr_package* mtr_new_package(const char* const source, struct mtr_ast* as
         struct mtr_function* f = (struct mtr_function*) block->statements[i];
         MTR_ASSERT(f->stmt.type == MTR_STMT_FN, "Stmt should be function declaration.");
         f->symbol.index = i;
-        mtr_scope_add(&package->indices, f->symbol);
+        mtr_scope_add(&package->indices, f->symbol, (struct mtr_stmt*) f);
         package->functions[i] = mtr_new_chunk();
     }
 
@@ -28,8 +28,8 @@ struct mtr_package* mtr_new_package(const char* const source, struct mtr_ast* as
 }
 
 struct mtr_chunk* mtr_package_get_chunk(struct mtr_package* package, struct mtr_symbol symbol) {
-    const struct mtr_symbol* s = mtr_scope_find(&package->indices, symbol.token);
-    return package->functions + s->index;
+    const struct mtr_symbol_entry* s = mtr_scope_find(&package->indices, symbol.token);
+    return package->functions + s->symbol.index;
 }
 
 struct mtr_chunk* mtr_package_get_chunk_by_name(struct mtr_package* package, const char* name) {
