@@ -71,14 +71,14 @@ u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {
     }
 
     case MTR_OP_JMP: {
-        u16 to = READ(u16);
-        MTR_LOG("JMP %u", to);
+        i16 to = READ(i16);
+        MTR_LOG("JMP %i", to);
         break;
     }
 
     case MTR_OP_JMP_Z: {
-        u16 to = READ(u16);
-        MTR_LOG("ZJMP %u", to);
+        i16 to = READ(i16);
+        MTR_LOG("ZJMP %i", to);
         break;
     }
 
@@ -110,7 +110,7 @@ void mtr_disassemble(struct mtr_chunk chunk, const char* name) {
 
 void mtr_dump_stack(mtr_value* stack, mtr_value* top) {
     MTR_PRINT_DEBUG("[");
-    while(stack != top) {
+    while(stack < top) {
         MTR_PRINT_DEBUG("%lu,", stack->integer);
         stack++;
     }

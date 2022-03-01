@@ -72,6 +72,8 @@ static void write_u16(struct mtr_chunk* chunk, u16 value) {
     mtr_write_chunk(chunk, (u8) (value >> 8));
 }
 
+#define AS(type, value) *((type*)&value)
+
 // returns the location of where to jump relative to the chunk
 static u16 write_jump(struct mtr_chunk* chunk, u8 instruction) {
     mtr_write_chunk(chunk, instruction);
@@ -84,6 +86,12 @@ static void patch_jump(struct mtr_chunk* chunk, i16 offset) {
     i16 where = chunk->size - offset - 2;
     i16* to_patch = (i16*)(chunk->bytecode + offset);
     *to_patch = where;
+}
+
+static void write_loop(struct mtr_chunk* chunk, u16 offset) {
+    mtr_write_chunk(chunk, MTR_OP_JMP);
+    i16 where = -((chunk->size) - ((offset - 1))) - 2;
+    write_u16(chunk, AS(u16, where));
 }
 
 static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr);
@@ -103,8 +111,6 @@ static void write_primary(struct mtr_chunk* chunk,struct mtr_primary* expr) {
         return;
     }
 
-    #define AS(type, value) *((type*)&value)
-
     switch (expr->symbol.type.type)
     {
     case MTR_DATA_INT: {
@@ -123,8 +129,6 @@ static void write_primary(struct mtr_chunk* chunk,struct mtr_primary* expr) {
     default:
         break;
     }
-
-    #undef AS
 }
 
 static void write_binary(struct mtr_chunk* chunk, struct mtr_binary* expr) {
@@ -243,14 +247,7 @@ static void write_while(struct mtr_chunk* chunk, struct mtr_while* stmt) {
 
     write_block(chunk, &stmt->body);
 
-    mtr_write_chunk(chunk, MTR_OP_JMP);
-    // offset - 1 is the location of MTR_OP_JMP_Z in the chunk
-    //
-    //   || condition || MTR_OP_JMP_Z || jump_to || body ||
-    //                                 ^--- offset
-    //
-    // to check the condition again we need to jump to MTR_OP_JMP_Z
-    write_u16(chunk, offset - 1);
+    write_loop(chunk, offset);
 
     patch_jump(chunk, offset);
     mtr_write_chunk(chunk, MTR_OP_POP);
@@ -288,6 +285,8 @@ static void write_bytecode(struct mtr_package* package, struct mtr_ast ast) {
         write_function(package, (struct mtr_function*) s);
     }
 }
+
+#define AS(type, value) *((type*)&value)
 
 struct mtr_package* mtr_compile(const char* source) {
     struct mtr_scanner scanner = mtr_scanner_init(source);

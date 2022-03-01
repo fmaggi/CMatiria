@@ -47,9 +47,6 @@
 
     #define IMPLEMENT MTR_LOG_WARN("%s function needs to be implemented!", __func__);
 
-    extern void mtr_print_call_stack_entry(const char** name);
-
-    #define MTR_CALL_STACK(func) __attribute__((cleanup(mtr_print_call_stack_entry))) const char* _mtr_private_func_name = #func "\0"
 #else
 
     #define MTR_LOG_DEBUG(...)
@@ -58,8 +55,6 @@
     #define MTR_ASSERT(x, m)
 
     #define IMPLEMENT
-
-    #define MTR_CALL_STACK()
 
 #endif
 
