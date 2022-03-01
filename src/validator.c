@@ -132,7 +132,7 @@ static bool load_var(struct mtr_variable* stmt, struct mtr_scope* scope, const c
 static bool analyze(struct mtr_stmt* stmt, struct mtr_scope* parent, const char* const source);
 
 static bool analyze_block(struct mtr_block* block, struct mtr_scope* parent, const char* const source) {
-    MTR_PROFILE_FUNC();
+
     bool all_ok = true;
 
     struct mtr_scope scope = mtr_new_scope(parent);
@@ -151,9 +151,6 @@ static bool analyze_block(struct mtr_block* block, struct mtr_scope* parent, con
 }
 
 static bool analyze_fn(struct mtr_function* stmt, struct mtr_scope* parent, const char* const source) {
-    MTR_PROFILE_FUNC();
-    mtr_dump_stmt((struct mtr_stmt*) stmt);
-
     bool all_ok = true;
 
     for (size_t i = 0; i < stmt->argc; ++i) {
@@ -167,8 +164,6 @@ static bool analyze_fn(struct mtr_function* stmt, struct mtr_scope* parent, cons
 }
 
 static bool analyze_assignment(struct mtr_assignment* stmt, struct mtr_scope* parent, const char* const source) {
-    MTR_PROFILE_FUNC();
-    mtr_dump_stmt((struct mtr_stmt*) stmt);
     const struct mtr_symbol* s = mtr_scope_find(parent, stmt->variable.token);
     bool var_ok = true;
     if (NULL == s) {
@@ -187,7 +182,7 @@ static bool analyze_assignment(struct mtr_assignment* stmt, struct mtr_scope* pa
 }
 
 static bool analyze_variable(struct mtr_variable* decl, struct mtr_scope* parent, const char* const source) {
-    MTR_PROFILE_FUNC();
+
     mtr_dump_stmt((struct mtr_stmt*) decl);
     bool expr = true;
     if (decl->value) {
@@ -203,7 +198,7 @@ static bool analyze_variable(struct mtr_variable* decl, struct mtr_scope* parent
 }
 
 static bool analyze_if(struct mtr_if* stmt, struct mtr_scope* parent, const char* const source) {
-    MTR_PROFILE_FUNC();
+
     mtr_dump_stmt((struct mtr_stmt*) stmt);
     bool condition_ok = analyze_expr(stmt->condition, parent, source).type == MTR_DATA_BOOL;
     if (!condition_ok) {
@@ -221,7 +216,7 @@ static bool analyze_if(struct mtr_if* stmt, struct mtr_scope* parent, const char
 }
 
 static bool analyze_while(struct mtr_while* stmt, struct mtr_scope* parent, const char* const source) {
-    MTR_PROFILE_FUNC();
+
     mtr_dump_stmt((struct mtr_stmt*) stmt);
     bool condition_ok = analyze_expr(stmt->condition, parent, source).type == MTR_DATA_BOOL;
     if (!condition_ok) {
@@ -234,7 +229,7 @@ static bool analyze_while(struct mtr_while* stmt, struct mtr_scope* parent, cons
 }
 
 static bool analyze(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* const source) {
-    MTR_PROFILE_FUNC();
+
     switch (stmt->type)
     {
     case MTR_STMT_BLOCK:      return analyze_block((struct mtr_block*) stmt, scope, source);
@@ -251,7 +246,7 @@ static bool analyze(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* 
 }
 
 static bool global_analysis(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* const source) {
-    MTR_PROFILE_FUNC();
+
     switch (stmt->type)
     {
     case MTR_STMT_FN: return analyze_fn((struct mtr_function*) stmt, scope, source);
@@ -274,20 +269,22 @@ static bool load_global(struct mtr_stmt* stmt, struct mtr_scope* scope, const ch
 }
 
 bool mtr_validate(struct mtr_ast* ast, const char* const source) {
-    MTR_PROFILE_FUNC();
+
     bool all_ok = true;
 
     struct mtr_scope global = mtr_new_scope(NULL);
 
-    // for (size_t i = 0; i < ; ++i) {
-    //     struct mtr_stmt* s = ast->statements + i;
-    //     all_ok = load_global(s, &global, source);
-    // }
+    struct mtr_block* block = (struct mtr_block*) ast->head;
 
-    // for (size_t i = 0; i < ast->size; ++i) {
-    //     struct mtr_stmt* s = ast->statements + i;
-    //     all_ok = global_analysis(s, &global, source) && all_ok;
-    // }
+    for (size_t i = 0; i < block->size; ++i) {
+        struct mtr_stmt* s = block->statements[i];
+        all_ok = load_global(s, &global, source);
+    }
+
+    for (size_t i = 0; i < block->size; ++i) {
+        struct mtr_stmt* s = block->statements[i];
+        all_ok = global_analysis(s, &global, source) && all_ok;
+    }
 
     mtr_delete_scope(&global);
 

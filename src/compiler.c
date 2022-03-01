@@ -287,11 +287,12 @@ static void write_function(struct mtr_package* package, struct mtr_function* fn)
 }
 
 static void write_bytecode(struct mtr_package* package, struct mtr_ast ast) {
-    // for (size_t i = 0; i < ast.size; ++i) {
-    //     struct mtr_stmt* s = ast.statements + i;
-    //     MTR_ASSERT(s->type == MTR_STMT_FN, "Stmt type should be function.");
-    //     write_function(package, (struct mtr_function*) s);
-    // }
+    struct mtr_block* block = (struct mtr_block*) ast.head;
+    for (size_t i = 0; i < block->size; ++i) {
+        struct mtr_stmt* s = block->statements[i];
+        MTR_ASSERT(s->type == MTR_STMT_FN, "Stmt type should be function.");
+        write_function(package, (struct mtr_function*) s);
+    }
 }
 
 struct mtr_package* mtr_compile(const char* source) {
@@ -299,13 +300,6 @@ struct mtr_package* mtr_compile(const char* source) {
     struct mtr_parser parser = mtr_parser_init(scanner);
 
     struct mtr_ast ast = mtr_parse(&parser);
-
-    mtr_dump_stmt(ast.head);
-
-    // for (size_t i = 0; i < ast.size; ++i) {
-    //     mtr_dump_stmt(ast.statements + i);
-    // }
-    return NULL;
 
     if (parser.had_error){
         return NULL;

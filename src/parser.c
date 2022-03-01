@@ -420,6 +420,11 @@ struct mtr_ast mtr_parse(struct mtr_parser* parser) {
 
 // =======================================================================
 
+void mtr_delete_ast(struct mtr_ast* ast) {
+    delete_block((struct mtr_block*) ast->head);
+    ast->head = NULL;
+}
+
 static void init_block(struct mtr_block* block) {
     void* temp = malloc(sizeof(struct mtr_stmt*) * 8);
     if (NULL == temp) {
