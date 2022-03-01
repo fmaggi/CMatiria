@@ -86,6 +86,12 @@ static void patch_jump(struct mtr_chunk* chunk, i16 offset) {
     *to_patch = where;
 }
 
+static void write_loop(struct mtr_chunk* chunk, u16 offset) {
+    mtr_write_chunk(chunk, MTR_OP_JMP);
+    i16 where = -((chunk->size) - ((offset - 1))) - 2;
+    write_u16(chunk, AS(u16, where));
+}
+
 static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr);
 
 static void write_primary(struct mtr_chunk* chunk,struct mtr_primary* expr) {
