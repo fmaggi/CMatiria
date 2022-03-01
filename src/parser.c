@@ -247,7 +247,6 @@ static struct mtr_stmt* block(struct mtr_parser* parser) {
     init_block(node);
 
     consume(parser, MTR_TOKEN_CURLY_L, "Expected '{'.");
-
     while(!CHECK(MTR_TOKEN_CURLY_R) && !CHECK(MTR_TOKEN_EOF)) {
         struct mtr_stmt* s = declaration(parser);
         synchronize(parser);
