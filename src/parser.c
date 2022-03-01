@@ -9,7 +9,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "debug/dump.h"
+
 #define ALLOCATE_EXPR(type, expr) allocate_expr(type, sizeof(struct expr))
+#define ALLOCATE_STMT(type, stmt) allocate_stmt(type, sizeof(struct stmt))
+
+static void init_block(struct mtr_block* block);
+static void write_block(struct mtr_block* block, struct mtr_stmt* declaration);
+static void delete_block(struct mtr_block* block);
 
 static void* allocate_expr(enum mtr_expr_type type, size_t size) {
     struct mtr_expr* node = malloc(size);
@@ -17,9 +24,9 @@ static void* allocate_expr(enum mtr_expr_type type, size_t size) {
     return node;
 }
 
-static struct mtr_stmt allocate_stmt(enum mtr_stmt_type type) {
-    struct mtr_stmt node;
-    node.type = type;
+static void* allocate_stmt(enum mtr_stmt_type type, size_t size) {
+    struct mtr_stmt* node = malloc(size);
+    node->type = type;
     return node;
 }
 
@@ -233,77 +240,65 @@ static struct mtr_expr* expression(struct mtr_parser* parser) {
 
 // ============================ STMT =====================================
 
-static struct mtr_stmt declaration(struct mtr_parser* parser);
+static struct mtr_stmt* declaration(struct mtr_parser* parser);
 
-static struct mtr_stmt block(struct mtr_parser* parser) {
-    struct mtr_stmt stmt = allocate_stmt(MTR_STMT_BLOCK);
-    struct mtr_block* node = &stmt.block;
-    node->statements = mtr_new_ast();
+static struct mtr_stmt* block(struct mtr_parser* parser) {
+    struct mtr_block* node = ALLOCATE_STMT(MTR_STMT_BLOCK, mtr_block);
+    init_block(node);
 
     consume(parser, MTR_TOKEN_CURLY_L, "Expected '{'.");
-
     while(!CHECK(MTR_TOKEN_CURLY_R) && !CHECK(MTR_TOKEN_EOF)) {
-        struct mtr_stmt s = declaration(parser);
+        struct mtr_stmt* s = declaration(parser);
         synchronize(parser);
-        mtr_write_stmt(&node->statements, s);
+        write_block(node, s);
     }
 
     consume(parser, MTR_TOKEN_CURLY_R, "Expected '}'.");
-    return stmt;
+    return (struct mtr_stmt*) node;
 }
 
-static struct mtr_stmt if_stmt(struct mtr_parser* parser) {
-    struct mtr_stmt stmt = allocate_stmt(MTR_STMT_IF);
-    struct mtr_if* node = &stmt.if_s;
+static struct mtr_stmt* if_stmt(struct mtr_parser* parser) {
+    struct mtr_if* node = ALLOCATE_STMT(MTR_STMT_IF, mtr_if);
 
     advance(parser);
     consume(parser, MTR_TOKEN_PAREN_L, "Expected '('.");
     node->condition = expression(parser);
     consume(parser, MTR_TOKEN_PAREN_R, "Expected ')'.");
 
-    node->then = block(parser).block;
-
-    struct mtr_ast e = {
-        .statements = NULL,
-        .size = 0,
-        .capacity = 0
-    };
-
-    node->otherwise.statements = e;
+    node->then = (struct mtr_block*) block(parser);
+    node->otherwise = NULL;
 
     if (CHECK(MTR_TOKEN_ELSE)) {
         advance(parser);
-        node->otherwise = block(parser).block;
+        node->otherwise = (struct mtr_block*) block(parser);
     }
 
-    return stmt;
+    return (struct mtr_stmt*) node;
 }
 
-static struct mtr_stmt while_stmt(struct mtr_parser* parser) {
-    struct mtr_stmt stmt = allocate_stmt(MTR_STMT_WHILE);
-    struct mtr_while* node = &stmt.while_s;
+static struct mtr_stmt* while_stmt(struct mtr_parser* parser) {
+    struct mtr_while* node = ALLOCATE_STMT(MTR_STMT_WHILE, mtr_while);
 
     advance(parser);
     consume(parser, MTR_TOKEN_PAREN_L, "Expected '('.");
     node->condition = expression(parser);
     consume(parser, MTR_TOKEN_PAREN_R, "Expected ')'.");
 
-    node->body = block(parser).block;
+    node->body = (struct mtr_block*) block(parser);
 
-    return stmt;
+    return (struct mtr_stmt*) node;
 }
 
-static struct mtr_stmt assignment(struct mtr_parser* parser) {
-    struct mtr_stmt stmt = allocate_stmt(MTR_STMT_ASSIGNMENT);
-    struct mtr_assignment* node = &stmt.assignment;
+static struct mtr_stmt* assignment(struct mtr_parser* parser) {
+    struct mtr_assignment* node = ALLOCATE_STMT(MTR_STMT_ASSIGNMENT, mtr_assignment);
     node->variable.token = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected a name.");
     consume(parser, MTR_TOKEN_ASSIGN, "Expected ':='.");
     node->expression = expression(parser);
     consume(parser, MTR_TOKEN_SEMICOLON, "Expected ';'.");
-    return stmt;
+    return (struct mtr_stmt*) node;
 }
 
-static struct mtr_stmt statement(struct mtr_parser* parser) {
+static struct mtr_stmt* statement(struct mtr_parser* parser) {
     switch (parser->token.type)
     {
     case MTR_TOKEN_IF:      return if_stmt(parser);
@@ -314,9 +309,8 @@ static struct mtr_stmt statement(struct mtr_parser* parser) {
     }
 }
 
-static struct mtr_stmt func_decl(struct mtr_parser* parser) {
-    struct mtr_stmt stmt = allocate_stmt(MTR_STMT_FN);
-    struct mtr_function* node = &stmt.function;
+static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
+    struct mtr_function* node = ALLOCATE_STMT(MTR_STMT_FN, mtr_function);
 
     advance(parser);
 
@@ -357,14 +351,13 @@ static struct mtr_stmt func_decl(struct mtr_parser* parser) {
     consume(parser, MTR_TOKEN_ARROW, "Expected '->'.");
 
     node->symbol.type.type = mtr_get_data_type(consume_type(parser).type);
-    node->body = block(parser).block;
+    node->body = (struct mtr_block*) block(parser);
 
-    return stmt;
+    return (struct mtr_stmt*) node;
 }
 
-static struct mtr_stmt variable(struct mtr_parser* parser) {
-    struct mtr_stmt stmt = allocate_stmt(MTR_STMT_VAR);
-    struct mtr_variable* node = &stmt.variable;
+static struct mtr_stmt* variable(struct mtr_parser* parser) {
+    struct mtr_variable* node = ALLOCATE_STMT(MTR_STMT_VAR, mtr_variable);
 
     node->symbol.type.type = mtr_get_data_type(advance(parser).type); // because we are here we alredy know its a type!
     node->symbol.token = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
@@ -377,10 +370,10 @@ static struct mtr_stmt variable(struct mtr_parser* parser) {
 
     consume(parser, MTR_TOKEN_SEMICOLON, "Expected ';' or ':='.");
 
-    return stmt;
+    return (struct mtr_stmt*) node;
 }
 
-static struct mtr_stmt declaration(struct mtr_parser* parser) {
+static struct mtr_stmt* declaration(struct mtr_parser* parser) {
     switch (parser->token.type)
     {
     case MTR_TOKEN_INT:
@@ -392,7 +385,7 @@ static struct mtr_stmt declaration(struct mtr_parser* parser) {
     }
 }
 
-static struct mtr_stmt global_declaration(struct mtr_parser* parser) {
+static struct mtr_stmt* global_declaration(struct mtr_parser* parser) {
     switch (parser->token.type)
     {
     case MTR_TOKEN_FN: return func_decl(parser);
@@ -410,87 +403,110 @@ static struct mtr_stmt global_declaration(struct mtr_parser* parser) {
 struct mtr_ast mtr_parse(struct mtr_parser* parser) {
     advance(parser);
 
-    struct mtr_ast ast = mtr_new_ast();
+    struct mtr_ast ast;
+    struct mtr_block* block = ALLOCATE_STMT(MTR_STMT_BLOCK, mtr_block);
+    init_block(block);
 
     while (parser->token.type != MTR_TOKEN_EOF) {
-        struct mtr_stmt stmt = global_declaration(parser);
+        struct mtr_stmt* stmt = global_declaration(parser);
         synchronize(parser);
-        mtr_write_stmt(&ast, stmt);
+        write_block(block, stmt);
     }
 
+    ast.head = (struct mtr_stmt*) block;
     return ast;
 }
 
 // =======================================================================
 
-struct mtr_ast mtr_new_ast() {
-    struct mtr_ast ast = {
-        .capacity = 8,
-        .size = 0,
-        .statements = NULL
-    };
-
-    void* temp = malloc(sizeof(struct mtr_stmt) * 8);
-    if (NULL == temp)
-        MTR_LOG_ERROR("Bad allocation.");
-    else
-        ast.statements = temp;
-    return ast;
+void mtr_delete_ast(struct mtr_ast* ast) {
+    delete_block((struct mtr_block*) ast->head);
+    ast->head = NULL;
 }
 
-void mtr_write_stmt(struct mtr_ast* ast, struct mtr_stmt statement) {
-    if (ast->size == ast->capacity) {
-        size_t new_cap = ast->capacity * 2;
-        ast->statements = realloc(ast->statements, new_cap * sizeof(struct mtr_ast));
-        if (NULL == ast->statements) {
-            ast->capacity = 0;
+static void init_block(struct mtr_block* block) {
+    void* temp = malloc(sizeof(struct mtr_stmt*) * 8);
+    if (NULL == temp) {
+        MTR_LOG_ERROR("Bad allocation.");
+        block->statements = NULL;
+        block->size = 0;
+        block->capacity = 0;
+    } else {
+        block->capacity = 8;
+        block->size = 0;
+        block->statements = temp;
+    }
+}
+
+static void write_block(struct mtr_block* block, struct mtr_stmt* statement) {
+    if (block->size == block->capacity) {
+        size_t new_cap = block->capacity * 2;
+        block->statements = realloc(block->statements, new_cap * sizeof(struct mtr_stmt*));
+        if (NULL == block->statements) {
+            block->capacity = 0;
             return;
         }
-        ast->capacity = new_cap;
+        block->capacity = new_cap;
     }
-
-    ast->statements[ast->size++] = statement;
+    block->statements[block->size++] = statement;
 }
 
-void mtr_delete_ast(struct mtr_ast* ast) {
-    for (size_t i = 0; i < ast->size; i++) {
-        struct mtr_stmt* s = ast->statements + i;
+static void delete_block(struct mtr_block* block) {
+    for (size_t i = 0; i < block->size; i++) {
+        struct mtr_stmt* s = block->statements[i];
         switch (s->type)
         {
         case MTR_STMT_BLOCK:
-            mtr_delete_ast(&s->block.statements);
+            delete_block((struct mtr_block*) s);
             break;
-        case MTR_STMT_ASSIGNMENT:
-            mtr_free_expr(s->assignment.expression);
-            s->assignment.expression = NULL;
+        case MTR_STMT_ASSIGNMENT: {
+            struct mtr_assignment* a = (struct mtr_assignment*) s;
+            mtr_free_expr(a->expression);
+            a->expression = NULL;
+            free(a);
             break;
-        case MTR_STMT_FN:
-            if (s->function.argc > 0)
-                free(s->function.argv);
-            s->function.argv = NULL;
-            mtr_delete_ast(&s->function.body.statements);
+        }
+        case MTR_STMT_FN: {
+            struct mtr_function* f = (struct mtr_function*) s;
+            if (f->argc > 0)
+                free(f->argv);
+            f->argv = NULL;
+            delete_block(f->body);
+            free(f);
             break;
-        case MTR_STMT_IF:
-            mtr_delete_ast(&s->if_s.then.statements);
-            mtr_delete_ast(&s->if_s.otherwise.statements);
-            mtr_free_expr(s->if_s.condition);
+        }
+        case MTR_STMT_IF: {
+            struct mtr_if* i = (struct mtr_if*) s;
+            delete_block(i->then);
+            if (i->otherwise)
+                delete_block(i->otherwise);
+            mtr_free_expr(i->condition);
+            free(i);
             break;
-        case MTR_STMT_WHILE:
-            mtr_delete_ast(&s->while_s.body.statements);
-            mtr_free_expr(s->while_s.condition);
+        }
+        case MTR_STMT_WHILE: {
+            struct mtr_while* w = (struct mtr_while*) s;
+            delete_block(w->body);
+            mtr_free_expr(w->condition);
+            free(w);
             break;
-        case MTR_STMT_VAR:
-            if (s->variable.value)
-                mtr_free_expr(s->variable.value);
-            s->variable.value = NULL;
+        }
+        case MTR_STMT_VAR: {
+            struct mtr_variable* v = (struct mtr_variable*) s;
+            if (v->value)
+                mtr_free_expr(v->value);
+            v->value = NULL;
+            free(v);
             break;
+        }
         }
     }
 
-    free(ast->statements);
-    ast->statements = NULL;
-    ast->size = 0;
-    ast->capacity = 0;
+    free(block->statements);
+    block->statements = NULL;
+    block->size = 0;
+    block->capacity = 0;
+    free(block);
 }
 
 // =======================================================================

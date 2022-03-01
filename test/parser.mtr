@@ -1,9 +1,7 @@
-fn main() -> Int {  # hello
+fn main() -> Int {
     Bool x := true;
     while (x) {
         x := false;
     }
     Int y := 42;
 }
-
-# t - 3.0; comments
