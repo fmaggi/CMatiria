@@ -1,7 +1,3 @@
-# Pointer Test
-
-In this branch Im gonna check if using mallocd pointers for stmts is actually slower than just storing them continuolsy
-
 # Matiria
 /məˈtɪərɪə/
 
