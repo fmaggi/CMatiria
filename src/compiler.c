@@ -205,8 +205,6 @@ static void write_variable(struct mtr_chunk* chunk, struct mtr_variable* var) {
     } else {
         mtr_write_chunk(chunk, MTR_OP_NIL);
     }
-
-    MTR_LOG_DEBUG("%.*s %zu", var->symbol.token.length, var->symbol.token.start, var->symbol.index);
 }
 
 static void write_block(struct mtr_chunk* chunk, struct mtr_block* stmt) {
