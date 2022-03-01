@@ -441,7 +441,7 @@ struct mtr_ast mtr_new_ast() {
 void mtr_write_stmt(struct mtr_ast* ast, struct mtr_stmt statement) {
     if (ast->size == ast->capacity) {
         size_t new_cap = ast->capacity * 2;
-        ast->statements = realloc(ast->statements, new_cap);
+        ast->statements = realloc(ast->statements, new_cap * sizeof(struct mtr_ast));
         if (NULL == ast->statements) {
             ast->capacity = 0;
             return;
