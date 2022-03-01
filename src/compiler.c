@@ -305,27 +305,15 @@ struct mtr_package* mtr_compile(const char* source) {
 
     struct mtr_ast ast = mtr_parse(&parser);
 
-    clock_t toc = clock();
-
-    MTR_LOG_DEBUG("Parsing: %ld", toc - tic);
-
     if (parser.had_error){
         return NULL;
     }
 
-    clock_t tic_v = clock();
-
     bool all_ok = mtr_validate(&ast, source);
-
-    clock_t toc_v = clock();
-
-    MTR_LOG_DEBUG("Validating: %ld", toc_v - tic_v);
 
     if (!all_ok) {
         return NULL;
     }
-
-    MTR_LOG_DEBUG("Passed validation");
 
     struct mtr_package* package = mtr_new_package(source, &ast);
     write_bytecode(package, ast);
