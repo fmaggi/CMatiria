@@ -12,13 +12,15 @@ struct mtr_package* mtr_new_package(const char* const source, struct mtr_ast* as
     struct mtr_package* package = malloc(sizeof(struct mtr_package));
     package->source = source;
     package->indices = mtr_new_scope(NULL);
-    package->functions = malloc(sizeof(struct mtr_chunk) * ast->size);
 
-    for (size_t i = 0; i < ast->size; ++i) {
-        struct mtr_stmt* s = ast->statements + i;
-        MTR_ASSERT(s->type == MTR_STMT_FN, "Stmt should be function declaration.");
-        s->function.symbol.index = i;
-        mtr_scope_add(&package->indices, s->function.symbol);
+    struct mtr_block* block = (struct mtr_block*) ast->head;
+    package->functions = malloc(sizeof(struct mtr_chunk) * block->size);
+
+    for (size_t i = 0; i < block->size; ++i) {
+        struct mtr_function* f = (struct mtr_function*) block->statements[i];
+        MTR_ASSERT(f->stmt.type == MTR_STMT_FN, "Stmt should be function declaration.");
+        f->symbol.index = i;
+        mtr_scope_add(&package->indices, f->symbol);
         package->functions[i] = mtr_new_chunk();
     }
 

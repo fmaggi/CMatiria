@@ -18,4 +18,6 @@ struct mtr_parser mtr_parser_init(struct mtr_scanner scanner);
 
 struct mtr_ast mtr_parse(struct mtr_parser* parser);
 
+void mtr_delete_ast(struct mtr_ast* ast);
+
 #endif

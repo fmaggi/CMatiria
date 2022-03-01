@@ -1,17 +1,13 @@
-fn main() -> Int {  # hello
-    Bool x := true;
-    Int w := 42;
-    if (x) {
-        w := w + 2;
-        x := false;
-    }
-    Int y := w;
-    Int z := 3;
-    Int t := z * 2;
-    {
-        Int r := t - 3;
-    }
-    Int r := t + 4;
+fn main(Int fran) -> Int {  # hello
+    fran := 0;
+    fran := 0;
+    fran := 0;
+    fran := 0;
+    fran := 0;
+    fran := 0;
+    fran := 0;
+    fran := 0;
+    fran := 0;
 }
 
 # t - 3.0; comments

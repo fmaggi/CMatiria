@@ -209,8 +209,8 @@ static void write_variable(struct mtr_chunk* chunk, struct mtr_variable* var) {
 }
 
 static void write_block(struct mtr_chunk* chunk, struct mtr_block* stmt) {
-    for (size_t i = 0; i < stmt->statements.size; ++i) {
-        struct mtr_stmt* s = stmt->statements.statements + i;
+    for (size_t i = 0; i < stmt->size; ++i) {
+        struct mtr_stmt* s = stmt->statements[i];
         write(chunk, s);
     }
 
@@ -223,15 +223,15 @@ static void write_if(struct mtr_chunk* chunk, struct mtr_if* stmt) {
     u16 offset = write_jump(chunk, MTR_OP_JMP_Z);
     mtr_write_chunk(chunk, MTR_OP_POP);
 
-    write_block(chunk, &stmt->then);
+    write_block(chunk, stmt->then);
 
     u16 otherwise = write_jump(chunk, MTR_OP_JMP);
 
     patch_jump(chunk, offset);
     mtr_write_chunk(chunk, MTR_OP_POP);
 
-    if (&stmt->otherwise.statements.size > 0) {
-        write_block(chunk, &stmt->otherwise);
+    if (stmt->otherwise) {
+        write_block(chunk, stmt->otherwise);
     }
     patch_jump(chunk, otherwise);
 }
@@ -241,7 +241,7 @@ static void write_while(struct mtr_chunk* chunk, struct mtr_while* stmt) {
     u16 offset = write_jump(chunk, MTR_OP_JMP_Z);
     mtr_write_chunk(chunk, MTR_OP_POP);
 
-    write_block(chunk, &stmt->body);
+    write_block(chunk, stmt->body);
 
     mtr_write_chunk(chunk, MTR_OP_JMP);
     // offset - 1 is the location of MTR_OP_JMP_Z in the chunk
@@ -277,16 +277,21 @@ static void write(struct mtr_chunk* chunk, struct mtr_stmt* stmt) {
 
 static void write_function(struct mtr_package* package, struct mtr_function* fn) {
     struct mtr_chunk* chunk = mtr_package_get_chunk(package, fn->symbol);
-    write_block(chunk, &fn->body);
+
+    for (u32 i = 0; i < fn->argc; ++i) {
+        mtr_write_chunk(chunk, MTR_OP_NIL);
+    }
+
+    write_block(chunk, fn->body);
     mtr_write_chunk(chunk, MTR_OP_RETURN);
 }
 
 static void write_bytecode(struct mtr_package* package, struct mtr_ast ast) {
-    for (size_t i = 0; i < ast.size; ++i) {
-        struct mtr_stmt* s = ast.statements + i;
-        MTR_ASSERT(s->type == MTR_STMT_FN, "Stmt type should be function.");
-        write_function(package, (struct mtr_function*) s);
-    }
+    // for (size_t i = 0; i < ast.size; ++i) {
+    //     struct mtr_stmt* s = ast.statements + i;
+    //     MTR_ASSERT(s->type == MTR_STMT_FN, "Stmt type should be function.");
+    //     write_function(package, (struct mtr_function*) s);
+    // }
 }
 
 struct mtr_package* mtr_compile(const char* source) {
@@ -294,6 +299,13 @@ struct mtr_package* mtr_compile(const char* source) {
     struct mtr_parser parser = mtr_parser_init(scanner);
 
     struct mtr_ast ast = mtr_parse(&parser);
+
+    mtr_dump_stmt(ast.head);
+
+    // for (size_t i = 0; i < ast.size; ++i) {
+    //     mtr_dump_stmt(ast.statements + i);
+    // }
+    return NULL;
 
     if (parser.had_error){
         return NULL;

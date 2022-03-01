@@ -62,8 +62,9 @@ void mtr_dump_expr(struct mtr_expr* expr) {
 static void dump_stmt(struct mtr_stmt* stmt, u32 offset);
 
 static void dump_block(struct mtr_block* block, u32 offset) {
-    for (size_t i = 0; i < block->statements.size; ++i) {
-        struct mtr_stmt* s = block->statements.statements + i;
+    MTR_LOG_DEBUG("%zu", block->size);
+    for (size_t i = 0; i < block->size; ++i) {
+        struct mtr_stmt* s = block->statements[i];
         dump_stmt(s, offset + 1);
     }
 }
@@ -81,7 +82,7 @@ static void dump_fn(struct mtr_function* decl, u32 offset) {
     }
 
     MTR_PRINT_DEBUG(") -> %s {\n", mtr_data_type_to_str(decl->symbol.type));
-    dump_block(&decl->body, offset + 1);
+    dump_block(decl->body, offset + 1);
     MTR_PRINT_DEBUG("}\n");
 }
 
@@ -98,9 +99,9 @@ static void dump_if(struct mtr_if* stmt, u32 offset) {
     MTR_PRINT_DEBUG("if: ");
     dump_expr(stmt->condition, 0);
     MTR_PRINT_DEBUG("\n");
-    dump_block(&stmt->then, offset + 1);
+    dump_block(stmt->then, offset + 1);
     MTR_PRINT_DEBUG("else: \n");
-    dump_block(&stmt->otherwise, offset + 1);
+    dump_block(stmt->otherwise, offset + 1);
     MTR_PRINT_DEBUG("\n");
 }
 
@@ -108,7 +109,7 @@ static void dump_while(struct mtr_while* stmt, u32 offset) {
     MTR_PRINT_DEBUG("loop: ");
     dump_expr(stmt->condition, 0);
     MTR_PRINT_DEBUG("\n");
-    dump_block(&stmt->body, offset + 1);
+    dump_block(stmt->body, offset + 1);
     MTR_PRINT_DEBUG("\n");
 }
 
