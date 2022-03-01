@@ -72,6 +72,8 @@ static void write_u16(struct mtr_chunk* chunk, u16 value) {
     mtr_write_chunk(chunk, (u8) (value >> 8));
 }
 
+#define AS(type, value) *((type*)&value)
+
 // returns the location of where to jump relative to the chunk
 static u16 write_jump(struct mtr_chunk* chunk, u8 instruction) {
     mtr_write_chunk(chunk, instruction);
@@ -109,8 +111,6 @@ static void write_primary(struct mtr_chunk* chunk,struct mtr_primary* expr) {
         return;
     }
 
-    #define AS(type, value) *((type*)&value)
-
     switch (expr->symbol.type.type)
     {
     case MTR_DATA_INT: {
@@ -129,8 +129,6 @@ static void write_primary(struct mtr_chunk* chunk,struct mtr_primary* expr) {
     default:
         break;
     }
-
-    #undef AS
 }
 
 static void write_binary(struct mtr_chunk* chunk, struct mtr_binary* expr) {
@@ -247,7 +245,7 @@ static void write_while(struct mtr_chunk* chunk, struct mtr_while* stmt) {
     u16 offset = write_jump(chunk, MTR_OP_JMP_Z);
     mtr_write_chunk(chunk, MTR_OP_POP);
 
-    write_block(chunk, &stmt->body);
+    write_block(chunk, stmt->body);
 
     write_loop(chunk, offset);
 
@@ -294,13 +292,11 @@ static void write_bytecode(struct mtr_package* package, struct mtr_ast ast) {
     }
 }
 
-#include <time.h>
+#undef AS
 
 struct mtr_package* mtr_compile(const char* source) {
     struct mtr_scanner scanner = mtr_scanner_init(source);
     struct mtr_parser parser = mtr_parser_init(scanner);
-
-    clock_t tic = clock();
 
     struct mtr_ast ast = mtr_parse(&parser);
 

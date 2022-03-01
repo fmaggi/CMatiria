@@ -99,8 +99,7 @@ static const struct mtr_data_type analyze_expr(struct mtr_expr* expr, struct mtr
     default:
         break;
     }
-    MTR_LOG_DEBUG("%u", expr->type);
-    // MTR_ASSERT(false, "Invalid stmt type.");
+    MTR_ASSERT(false, "Invalid stmt type.");
     return invalid_type;
 }
 
@@ -182,8 +181,6 @@ static bool analyze_assignment(struct mtr_assignment* stmt, struct mtr_scope* pa
 }
 
 static bool analyze_variable(struct mtr_variable* decl, struct mtr_scope* parent, const char* const source) {
-
-    mtr_dump_stmt((struct mtr_stmt*) decl);
     bool expr = true;
     if (decl->value) {
         const struct mtr_data_type type = analyze_expr(decl->value, parent, source);
@@ -198,8 +195,6 @@ static bool analyze_variable(struct mtr_variable* decl, struct mtr_scope* parent
 }
 
 static bool analyze_if(struct mtr_if* stmt, struct mtr_scope* parent, const char* const source) {
-
-    mtr_dump_stmt((struct mtr_stmt*) stmt);
     bool condition_ok = analyze_expr(stmt->condition, parent, source).type == MTR_DATA_BOOL;
     if (!condition_ok) {
         MTR_LOG_ERROR("Invalid condtion.");
@@ -216,8 +211,6 @@ static bool analyze_if(struct mtr_if* stmt, struct mtr_scope* parent, const char
 }
 
 static bool analyze_while(struct mtr_while* stmt, struct mtr_scope* parent, const char* const source) {
-
-    mtr_dump_stmt((struct mtr_stmt*) stmt);
     bool condition_ok = analyze_expr(stmt->condition, parent, source).type == MTR_DATA_BOOL;
     if (!condition_ok) {
         MTR_LOG_ERROR("Invalid condtion.");

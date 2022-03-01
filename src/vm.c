@@ -159,7 +159,7 @@ static i32 run(struct mtr_vm* vm) {
     while (ip != vm->chunk->bytecode + vm->chunk->size) {
 #ifndef NDEBUG
         // mtr_dump_stack(vm->stack, vm->stack_top);
-        // mtr_disassemble_instruction(ip, ip - vm->chunk->bytecode);
+        mtr_disassemble_instruction(ip, ip - vm->chunk->bytecode);
 #endif
         ip = execute_instruction(vm, ip);
     }
