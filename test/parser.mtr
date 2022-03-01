@@ -1,7 +1,9 @@
-fn main() -> Int {
-    Int y := x(3);
+fn main(Int y, Int z) -> Int {
+    y := 45;
+    z := 32;
+    Int w := 35;
 }
 
-fn x(Int y) -> Int {
+fn x() -> Int {
 
 }

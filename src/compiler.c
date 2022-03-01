@@ -102,16 +102,17 @@ static void write_primary(struct mtr_chunk* chunk,struct mtr_primary* expr) {
 }
 
 static void write_literal(struct mtr_chunk* chunk, struct mtr_literal* expr) {
+    MTR_PROFILE_FUNC();
     switch (expr->literal.type)
     {
-    case MTR_DATA_INT: {
+    case MTR_TOKEN_INT_LITERAL: {
         mtr_write_chunk(chunk, MTR_OP_INT);
         u64 value = evaluate_int(expr->literal);
         write_u64(chunk, value);
         break;
     }
 
-    case MTR_DATA_FLOAT: {
+    case MTR_TOKEN_FLOAT_LITERAL: {
         mtr_write_chunk(chunk, MTR_OP_FLOAT);
         f64 value = evaluate_float(expr->literal);
         write_u64(chunk, AS(u64, value));
@@ -128,6 +129,7 @@ static void write_literal(struct mtr_chunk* chunk, struct mtr_literal* expr) {
         break;
     }
     default:
+        MTR_LOG_WARN("Invalid type");
         break;
     }
 }
