@@ -241,16 +241,9 @@ static void write_while(struct mtr_chunk* chunk, struct mtr_while* stmt) {
     u16 offset = write_jump(chunk, MTR_OP_JMP_Z);
     mtr_write_chunk(chunk, MTR_OP_POP);
 
-    write_block(chunk, stmt->body);
+    write_block(chunk, &stmt->body);
 
-    mtr_write_chunk(chunk, MTR_OP_JMP);
-    // offset - 1 is the location of MTR_OP_JMP_Z in the chunk
-    //
-    //   || condition || MTR_OP_JMP_Z || jump_to || body ||
-    //                                 ^--- offset
-    //
-    // to check the condition again we need to jump to MTR_OP_JMP_Z
-    write_u16(chunk, offset - 1);
+    write_loop(chunk, offset);
 
     patch_jump(chunk, offset);
     mtr_write_chunk(chunk, MTR_OP_POP);
