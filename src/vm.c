@@ -111,22 +111,22 @@ static u8* execute_instruction(struct mtr_vm* vm, u8* ip) {
 
         case MTR_OP_SET: {
             const u16 index = READ(u16);
-            vm->stack[index] = *vm->stack_top;
+            vm->stack[index] = pop(vm);
             break;
         }
 
         case MTR_OP_JMP: {
-            const u16 where = READ(u16);
-            ip = vm->chunk->bytecode + where;
+            const i16 where = READ(i16);
+            ip += where;
             break;
         }
 
         case MTR_OP_JMP_Z: {
             const mtr_value value = peek(vm , 0);
             const bool con = MTR_AS_INT(value);
-            const u16 where = READ(u16);
+            const i16 where = READ(i16);
             if (!con) {
-                ip = vm->chunk->bytecode + where;
+                ip += where;
             }
             break;
         }
@@ -135,6 +135,13 @@ static u8* execute_instruction(struct mtr_vm* vm, u8* ip) {
             pop(vm);
             break;
         }
+
+        case MTR_OP_END_SCOPE: {
+            const u16 where = READ(u16);
+            vm->stack_top -= where;
+            break;
+        }
+
         default:
             break;
     }
@@ -151,6 +158,7 @@ static i32 run(struct mtr_vm* vm) {
     u8* ip = vm->ip;
     while (ip != vm->chunk->bytecode + vm->chunk->size) {
 #ifndef NDEBUG
+        mtr_dump_stack(vm->stack, vm->stack_top);
         mtr_disassemble_instruction(ip, ip - vm->chunk->bytecode);
 #endif
         ip = execute_instruction(vm, ip);

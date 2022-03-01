@@ -80,9 +80,10 @@ static u16 write_jump(struct mtr_chunk* chunk, u8 instruction) {
 }
 
 // patch the jump address after a block of bytecode
-static void patch_jump(struct mtr_chunk* chunk, u16 offset) {
-    u16* to_patch = (u16*)(chunk->bytecode + offset);
-    *to_patch = chunk->size;
+static void patch_jump(struct mtr_chunk* chunk, i16 offset) {
+    i16 where = chunk->size - offset - 2;
+    i16* to_patch = (i16*)(chunk->bytecode + offset);
+    *to_patch = where;
 }
 
 static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr);
@@ -212,6 +213,9 @@ static void write_block(struct mtr_chunk* chunk, struct mtr_block* stmt) {
         struct mtr_stmt* s = stmt->statements.statements + i;
         write(chunk, s);
     }
+
+    mtr_write_chunk(chunk, MTR_OP_END_SCOPE);
+    write_u16(chunk, stmt->var_count);
 }
 
 static void write_if(struct mtr_chunk* chunk, struct mtr_if* stmt) {

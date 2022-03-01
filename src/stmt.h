@@ -23,6 +23,7 @@ struct mtr_ast {
 
 struct mtr_block {
     struct mtr_ast statements;
+    u16 var_count;
 };
 
 struct mtr_if {

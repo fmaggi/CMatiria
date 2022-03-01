@@ -86,6 +86,12 @@ u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {
         MTR_LOG("POP");
         break;
     }
+
+    case MTR_OP_END_SCOPE: {
+        u16 where = READ(u16);
+        MTR_LOG("END_S %u", where);
+        break;
+    }
     default:
         break;
     }

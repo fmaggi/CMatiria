@@ -23,7 +23,7 @@ int main(int argc, char* argv[])
 
     struct mtr_vm vm;
     i32 result = mtr_execute(&vm, package);
-    MTR_LOG_DEBUG("%i", result);
+    MTR_LOG_DEBUG("return %i", result);
 
     mtr_delete_package(package);
     free(source);
