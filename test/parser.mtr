@@ -4,6 +4,6 @@ fn main(Int y, Int z) -> Int {
     Int w := 35;
 }
 
-fn x() -> Int {
+fn x(Int y) -> Int {
 
 }

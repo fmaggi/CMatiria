@@ -102,7 +102,6 @@ static void write_primary(struct mtr_chunk* chunk,struct mtr_primary* expr) {
 }
 
 static void write_literal(struct mtr_chunk* chunk, struct mtr_literal* expr) {
-    MTR_PROFILE_FUNC();
     switch (expr->literal.type)
     {
     case MTR_TOKEN_INT_LITERAL: {

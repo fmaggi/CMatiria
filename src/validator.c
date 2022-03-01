@@ -183,12 +183,16 @@ static bool analyze_block(struct mtr_block* block, struct mtr_scope* parent, con
 static bool analyze_fn(struct mtr_function* stmt, struct mtr_scope* parent, const char* const source) {
     bool all_ok = true;
 
+    struct mtr_scope scope = mtr_new_scope(parent);
+
     for (size_t i = 0; i < stmt->argc; ++i) {
         struct mtr_variable* arg = stmt->argv + i;
-        all_ok = load_var(arg, parent, source) && all_ok;
+        all_ok = load_var(arg, &scope, source) && all_ok;
     }
 
-    all_ok = analyze_block(stmt->body, parent, source) && all_ok;
+    all_ok = analyze_block(stmt->body, &scope, source) && all_ok;
+
+    mtr_delete_scope(&scope);
 
     return all_ok;
 }
