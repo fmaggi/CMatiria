@@ -1,0 +1,11 @@
+fn main() -> Int {  # hello
+    Bool x := true;
+    Int w := 0;
+    while (x) {
+        w := w + 2;
+        x := false;
+    }
+    Int y := w;
+}
+
+# comments

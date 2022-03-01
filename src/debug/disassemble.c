@@ -23,6 +23,16 @@ u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {
         break;
     }
 
+    case MTR_OP_FALSE: {
+        MTR_LOG("FALSE");
+        break;
+    }
+
+    case MTR_OP_TRUE: {
+        MTR_LOG("TRUE");
+        break;
+    }
+
     case MTR_OP_NIL:
         MTR_LOG("NIL");
         break;
@@ -59,6 +69,23 @@ u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {
         MTR_LOG("SET at %u", index);
         break;
     }
+
+    case MTR_OP_JMP: {
+        u16 to = READ(u16);
+        MTR_LOG("JMP %u", to);
+        break;
+    }
+
+    case MTR_OP_JMP_Z: {
+        u16 to = READ(u16);
+        MTR_LOG("ZJMP %u", to);
+        break;
+    }
+
+    case MTR_OP_POP: {
+        MTR_LOG("POP");
+        break;
+    }
     default:
         break;
     }
@@ -72,6 +99,7 @@ void mtr_disassemble(struct mtr_chunk chunk, const char* name) {
     while (instruction != chunk.bytecode + chunk.size) {
         instruction = mtr_disassemble_instruction(instruction, instruction - chunk.bytecode);
     }
+    MTR_LOG("\n");
 }
 
 void mtr_dump_stack(mtr_value* stack, mtr_value* top) {
@@ -81,4 +109,16 @@ void mtr_dump_stack(mtr_value* stack, mtr_value* top) {
         stack++;
     }
     MTR_LOG("]");
+}
+
+void mtr_dump_chunk(struct mtr_chunk* chunk) {
+    u8* ip = chunk->bytecode;
+    while (ip < chunk->bytecode + chunk->size) {
+
+        for (int i = 0; i < 8; ++i) {
+            u32 offset = ip - chunk->bytecode;
+            MTR_LOG("%04u %02x", offset, *ip++);
+        }
+        MTR_LOG("\n");
+    }
 }

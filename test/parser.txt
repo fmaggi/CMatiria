@@ -1,9 +1,0 @@
-fn main() -> Int {  # hello
-    Float x := 3.0 - 5.0;
-    Float y := x * 3.0;
-    y := x - 3.0;
-}
-
-fn test(Int x) -> Float {
-
-}

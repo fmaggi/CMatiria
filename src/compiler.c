@@ -72,12 +72,33 @@ static void write_u16(struct mtr_chunk* chunk, u16 value) {
     mtr_write_chunk(chunk, (u8) (value >> 8));
 }
 
+// returns the location of where to jump relative to the chunk
+static u16 write_jump(struct mtr_chunk* chunk, u8 instruction) {
+    mtr_write_chunk(chunk, instruction);
+    write_u16(chunk, (u16) 0xFFFFu);
+    return chunk->size - 2;
+}
+
+// patch the jump address after a block of bytecode
+static void patch_jump(struct mtr_chunk* chunk, u16 offset) {
+    u16* to_patch = (u16*)(chunk->bytecode + offset);
+    *to_patch = chunk->size;
+}
+
 static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr);
 
 static void write_primary(struct mtr_chunk* chunk,struct mtr_primary* expr) {
     if (expr->symbol.token.type == MTR_TOKEN_IDENTIFIER) {
         mtr_write_chunk(chunk, MTR_OP_GET);
         write_u16(chunk, expr->symbol.index);
+        return;
+    }
+
+    if (expr->symbol.token.type == MTR_TOKEN_TRUE) {
+        mtr_write_chunk(chunk, MTR_OP_TRUE);
+        return;
+    } else if (expr->symbol.token.type == MTR_TOKEN_FALSE) {
+        mtr_write_chunk(chunk, MTR_OP_FALSE);
         return;
     }
 
@@ -184,6 +205,8 @@ static void write_variable(struct mtr_chunk* chunk, struct mtr_variable* var) {
     } else {
         mtr_write_chunk(chunk, MTR_OP_NIL);
     }
+
+    MTR_LOG_DEBUG("%.*s %zu", var->symbol.token.length, var->symbol.token.start, var->symbol.index);
 }
 
 static void write_block(struct mtr_chunk* chunk, struct mtr_block* stmt) {
@@ -191,6 +214,44 @@ static void write_block(struct mtr_chunk* chunk, struct mtr_block* stmt) {
         struct mtr_stmt* s = stmt->statements.statements + i;
         write(chunk, s);
     }
+}
+
+static void write_if(struct mtr_chunk* chunk, struct mtr_if* stmt) {
+    write_expr(chunk, stmt->condition);
+    u16 offset = write_jump(chunk, MTR_OP_JMP_Z);
+    mtr_write_chunk(chunk, MTR_OP_POP);
+
+    write_block(chunk, &stmt->then);
+
+    u16 otherwise = write_jump(chunk, MTR_OP_JMP);
+
+    patch_jump(chunk, offset);
+    mtr_write_chunk(chunk, MTR_OP_POP);
+
+    if (&stmt->otherwise.statements.size > 0) {
+        write_block(chunk, &stmt->otherwise);
+    }
+    patch_jump(chunk, otherwise);
+}
+
+static void write_while(struct mtr_chunk* chunk, struct mtr_while* stmt) {
+    write_expr(chunk, stmt->condition);
+    u16 offset = write_jump(chunk, MTR_OP_JMP_Z);
+    mtr_write_chunk(chunk, MTR_OP_POP);
+
+    write_block(chunk, &stmt->body);
+
+    mtr_write_chunk(chunk, MTR_OP_JMP);
+    // offset - 1 is the location of MTR_OP_JMP_Z in the chunk
+    //
+    //   || condition || MTR_OP_JMP_Z || jump_to || body ||
+    //                                 ^--- offset
+    //
+    // to check the condition again we need to jump to MTR_OP_JMP_Z
+    write_u16(chunk, offset - 1);
+
+    patch_jump(chunk, offset);
+    mtr_write_chunk(chunk, MTR_OP_POP);
 }
 
 static void write_assignment(struct mtr_chunk* chunk, struct mtr_assignment* stmt) {
@@ -203,8 +264,8 @@ static void write(struct mtr_chunk* chunk, struct mtr_stmt* stmt) {
     switch (stmt->type)
     {
     case MTR_STMT_VAR:   return write_variable(chunk, (struct mtr_variable*) stmt);
-    // case MTR_STMT_IF:    return write_if(chunk, (struct mtr_if*) stmt, scope);
-    // case MTR_STMT_WHILE: return write_while(chunk, (struct mtr_while*) stmt);
+    case MTR_STMT_IF:    return write_if(chunk, (struct mtr_if*) stmt);
+    case MTR_STMT_WHILE: return write_while(chunk, (struct mtr_while*) stmt);
     case MTR_STMT_BLOCK: return write_block(chunk, (struct mtr_block*) stmt);
     case MTR_STMT_ASSIGNMENT: return write_assignment(chunk, (struct mtr_assignment*) stmt);
     default:

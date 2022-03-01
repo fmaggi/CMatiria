@@ -11,6 +11,10 @@ void dump_value(mtr_value value, enum mtr_data_type_e type) {
     }
 }
 
+static mtr_value peek(struct mtr_vm* vm, size_t distance) {
+    return *(vm->stack_top - distance - 1);
+}
+
 static mtr_value pop(struct mtr_vm* vm) {
     return *(--vm->stack_top);
 }
@@ -50,6 +54,18 @@ static u8* execute_instruction(struct mtr_vm* vm, u8* ip) {
             break;
         }
 
+        case MTR_OP_FALSE: {
+            const mtr_value c = MTR_INT_VAL(0);
+            push(vm , c);
+            break;
+        }
+
+        case MTR_OP_TRUE: {
+            const mtr_value c = MTR_INT_VAL(1);
+            push(vm , c);
+            break;
+        }
+
         case MTR_OP_NIL: {
             const mtr_value c = MTR_NIL;
             push(vm, c);
@@ -58,7 +74,7 @@ static u8* execute_instruction(struct mtr_vm* vm, u8* ip) {
 
         case MTR_OP_NOT: {
             const mtr_value value = pop(vm);
-            const mtr_value res = MTR_BOOL_VAL(!value.boolean);
+            const mtr_value res = MTR_INT_VAL(!value.integer);
             push(vm, res);
             break;
         }
@@ -98,6 +114,27 @@ static u8* execute_instruction(struct mtr_vm* vm, u8* ip) {
             vm->stack[index] = *vm->stack_top;
             break;
         }
+
+        case MTR_OP_JMP: {
+            const u16 where = READ(u16);
+            ip = vm->chunk->bytecode + where;
+            break;
+        }
+
+        case MTR_OP_JMP_Z: {
+            const mtr_value value = peek(vm , 0);
+            const bool con = MTR_AS_INT(value);
+            const u16 where = READ(u16);
+            if (!con) {
+                ip = vm->chunk->bytecode + where;
+            }
+            break;
+        }
+
+        case MTR_OP_POP: {
+            pop(vm);
+            break;
+        }
         default:
             break;
     }
@@ -113,11 +150,13 @@ static i32 run(struct mtr_vm* vm) {
     vm->stack_top = vm->stack;
     u8* ip = vm->ip;
     while (ip != vm->chunk->bytecode + vm->chunk->size) {
+#ifndef NDEBUG
         mtr_disassemble_instruction(ip, ip - vm->chunk->bytecode);
+#endif
         ip = execute_instruction(vm, ip);
     }
     vm->ip = ip;
-    return pop(vm).floating;
+    return pop(vm).integer;
 }
 
 i32 mtr_execute(struct mtr_vm* vm, struct mtr_package* package) {
@@ -126,5 +165,7 @@ i32 mtr_execute(struct mtr_vm* vm, struct mtr_package* package) {
         MTR_LOG_ERROR("Did not found main.");
         return false;
     }
+    // mtr_disassemble(*vm->chunk, "while");
+    // exit(-1);
     return run(vm);
 }

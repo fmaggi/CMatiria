@@ -149,22 +149,6 @@ struct mtr_symbol* mtr_scope_find(const struct mtr_scope* scope, struct mtr_toke
 }
 
 void mtr_scope_add(struct mtr_scope* scope, struct mtr_symbol symbol) {
-    symbol.index = scope->current++;
     mtr_symbol_table_insert(&scope->symbols, symbol.token.start, symbol.token.length, symbol);
 }
 
-// #ifndef NDEBUG
-
-// void mtr_print_scope(const struct mtr_scope* scope) {
-//     while (NULL != scope) {
-//         for (size_t i = 0; i < scope->symbols.capacity; ++i) {
-//             struct symbol_entry* e = scope->symbols.entries + i;
-//             if (e->key == NULL || e->key == tombstone)
-//                 continue;
-//             mtr_print_token(e->symbol.token);
-//         }
-//         scope = scope->parent;
-//     }
-// }
-
-// #endif

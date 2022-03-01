@@ -7,6 +7,9 @@ enum mtr_op_code {
     MTR_OP_INT,
     MTR_OP_FLOAT,
 
+    MTR_OP_FALSE,
+    MTR_OP_TRUE,
+
     MTR_OP_NIL,
 
     MTR_OP_NOT,
@@ -26,6 +29,11 @@ enum mtr_op_code {
 
     MTR_OP_GET,
     MTR_OP_SET,
+
+    MTR_OP_JMP,
+    MTR_OP_JMP_Z,
+
+    MTR_OP_POP,
 
     MTR_OP_RETURN,
 };

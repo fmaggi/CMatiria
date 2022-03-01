@@ -111,7 +111,7 @@ static bool load_fn(struct mtr_function* stmt, struct mtr_scope* scope, const ch
         return false;
     }
 
-    mtr_symbol_table_insert(&scope->symbols, stmt->symbol.token.start, stmt->symbol.token.length, stmt->symbol);
+    mtr_scope_add(scope, stmt->symbol);
     return true;
 }
 
@@ -123,6 +123,7 @@ static bool load_var(struct mtr_variable* stmt, struct mtr_scope* scope, const c
         return false;
     }
 
+    stmt->symbol.index = scope->current++;
     mtr_scope_add(scope, stmt->symbol);
     return true;
 }
@@ -154,6 +155,11 @@ static bool analyze_fn(struct mtr_function* stmt, struct mtr_scope* parent, cons
     }
 
     all_ok = analyze_block(&stmt->body, parent, source) && all_ok;
+
+    for (size_t i = 0; i < stmt->argc; ++i) {
+        struct mtr_variable* arg = stmt->argv + i;
+    }
+
     return all_ok;
 }
 
@@ -164,15 +170,15 @@ static bool analyze_assignment(struct mtr_assignment* stmt, struct mtr_scope* pa
         mtr_report_error(stmt->variable.token, "Undeclared variable.", source);
         var_ok = false;
     }
+    stmt->variable.index = s->index;
+    stmt->variable.type = s->type;
 
     const struct mtr_data_type expr = analyze_expr(stmt->expression, parent, source);
-    bool expr_ok = mtr_data_type_match(expr, stmt->variable.type);
+    bool expr_ok = mtr_data_type_match(expr, s->type);
     if (!expr_ok) {
         mtr_report_error(stmt->variable.token, "Invalid assignement to variable of different type", source);
     }
 
-    stmt->variable.index = s->index;
-    stmt->variable.type = s->type;
     return var_ok && expr_ok;
 }
 
