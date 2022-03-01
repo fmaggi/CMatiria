@@ -171,7 +171,7 @@ i32 mtr_execute(struct mtr_vm* vm, struct mtr_package* package) {
     vm->chunk = mtr_package_get_chunk_by_name(package, "main");
     if (NULL == vm->chunk) {
         MTR_LOG_ERROR("Did not found main.");
-        return false;
+        return 0;
     }
     // mtr_disassemble(*vm->chunk, "while");
     // exit(-1);
