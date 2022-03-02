@@ -290,10 +290,6 @@ static void write(struct mtr_chunk* chunk, struct mtr_stmt* stmt) {
 static void write_function(struct mtr_package* package, struct mtr_function* fn) {
     struct mtr_chunk* chunk = mtr_package_get_chunk(package, fn->symbol);
 
-    for (u32 i = 0; i < fn->argc; ++i) {
-        mtr_write_chunk(chunk, MTR_OP_NIL);
-    }
-
     write_block(chunk, fn->body);
     mtr_write_chunk(chunk, MTR_OP_RETURN);
 }

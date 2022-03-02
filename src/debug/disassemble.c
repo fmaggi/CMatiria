@@ -89,7 +89,7 @@ u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {
 
     case MTR_OP_POP_V: {
         u16 count = READ(u16);
-        MTR_LOG("END_S %u", count);
+        MTR_LOG("POPV %u", count);
         break;
     }
 
