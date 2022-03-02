@@ -167,7 +167,6 @@ static bool analyze_block(struct mtr_block* block, struct mtr_scope* parent, con
     bool all_ok = true;
 
     struct mtr_scope scope = mtr_new_scope(parent);
-    size_t current_count = scope.current;
 
     for (size_t i = 0; i < block->size; ++i) {
         struct mtr_stmt* s = block->statements[i];
@@ -175,9 +174,7 @@ static bool analyze_block(struct mtr_block* block, struct mtr_scope* parent, con
         all_ok = s_ok && all_ok;
     }
 
-    block->var_count = (u16)(scope.current - current_count);
     mtr_delete_scope(&scope);
-
     return all_ok;
 }
 
@@ -192,7 +189,6 @@ static bool analyze_fn(struct mtr_function* stmt, struct mtr_scope* parent, cons
     }
 
     all_ok = analyze_block(stmt->body, &scope, source) && all_ok;
-
     mtr_delete_scope(&scope);
 
     return all_ok;
@@ -258,6 +254,10 @@ static bool analyze_while(struct mtr_while* stmt, struct mtr_scope* parent, cons
     return condition_ok && body_ok;
 }
 
+static bool analyze_return(struct mtr_return* stmt, struct mtr_scope* parent, const char* const source) {
+    return analyze_expr(stmt->expr, parent, source).type != MTR_DATA_INVALID;
+}
+
 static bool analyze(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* const source) {
     switch (stmt->type)
     {
@@ -267,6 +267,7 @@ static bool analyze(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* 
     case MTR_STMT_VAR:        return analyze_variable((struct mtr_variable*) stmt, scope, source);
     case MTR_STMT_IF:         return analyze_if((struct mtr_if*) stmt, scope, source);
     case MTR_STMT_WHILE:      return analyze_while((struct mtr_while*) stmt, scope, source);
+    case MTR_STMT_RETURN:     return analyze_return((struct mtr_return*) stmt, scope, source);
     default:
         break;
     }

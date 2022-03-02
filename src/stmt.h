@@ -9,6 +9,7 @@
 enum mtr_stmt_type {
     MTR_STMT_ASSIGNMENT,
     MTR_STMT_FN,
+    MTR_STMT_RETURN,
     MTR_STMT_VAR,
     MTR_STMT_IF,
     MTR_STMT_WHILE,
@@ -24,7 +25,6 @@ struct mtr_block {
     struct mtr_stmt** statements;
     size_t size;
     size_t capacity;
-    u16 var_count;
 };
 
 struct mtr_if {
@@ -51,7 +51,12 @@ struct mtr_function {
     struct mtr_block* body;
     struct mtr_symbol symbol;
     struct mtr_variable* argv;
-    u32 argc;
+    u8 argc;
+};
+
+struct mtr_return {
+    struct mtr_stmt stmt;
+    struct mtr_expr* expr;
 };
 
 struct mtr_assignment {

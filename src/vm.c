@@ -47,9 +47,6 @@ static u8* execute_instruction(struct mtr_vm* vm, u8* ip, struct call_frame fram
 
     switch (*ip++)
     {
-        case MTR_OP_RETURN:
-            break;
-
         case MTR_OP_INT: {
             const i64 value = READ(i64);
             const mtr_value constant = MTR_INT_VAL(value);
@@ -156,8 +153,15 @@ static u8* execute_instruction(struct mtr_vm* vm, u8* ip, struct call_frame fram
             const u16 index = READ(u16);
             const u8 argc = READ(u8);
             struct mtr_chunk* chunk = vm->package->functions + index;
-            mtr_value res = call(vm, chunk, argc);
-            // push(vm, res);
+            call(vm, chunk, argc);
+            break;
+        }
+
+        case MTR_OP_RETURN: {
+            mtr_value res = pop(vm);
+            vm->stack_top = frame.stack;
+            push(vm, res);
+            ip = NULL;
             break;
         }
 
@@ -175,13 +179,16 @@ static mtr_value call(struct mtr_vm* vm, struct mtr_chunk* chunk, u8 argc) {
     struct call_frame frame;
     frame.stack = vm->stack_top - argc;
     u8* ip = chunk->bytecode;
-    while (*ip != MTR_OP_RETURN && ip < chunk->bytecode + chunk->size) {
+    while (ip && ip < chunk->bytecode + chunk->size) {
+
 #ifndef NDEBUG
-        mtr_dump_stack(vm->stack, vm->stack_top);
+        // mtr_dump_stack(frame.stack, vm->stack_top);
         mtr_disassemble_instruction(ip, ip - chunk->bytecode);
 #endif
+
         ip = execute_instruction(vm, ip, frame);
     }
+
     mtr_value value;
     return value;
 }
@@ -195,6 +202,8 @@ i32 mtr_execute(struct mtr_package* package) {
         MTR_LOG_ERROR("Did not find main.");
         return -1;
     }
+    // mtr_disassemble(*main_chunk, "main");
+    // exit(-1);
 
     vm.stack_top = vm.stack + 2;
     call(&vm, main_chunk, 2);

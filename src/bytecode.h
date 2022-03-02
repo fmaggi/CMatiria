@@ -38,7 +38,7 @@ enum mtr_op_code {
 
     MTR_OP_CALL,
 
-    MTR_OP_RETURN,
+    MTR_OP_RETURN
 };
 
 struct mtr_chunk {

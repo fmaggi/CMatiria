@@ -339,12 +339,25 @@ static struct mtr_stmt* assignment(struct mtr_parser* parser) {
     return (struct mtr_stmt*) node;
 }
 
+static struct mtr_stmt* return_stmt(struct mtr_parser* parser) {
+    struct mtr_return* node = ALLOCATE_STMT(MTR_STMT_RETURN, mtr_return);
+    node->expr = NULL;
+    advance(parser);
+    if (CHECK(MTR_TOKEN_SEMICOLON)) {
+        return (struct mtr_stmt*) node;
+    }
+    node->expr = expression(parser);
+    consume(parser, MTR_TOKEN_SEMICOLON, "Expected ';'.");
+    return (struct mtr_stmt*) node;
+}
+
 static struct mtr_stmt* statement(struct mtr_parser* parser) {
     switch (parser->token.type)
     {
     case MTR_TOKEN_IF:      return if_stmt(parser);
     case MTR_TOKEN_WHILE:   return while_stmt(parser);
     case MTR_TOKEN_CURLY_L: return block(parser);
+    case MTR_TOKEN_RETURN:  return return_stmt(parser);
     default:
         return assignment(parser);
     }
@@ -538,6 +551,15 @@ static void delete_block(struct mtr_block* block) {
                 mtr_free_expr(v->value);
             v->value = NULL;
             free(v);
+            break;
+        }
+
+        case MTR_STMT_RETURN: {
+            struct mtr_return* r = (struct mtr_return*) s;
+            if (r->expr) {
+                mtr_free_expr(r->expr);
+            }
+            free(r);
             break;
         }
         }

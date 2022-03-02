@@ -2,9 +2,28 @@ fn main(Int y, Int z) -> Int {
     y := 45;
     z := 32;
     Int w := 35;
-    z := x(w);
+    z := x(w, 3.0);
+    {
+        Int f := 3;
+    }
+
+    Bool t := true;
+    while (t) {
+        Int wret;
+        t := false;
+        Float asdgas;
+    }
+
+    Int f := 45;
 }
 
-fn x(Int y) -> Int {
+fn x(Int y, Float r2) -> Int {
     y := 0;
+
+    {
+        Int f := 13;
+        Int r := 32;
+    }
+
+    return 42;
 }
