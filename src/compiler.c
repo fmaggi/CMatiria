@@ -96,7 +96,7 @@ static void write_loop(struct mtr_chunk* chunk, u16 offset) {
 
 static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr);
 
-static void write_primary(struct mtr_chunk* chunk,struct mtr_primary* expr) {
+static void write_primary(struct mtr_chunk* chunk, struct mtr_primary* expr) {
     mtr_write_chunk(chunk, MTR_OP_GET);
     write_u16(chunk, expr->symbol.index);
 }
@@ -192,6 +192,17 @@ static void write_unary(struct mtr_chunk* chunk, struct mtr_unary* unary) {
     }
 }
 
+static void write_call(struct mtr_chunk* chunk, struct mtr_call* call) {
+    for (u8 i = 0; i < call->argc; ++i) {
+        struct mtr_expr* expr = call->argv[i];
+        write_expr(chunk, expr);
+    }
+
+    mtr_write_chunk(chunk, MTR_OP_CALL);
+    write_u16(chunk, call->symbol.index);
+    mtr_write_chunk(chunk, call->argc);
+}
+
 static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr) {
     switch (expr->type)
     {
@@ -200,7 +211,7 @@ static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr) {
     case MTR_EXPR_LITERAL: return write_literal(chunk, (struct mtr_literal*) expr);
     case MTR_EXPR_UNARY:   return write_unary(chunk, (struct mtr_unary*) expr);
     case MTR_EXPR_GROUPING: return write_expr(chunk, ((struct mtr_grouping*) expr)->expression);
-    case MTR_EXPR_CALL: return;
+    case MTR_EXPR_CALL: return write_call(chunk, (struct mtr_call*) expr);
     default:
         break;
     }

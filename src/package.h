@@ -7,7 +7,7 @@
 #include "scope.h"
 
 struct mtr_package {
-    struct mtr_scope indices;
+    struct mtr_scope globals;
     struct mtr_chunk* functions;
     const char* source;
 };

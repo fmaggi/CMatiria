@@ -2,8 +2,9 @@ fn main(Int y, Int z) -> Int {
     y := 45;
     z := 32;
     Int w := 35;
+    z := x(w);
 }
 
 fn x(Int y) -> Int {
-
+    y := 0;
 }

@@ -93,6 +93,13 @@ u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {
         break;
     }
 
+    case MTR_OP_CALL: {
+        u16 index = READ(u16);
+        u8 argc = READ(u8);
+        MTR_LOG("CALL at %u (%u)", index, argc);
+        break;
+    }
+
     default:
         break;
     }

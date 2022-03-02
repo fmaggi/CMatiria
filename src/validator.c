@@ -143,6 +143,7 @@ static bool load_fn(struct mtr_function* stmt, struct mtr_scope* scope, const ch
         return false;
     }
 
+    stmt->symbol.index = scope->current++;
     mtr_scope_add(scope, stmt->symbol, (struct mtr_stmt*) stmt);
     return true;
 }
@@ -306,6 +307,8 @@ bool mtr_validate(struct mtr_ast* ast, const char* const source) {
         struct mtr_stmt* s = block->statements[i];
         all_ok = load_global(s, &global, source);
     }
+
+    global.current = 0;
 
     for (size_t i = 0; i < block->size; ++i) {
         struct mtr_stmt* s = block->statements[i];

@@ -14,8 +14,7 @@ int main(int argc, char* argv[])
     if (NULL == package)
         return -1;
 
-    struct mtr_vm vm;
-    i32 result = mtr_execute(&vm, package);
+    i32 result = mtr_execute(package);
     MTR_LOG_DEBUG("return %i", result);
 
     mtr_delete_package(package);

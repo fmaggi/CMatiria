@@ -12,10 +12,9 @@
 struct mtr_vm {
     mtr_value stack[MTR_MAX_STACK];
     mtr_value* stack_top;
-    struct mtr_chunk* chunk;
-    u8* ip;
+    struct mtr_package* package;
 };
 
-i32 mtr_execute(struct mtr_vm* vm, struct mtr_package* package);
+i32 mtr_execute(struct mtr_package* package);
 
 #endif

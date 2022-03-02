@@ -11,7 +11,7 @@
 struct mtr_package* mtr_new_package(const char* const source, struct mtr_ast* ast) {
     struct mtr_package* package = malloc(sizeof(struct mtr_package));
     package->source = source;
-    package->indices = mtr_new_scope(NULL);
+    package->globals = mtr_new_scope(NULL);
 
     struct mtr_block* block = (struct mtr_block*) ast->head;
     package->functions = malloc(sizeof(struct mtr_chunk) * block->size);
@@ -20,7 +20,7 @@ struct mtr_package* mtr_new_package(const char* const source, struct mtr_ast* as
         struct mtr_function* f = (struct mtr_function*) block->statements[i];
         MTR_ASSERT(f->stmt.type == MTR_STMT_FN, "Stmt should be function declaration.");
         f->symbol.index = i;
-        mtr_scope_add(&package->indices, f->symbol, (struct mtr_stmt*) f);
+        mtr_scope_add(&package->globals, f->symbol, (struct mtr_stmt*) f);
         package->functions[i] = mtr_new_chunk();
     }
 
@@ -28,7 +28,7 @@ struct mtr_package* mtr_new_package(const char* const source, struct mtr_ast* as
 }
 
 struct mtr_chunk* mtr_package_get_chunk(struct mtr_package* package, struct mtr_symbol symbol) {
-    const struct mtr_symbol_entry* s = mtr_scope_find(&package->indices, symbol.token);
+    const struct mtr_symbol_entry* s = mtr_scope_find(&package->globals, symbol.token);
     if (s == NULL) {
         return NULL;
     }
@@ -43,11 +43,11 @@ struct mtr_chunk* mtr_package_get_chunk_by_name(struct mtr_package* package, con
 }
 
 void mtr_delete_package(struct mtr_package* package) {
-    for (size_t i = 0; i < package->indices.symbols.size; ++i) {
+    for (size_t i = 0; i < package->globals.symbols.size; ++i) {
         mtr_delete_chunk(package->functions + i);
     }
     free(package->functions);
     package->functions = NULL;
-    mtr_delete_scope(&package->indices);
+    mtr_delete_scope(&package->globals);
     free(package);
 }
