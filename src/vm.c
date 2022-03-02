@@ -155,6 +155,7 @@ static void execute_instruction(struct mtr_vm* vm, struct call_frame* frame) {
             const u8 argc = READ(u8);
             struct mtr_chunk* chunk = vm->package->functions + index;
             call(vm, chunk, argc);
+            break;
         }
 
         default:
