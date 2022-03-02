@@ -25,6 +25,7 @@ struct mtr_block {
     struct mtr_stmt** statements;
     size_t size;
     size_t capacity;
+    u16 var_count;
 };
 
 struct mtr_if {

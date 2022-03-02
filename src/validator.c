@@ -167,6 +167,7 @@ static bool analyze_block(struct mtr_block* block, struct mtr_scope* parent, con
     bool all_ok = true;
 
     struct mtr_scope scope = mtr_new_scope(parent);
+    size_t current = scope.current;
 
     for (size_t i = 0; i < block->size; ++i) {
         struct mtr_stmt* s = block->statements[i];
@@ -174,6 +175,7 @@ static bool analyze_block(struct mtr_block* block, struct mtr_scope* parent, con
         all_ok = s_ok && all_ok;
     }
 
+    block->var_count = (u16) (scope.current - current);
     mtr_delete_scope(&scope);
     return all_ok;
 }

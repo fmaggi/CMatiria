@@ -182,7 +182,7 @@ static mtr_value call(struct mtr_vm* vm, struct mtr_chunk* chunk, u8 argc) {
     while (ip && ip < chunk->bytecode + chunk->size) {
 
 #ifndef NDEBUG
-        // mtr_dump_stack(frame.stack, vm->stack_top);
+        mtr_dump_stack(frame.stack, vm->stack_top);
         mtr_disassemble_instruction(ip, ip - chunk->bytecode);
 #endif
 
