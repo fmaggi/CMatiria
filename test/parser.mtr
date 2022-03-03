@@ -1,10 +1,10 @@
 main(Int y, Int z) -> Int {
     y := 45;
     z := 32;
-    Int w := 35;
-    z := x(w);
+    let w := 3;
+    z := x(3 * 2 - 4);
     {
-        Int f := 3;
+        let f := 3;
     }
 
     Bool t := true;

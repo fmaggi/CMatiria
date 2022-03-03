@@ -17,11 +17,12 @@ struct keyword_entry {
     const size_t str_len;
 };
 
-#define FIRST_KEYWORD MTR_TOKEN_STRUCT
+#define FIRST_KEYWORD MTR_TOKEN_LET
 #define LAST_KEYWORD  MTR_TOKEN_BOOL
 #define KEYWORD_COUNT LAST_KEYWORD - FIRST_KEYWORD + 1
 
 static const struct keyword_entry keywords[KEYWORD_COUNT] = {
+    { .type = MTR_TOKEN_LET,     .str = "let",    .str_len = strlen("let")   },
     { .type = MTR_TOKEN_STRUCT, .str = "struct", .str_len = strlen("struct") },
     { .type = MTR_TOKEN_IF,     .str = "if",     .str_len = strlen("if")     },
     { .type = MTR_TOKEN_ELSE,   .str = "else",   .str_len = strlen("else")   },

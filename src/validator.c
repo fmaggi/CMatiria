@@ -93,13 +93,14 @@ static const struct mtr_data_type analyze_call(struct mtr_call* call, struct mtr
     struct mtr_symbol s = e->symbol;
     struct mtr_function* f = (struct mtr_function*) e->parent;
     if (f->argc == call->argc) {
-        for (u8 i =0 ; i < call->argc; ++i) {
+        for (u8 i = 0 ; i < call->argc; ++i) {
             struct mtr_expr* a = call->argv[i];
             struct mtr_data_type ta = analyze_expr(a, scope, source);
 
             struct mtr_variable p = f->argv[i];
             if (!mtr_data_type_match(ta, p.symbol.type)) {
                 MTR_LOG_ERROR("Wrong type of argument passed");
+                s.type.type = MTR_DATA_INVALID;
             }
         }
 
@@ -223,9 +224,13 @@ static bool analyze_variable(struct mtr_variable* decl, struct mtr_scope* parent
     bool expr = true;
     if (decl->value) {
         const struct mtr_data_type type = analyze_expr(decl->value, parent, source);
-        expr = mtr_data_type_match(decl->symbol.type, type);
-        if (!expr) {
-            mtr_report_error(decl->symbol.token, "Invalid expression to variable of different type", source);
+        if (decl->symbol.type.type == MTR_DATA_INVALID) {
+            decl->symbol.type = type;
+        } else {
+            expr = mtr_data_type_match(decl->symbol.type, type);
+            if (!expr) {
+                mtr_report_error(decl->symbol.token, "Invalid expression to variable of different type", source);
+            }
         }
     }
 

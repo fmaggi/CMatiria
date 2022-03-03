@@ -187,6 +187,7 @@ const char* mtr_token_type_to_str(enum mtr_token_type type) {
     case MTR_TOKEN_FLOAT_LITERAL: return "FLOAT";
     case MTR_TOKEN_AND:           return "&&";
     case MTR_TOKEN_OR:            return "||";
+    case MTR_TOKEN_LET:           return "let";
     case MTR_TOKEN_STRUCT:        return "struct";
     case MTR_TOKEN_IF:            return "if";
     case MTR_TOKEN_ELSE:          return "else";

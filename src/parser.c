@@ -430,6 +430,21 @@ static struct mtr_stmt* variable(struct mtr_parser* parser) {
     return (struct mtr_stmt*) node;
 }
 
+static struct mtr_stmt* let_variable(struct mtr_parser* parser) {
+    struct mtr_variable* node = ALLOCATE_STMT(MTR_STMT_VAR, mtr_variable);
+    advance(parser);
+
+    node->symbol.type.type = MTR_DATA_INVALID;
+    node->symbol.token = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
+    node->value = NULL;
+
+    consume(parser, MTR_TOKEN_ASSIGN, "Expected ':='.");
+    node->value = expression(parser);
+    consume(parser, MTR_TOKEN_SEMICOLON, "Expected ';'.");
+
+    return (struct mtr_stmt*) node;
+}
+
 static struct mtr_stmt* declaration(struct mtr_parser* parser) {
     switch (parser->token.type)
     {
@@ -437,6 +452,8 @@ static struct mtr_stmt* declaration(struct mtr_parser* parser) {
     case MTR_TOKEN_FLOAT:
     case MTR_TOKEN_BOOL:
         return variable(parser);
+    case MTR_TOKEN_LET:
+        return let_variable(parser);
     default:
         return statement(parser);
     }
