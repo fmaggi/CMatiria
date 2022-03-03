@@ -192,7 +192,7 @@ const char* mtr_token_type_to_str(enum mtr_token_type type) {
     case MTR_TOKEN_ELSE:          return "else";
     case MTR_TOKEN_TRUE:          return "true";
     case MTR_TOKEN_FALSE:         return "false";
-    case MTR_TOKEN_FN:            return "fn";
+    case MTR_TOKEN_FN:            return "Fn";
     case MTR_TOKEN_RETURN:        return "return";
     case MTR_TOKEN_WHILE:         return "while";
     case MTR_TOKEN_FOR:           return "for";

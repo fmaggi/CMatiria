@@ -1,4 +1,4 @@
-fn main(Int y, Int z) -> Int {
+main(Int y, Int z) -> Int {
     y := 45;
     z := 32;
     Int w := 35;
@@ -23,7 +23,7 @@ fn main(Int y, Int z) -> Int {
     Int f := 45;
 }
 
-fn x(Int y) -> Int {
+x(Int y) -> Int {
     y := 0;
 
     {

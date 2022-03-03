@@ -369,8 +369,6 @@ static struct mtr_stmt* statement(struct mtr_parser* parser) {
 static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
     struct mtr_function* node = ALLOCATE_STMT(MTR_STMT_FN, mtr_function);
 
-    advance(parser);
-
     node->symbol.token = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
     consume(parser, MTR_TOKEN_PAREN_L, "Expected '('.");
 
@@ -447,7 +445,7 @@ static struct mtr_stmt* declaration(struct mtr_parser* parser) {
 static struct mtr_stmt* global_declaration(struct mtr_parser* parser) {
     switch (parser->token.type)
     {
-    case MTR_TOKEN_FN: return func_decl(parser);
+    case MTR_TOKEN_IDENTIFIER: return func_decl(parser);
     default:
         break;
     }
