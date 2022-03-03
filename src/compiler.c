@@ -242,7 +242,7 @@ static void write_if(struct mtr_chunk* chunk, struct mtr_if* stmt) {
     u16 offset = write_jump(chunk, MTR_OP_JMP_Z);
     mtr_write_chunk(chunk, MTR_OP_POP);
 
-    write_block(chunk, stmt->then);
+    write(chunk, stmt->then);
 
     u16 otherwise = write_jump(chunk, MTR_OP_JMP);
 
@@ -250,7 +250,7 @@ static void write_if(struct mtr_chunk* chunk, struct mtr_if* stmt) {
     mtr_write_chunk(chunk, MTR_OP_POP);
 
     if (stmt->otherwise) {
-        write_block(chunk, stmt->otherwise);
+        write(chunk, stmt->otherwise);
     }
     patch_jump(chunk, otherwise);
 }
@@ -260,7 +260,7 @@ static void write_while(struct mtr_chunk* chunk, struct mtr_while* stmt) {
     u16 offset = write_jump(chunk, MTR_OP_JMP_Z);
     mtr_write_chunk(chunk, MTR_OP_POP);
 
-    write_block(chunk, stmt->body);
+    write(chunk, stmt->body);
 
     write_expr(chunk, stmt->condition); // we need to write the condition again because it was popped
     write_loop(chunk, offset);

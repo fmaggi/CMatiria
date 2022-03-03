@@ -6,6 +6,10 @@
 #include "core/log.h"
 #include "debug/dump.h"
 
+/*
+    TODO: Fix bug where you can assign to functions
+*/
+
 static const struct mtr_data_type invalid_type = {
     .length = 0,
     .type = MTR_DATA_INVALID,
@@ -235,11 +239,11 @@ static bool analyze_if(struct mtr_if* stmt, struct mtr_scope* parent, const char
         MTR_LOG_ERROR("Invalid condtion.");
     }
 
-    bool then_ok = analyze_block(stmt->then, parent, source);
+    bool then_ok = analyze(stmt->then, parent, source);
 
     bool e_ok = true;
     if (stmt->otherwise) {
-        e_ok = analyze_block(stmt->otherwise, parent, source);
+        e_ok = analyze(stmt->otherwise, parent, source);
     }
 
     return condition_ok && then_ok && e_ok;
@@ -251,7 +255,7 @@ static bool analyze_while(struct mtr_while* stmt, struct mtr_scope* parent, cons
         MTR_LOG_ERROR("Invalid condtion.");
     }
 
-    bool body_ok = analyze_block(stmt->body, parent, source);
+    bool body_ok = analyze(stmt->body, parent, source);
 
     return condition_ok && body_ok;
 }

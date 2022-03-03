@@ -30,14 +30,14 @@ struct mtr_block {
 
 struct mtr_if {
     struct mtr_stmt stmt;
-    struct mtr_block* then;
-    struct mtr_block* otherwise;
+    struct mtr_stmt* then;
+    struct mtr_stmt* otherwise;
     struct mtr_expr* condition;
 };
 
 struct mtr_while {
     struct mtr_stmt stmt;
-    struct mtr_block* body;
+    struct mtr_stmt* body;
     struct mtr_expr* condition;
 };
 
@@ -70,5 +70,7 @@ struct mtr_assignment {
 struct mtr_ast {
     struct mtr_stmt* head;
 };
+
+void mtr_free_stmt(struct mtr_stmt* s);
 
 #endif

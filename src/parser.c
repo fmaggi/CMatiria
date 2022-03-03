@@ -306,12 +306,12 @@ static struct mtr_stmt* if_stmt(struct mtr_parser* parser) {
     node->condition = expression(parser);
     consume(parser, MTR_TOKEN_PAREN_R, "Expected ')'.");
 
-    node->then = (struct mtr_block*) block(parser);
+    node->then = declaration(parser);
     node->otherwise = NULL;
 
     if (CHECK(MTR_TOKEN_ELSE)) {
         advance(parser);
-        node->otherwise = (struct mtr_block*) block(parser);
+        node->otherwise = declaration(parser);
     }
 
     return (struct mtr_stmt*) node;
@@ -325,7 +325,7 @@ static struct mtr_stmt* while_stmt(struct mtr_parser* parser) {
     node->condition = expression(parser);
     consume(parser, MTR_TOKEN_PAREN_R, "Expected ')'.");
 
-    node->body = (struct mtr_block*) block(parser);
+    node->body = declaration(parser);
 
     return (struct mtr_stmt*) node;
 }
@@ -513,8 +513,20 @@ static void write_block(struct mtr_block* block, struct mtr_stmt* statement) {
 static void delete_block(struct mtr_block* block) {
     for (size_t i = 0; i < block->size; i++) {
         struct mtr_stmt* s = block->statements[i];
-        switch (s->type)
-        {
+        mtr_free_stmt(s);
+    }
+
+    free(block->statements);
+    block->statements = NULL;
+    block->size = 0;
+    block->capacity = 0;
+    free(block);
+}
+
+// =======================================================================
+
+void mtr_free_stmt(struct mtr_stmt* s) {
+    switch (s->type) {
         case MTR_STMT_BLOCK:
             delete_block((struct mtr_block*) s);
             break;
@@ -536,16 +548,16 @@ static void delete_block(struct mtr_block* block) {
         }
         case MTR_STMT_IF: {
             struct mtr_if* i = (struct mtr_if*) s;
-            delete_block(i->then);
+            mtr_free_stmt(i->then);
             if (i->otherwise)
-                delete_block(i->otherwise);
+                mtr_free_stmt(i->otherwise);
             mtr_free_expr(i->condition);
             free(i);
             break;
         }
         case MTR_STMT_WHILE: {
             struct mtr_while* w = (struct mtr_while*) s;
-            delete_block(w->body);
+            mtr_free_stmt(w->body);
             mtr_free_expr(w->condition);
             free(w);
             break;
@@ -567,17 +579,8 @@ static void delete_block(struct mtr_block* block) {
             free(r);
             break;
         }
-        }
     }
-
-    free(block->statements);
-    block->statements = NULL;
-    block->size = 0;
-    block->capacity = 0;
-    free(block);
 }
-
-// =======================================================================
 
 static void free_binary(struct mtr_binary* node) {
     mtr_free_expr(node->left);

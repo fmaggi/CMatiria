@@ -109,9 +109,9 @@ static void dump_if(struct mtr_if* stmt, u32 offset) {
     MTR_PRINT_DEBUG("if: ");
     dump_expr(stmt->condition, 0);
     MTR_PRINT_DEBUG("\n");
-    dump_block(stmt->then, offset + 1);
+    dump_stmt(stmt->then, offset + 1);
     MTR_PRINT_DEBUG("else: \n");
-    dump_block(stmt->otherwise, offset + 1);
+    dump_stmt(stmt->otherwise, offset + 1);
     MTR_PRINT_DEBUG("\n");
 }
 
@@ -119,7 +119,7 @@ static void dump_while(struct mtr_while* stmt, u32 offset) {
     MTR_PRINT_DEBUG("loop: ");
     dump_expr(stmt->condition, 0);
     MTR_PRINT_DEBUG("\n");
-    dump_block(stmt->body, offset + 1);
+    dump_stmt(stmt->body, offset + 1);
     MTR_PRINT_DEBUG("\n");
 }
 

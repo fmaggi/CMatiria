@@ -14,6 +14,12 @@ fn main(Int y, Int z) -> Int {
         Float asdgas;
     }
 
+    if (true)
+        x := 3;
+    else {
+        x := 0;
+    }
+
     Int f := 45;
 }
 
