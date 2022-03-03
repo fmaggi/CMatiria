@@ -2,7 +2,7 @@ fn main(Int y, Int z) -> Int {
     y := 45;
     z := 32;
     Int w := 35;
-    z := x(w, 3.0);
+    z := x(w);
     {
         Int f := 3;
     }
@@ -17,7 +17,7 @@ fn main(Int y, Int z) -> Int {
     Int f := 45;
 }
 
-fn x(Int y, Float r2) -> Int {
+fn x(Int y) -> Int {
     y := 0;
 
     {

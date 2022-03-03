@@ -57,6 +57,7 @@ struct mtr_function {
 
 struct mtr_return {
     struct mtr_stmt stmt;
+    struct mtr_symbol from;
     struct mtr_expr* expr;
 };
 

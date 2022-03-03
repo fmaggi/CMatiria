@@ -31,7 +31,7 @@ static void push(struct mtr_vm* vm, mtr_value value) {
     *(vm->stack_top++) = value;
 }
 
-static mtr_value call(struct mtr_vm* vm, struct mtr_chunk* chunk, u8 argc);
+static void call(struct mtr_vm* vm, const struct mtr_chunk* chunk, u8 argc);
 
 static u8* execute_instruction(struct mtr_vm* vm, u8* ip, struct call_frame frame) {
 
@@ -175,22 +175,19 @@ static u8* execute_instruction(struct mtr_vm* vm, u8* ip, struct call_frame fram
 #undef READ
 }
 
-static mtr_value call(struct mtr_vm* vm, struct mtr_chunk* chunk, u8 argc) {
+static void call(struct mtr_vm* vm, const struct mtr_chunk* chunk, u8 argc) {
     struct call_frame frame;
     frame.stack = vm->stack_top - argc;
     u8* ip = chunk->bytecode;
     while (ip && ip < chunk->bytecode + chunk->size) {
 
 #ifndef NDEBUG
-        mtr_dump_stack(frame.stack, vm->stack_top);
+        // mtr_dump_stack(frame.stack, vm->stack_top);
         mtr_disassemble_instruction(ip, ip - chunk->bytecode);
 #endif
 
         ip = execute_instruction(vm, ip, frame);
     }
-
-    mtr_value value;
-    return value;
 }
 
 i32 mtr_execute(struct mtr_package* package) {

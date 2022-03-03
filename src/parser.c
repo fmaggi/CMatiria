@@ -348,6 +348,9 @@ static struct mtr_stmt* return_stmt(struct mtr_parser* parser) {
     }
     node->expr = expression(parser);
     consume(parser, MTR_TOKEN_SEMICOLON, "Expected ';'.");
+
+    node->from = parser->current_function;
+
     return (struct mtr_stmt*) node;
 }
 
@@ -406,6 +409,8 @@ static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
 
     node->symbol.type.type = mtr_get_data_type(consume_type(parser).type);
     node->body = (struct mtr_block*) block(parser);
+
+    parser->current_function = node->symbol;
 
     return (struct mtr_stmt*) node;
 }

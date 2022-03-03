@@ -257,7 +257,11 @@ static bool analyze_while(struct mtr_while* stmt, struct mtr_scope* parent, cons
 }
 
 static bool analyze_return(struct mtr_return* stmt, struct mtr_scope* parent, const char* const source) {
-    return analyze_expr(stmt->expr, parent, source).type != MTR_DATA_INVALID;
+    bool ok = mtr_data_type_match(analyze_expr(stmt->expr, parent, source), stmt->from.type);
+    if (!ok) {
+        MTR_LOG_ERROR("Wrong return type.");
+    }
+    return ok;
 }
 
 static bool analyze(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* const source) {

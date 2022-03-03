@@ -262,6 +262,7 @@ static void write_while(struct mtr_chunk* chunk, struct mtr_while* stmt) {
 
     write_block(chunk, stmt->body);
 
+    write_expr(chunk, stmt->condition); // we need to write the condition again because it was popped
     write_loop(chunk, offset);
 
     patch_jump(chunk, offset);
@@ -305,7 +306,6 @@ static void write_function(struct mtr_chunk* chunk, struct mtr_function* fn) {
         write(chunk, s);
     }
 }
-
 
 // as every function has its own chunk we could probably paralellize this pretty easily
 static void write_bytecode(struct mtr_stmt* stmt, struct mtr_package* package) {
