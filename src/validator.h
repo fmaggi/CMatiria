@@ -1,5 +1,5 @@
-#ifndef _MTR_SEMA_H
-#define _MTR_SEMA_H
+#ifndef MTR_SEMA_H
+#define MTR_SEMA_H
 
 #include "stmt.h"
 

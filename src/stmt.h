@@ -1,5 +1,5 @@
-#ifndef _MTR_STMT_H
-#define _MTR_STMT_H
+#ifndef MTR_STMT_H
+#define MTR_STMT_H
 
 #include "expr.h"
 #include "symbol.h"

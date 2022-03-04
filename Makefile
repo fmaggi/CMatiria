@@ -8,7 +8,8 @@ MATIRIA = matiria
 SRC_DIR = src
 
 SRC = $(wildcard $(SRC_DIR)/*.c) $(wildcard $(SRC_DIR)/**/*.c) $(wildcard $(SRC_DIR)/**/**/*.c) $(wildcard $(SRC_DIR)/**/**/**/*.c)
-OBJS  = $(SRC:%.c=%.o)
+OBJS = $(SRC:%.c=%.o)
+JSON = $(SRC:%.c=%.j)
 
 ifndef config
 	config=debug
@@ -25,11 +26,19 @@ endif
 $(MATIRIA): $(OBJS)
 	@echo [EXE] $(MATIRIA)
 	@$(CC) -o $@ $^ $(EXEFLAGS)
-	sed -e '1s/^/[\n/' -e '$s/,$/\n]/' src/*.o.json > compile_commands.json
 
 %.o: %.c
 	@echo [CC] $<
-	@$(CC) -MJ $@.json $(CFLAGS) -o $@ -c $<
+	@$(CC) $(CFLAGS) -o $@ -c $<
 
 clean:
 	@rm $(OBJS) $(MATIRIA)
+
+vscode_setup: $(JSON)
+	@sed -e '1s/^/[\n/' -e '$$s/,$$/\n]/' src/*.j.json > build/compile_commands.json
+	@rm $(JSON:%.j=%.j.json)
+
+
+%.j: %.c
+	@$(CC) -MJ $@.json $(CFLAGS) -o $@ -c $<
+	@rm $@

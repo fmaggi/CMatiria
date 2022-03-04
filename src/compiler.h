@@ -1,5 +1,5 @@
-#ifndef _MTR_COMPILER_H
-#define _MTR_COMPILER_H
+#ifndef MTR_COMPILER_H
+#define MTR_COMPILER_H
 
 #include "core/types.h"
 

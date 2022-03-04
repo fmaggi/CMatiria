@@ -1,14 +1,14 @@
 fn main(Int y, Int z) -> Int {
-
-}
-
-fn x(Int y) -> Float {
-    y := 0;
-
-    {
-        Int f := 13;
-        Int r := 32;
+    if 3 < 2 {
+        let x := 3;
+    } else {
+        let x := 4;
     }
 
-    return 42.0;
+    if false && true {
+        let f := 45;
+    } else {
+        let f := 32;
+    }
+
 }

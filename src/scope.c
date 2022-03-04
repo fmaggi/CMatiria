@@ -10,7 +10,7 @@
 
 static const char* tombstone = "__@tombstone@__@mangled@__";
 
-struct mtr_symbol_table mtr_new_symbol_table() {
+struct mtr_symbol_table mtr_new_symbol_table(void) {
     struct mtr_symbol_table t = {
         .entries = NULL,
         .capacity = 0,

@@ -641,11 +641,11 @@ static void free_call(struct mtr_call* node) {
 void mtr_free_expr(struct mtr_expr* node) {
     switch (node->type)
     {
-    case MTR_EXPR_BINARY:   return free_binary((struct mtr_binary*) node);
-    case MTR_EXPR_GROUPING: return free_grouping((struct mtr_grouping*) node);
-    case MTR_EXPR_PRIMARY:  return free_primary((struct mtr_primary*) node);
-    case MTR_EXPR_UNARY:    return free_unary((struct mtr_unary*) node);
-    case MTR_EXPR_LITERAL:  return free_literal((struct mtr_literal*) node);
-    case MTR_EXPR_CALL:     return free_call((struct mtr_call*) node);
+    case MTR_EXPR_BINARY:   free_binary((struct mtr_binary*) node); return;
+    case MTR_EXPR_GROUPING: free_grouping((struct mtr_grouping*) node); return;
+    case MTR_EXPR_PRIMARY:  free_primary((struct mtr_primary*) node); return;
+    case MTR_EXPR_UNARY:    free_unary((struct mtr_unary*) node); return;
+    case MTR_EXPR_LITERAL:  free_literal((struct mtr_literal*) node); return;
+    case MTR_EXPR_CALL:     free_call((struct mtr_call*) node); return;
     }
 }

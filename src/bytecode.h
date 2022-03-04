@@ -1,5 +1,5 @@
-#ifndef _MTR_BYTECODE_H
-#define _MTR_BYTECODE_H
+#ifndef MTR_BYTECODE_H
+#define MTR_BYTECODE_H
 
 #include "core/types.h"
 
@@ -27,6 +27,14 @@ enum mtr_op_code {
     MTR_OP_MUL_F,
     MTR_OP_DIV_F,
 
+    MTR_OP_LESS_I,
+    MTR_OP_GREATER_I,
+    MTR_OP_EQUAL_I,
+
+    MTR_OP_LESS_F,
+    MTR_OP_GREATER_F,
+    MTR_OP_EQUAL_F,
+
     MTR_OP_GET,
     MTR_OP_SET,
 
@@ -47,7 +55,7 @@ struct mtr_chunk {
     size_t capacity;
 };
 
-struct mtr_chunk mtr_new_chunk();
+struct mtr_chunk mtr_new_chunk(void);
 void mtr_delete_chunk(struct mtr_chunk* chunk);
 
 void mtr_write_chunk(struct mtr_chunk* chunk, u8 bytecode);

@@ -1,5 +1,5 @@
-#ifndef _MTR_PARSER_H
-#define _MTR_PARSER_H
+#ifndef MTR_PARSER_H
+#define MTR_PARSER_H
 
 #include "scanner.h"
 #include "expr.h"

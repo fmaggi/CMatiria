@@ -1,5 +1,5 @@
-#ifndef _MTR_DISASSEMBLE_H
-#define _MTR_DISASSEMBLE_H
+#ifndef MTR_DISASSEMBLE_H
+#define MTR_DISASSEMBLE_H
 
 #include "value.h"
 #include "bytecode.h"

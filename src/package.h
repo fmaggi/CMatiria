@@ -1,5 +1,5 @@
-#ifndef _MTR_PACKAGE_H
-#define _MTR_PACKAGE_H
+#ifndef MTR_PACKAGE_H
+#define MTR_PACKAGE_H
 
 #include "symbol.h"
 #include "bytecode.h"

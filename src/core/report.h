@@ -1,5 +1,5 @@
-#ifndef _MTR_ERROR_H
-#define _MTR_ERROR_H
+#ifndef MTR_ERROR_H
+#define MTR_ERROR_H
 
 #include "token.h"
 

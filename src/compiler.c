@@ -5,6 +5,7 @@
 #include "scanner.h"
 #include "parser.h"
 #include "symbol.h"
+#include "token.h"
 #include "validator.h"
 #include "vm.h"
 
@@ -133,43 +134,97 @@ static void write_literal(struct mtr_chunk* chunk, struct mtr_literal* expr) {
     }
 }
 
+static void write_and(struct mtr_chunk* chunk, struct mtr_binary* expr) {
+    write_expr(chunk, expr->left);
+    u16 offset = write_jump(chunk, MTR_OP_JMP_Z);
+    mtr_write_chunk(chunk, MTR_OP_POP);
+
+    write_expr(chunk, expr->right);
+    patch_jump(chunk, offset);
+}
+
+static void write_or(struct mtr_chunk* chunk, struct mtr_binary* expr) {
+    write_expr(chunk, expr->left);
+    mtr_write_chunk(chunk, MTR_OP_NOT); // we negate the first condition to use the same instruction JMP_Z which jumps on false.
+    u16 left_false = write_jump(chunk, MTR_OP_JMP_Z);
+    mtr_write_chunk(chunk, MTR_OP_POP);
+
+    write_expr(chunk, expr->right);
+    patch_jump(chunk, left_false);
+}
+
 static void write_binary(struct mtr_chunk* chunk, struct mtr_binary* expr) {
+    // handle && and || as they are short circuited
+    if (expr->operator.token.type == MTR_TOKEN_AND) {
+        write_and(chunk, expr);
+        return;
+    } else if (expr->operator.token.type == MTR_TOKEN_OR) {
+        write_or(chunk, expr);
+        return;
+    }
+
     write_expr(chunk, expr->left);
     write_expr(chunk, expr->right);
+
+#define BINARY_OP(op)                                     \
+    do {                                                  \
+        if (expr->operator.type.type == MTR_DATA_INT) {   \
+            mtr_write_chunk(chunk, MTR_OP_ ## op ## _I);  \
+        } else {                                          \
+            mtr_write_chunk(chunk, MTR_OP_ ## op ## _F);  \
+        }                                                 \
+    } while (false)
 
     switch (expr->operator.token.type)
     {
     case MTR_TOKEN_PLUS:
-        if (expr->operator.type.type == MTR_DATA_INT) {
-            mtr_write_chunk(chunk, MTR_OP_ADD_I);
-        } else {
-            mtr_write_chunk(chunk, MTR_OP_ADD_F);
-        }
+        BINARY_OP(ADD);
         break;
+
     case MTR_TOKEN_MINUS:
-        if (expr->operator.type.type == MTR_DATA_INT) {
-            mtr_write_chunk(chunk, MTR_OP_SUB_I);
-        } else {
-            mtr_write_chunk(chunk, MTR_OP_SUB_F);
-        }
+        BINARY_OP(SUB);
         break;
+
     case MTR_TOKEN_STAR:
-        if (expr->operator.type.type == MTR_DATA_INT) {
-            mtr_write_chunk(chunk, MTR_OP_MUL_I);
-        } else {
-            mtr_write_chunk(chunk, MTR_OP_MUL_F);
-        }
+        BINARY_OP(MUL);
         break;
+
     case MTR_TOKEN_SLASH:
-        if (expr->operator.type.type == MTR_DATA_INT) {
-            mtr_write_chunk(chunk, MTR_OP_DIV_I);
-        } else {
-            mtr_write_chunk(chunk, MTR_OP_DIV_F);
-        }
+        BINARY_OP(DIV);
         break;
+
+    case MTR_TOKEN_LESS:
+        BINARY_OP(LESS);
+        break;
+
+    case MTR_TOKEN_LESS_EQUAL:
+        BINARY_OP(GREATER);
+        mtr_write_chunk(chunk, MTR_OP_NOT);
+        break;
+
+    case MTR_TOKEN_GREATER:
+        BINARY_OP(GREATER);
+        break;
+
+    case MTR_TOKEN_GREATER_EQUAL:
+        BINARY_OP(LESS);
+        mtr_write_chunk(chunk, MTR_OP_NOT);
+        break;
+
+    case MTR_TOKEN_EQUAL:
+        BINARY_OP(EQUAL);
+        break;
+
+    case MTR_TOKEN_BANG_EQUAL:
+        BINARY_OP(EQUAL);
+        mtr_write_chunk(chunk, MTR_OP_NOT);
+        break;
+
     default:
         break;
     }
+
+#undef BINARY_OP
 }
 
 static void write_unary(struct mtr_chunk* chunk, struct mtr_unary* unary) {
@@ -206,12 +261,12 @@ static void write_call(struct mtr_chunk* chunk, struct mtr_call* call) {
 static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr) {
     switch (expr->type)
     {
-    case MTR_EXPR_BINARY:  return write_binary(chunk, (struct mtr_binary*) expr);
-    case MTR_EXPR_PRIMARY: return write_primary(chunk, (struct mtr_primary*) expr);
-    case MTR_EXPR_LITERAL: return write_literal(chunk, (struct mtr_literal*) expr);
-    case MTR_EXPR_UNARY:   return write_unary(chunk, (struct mtr_unary*) expr);
-    case MTR_EXPR_GROUPING: return write_expr(chunk, ((struct mtr_grouping*) expr)->expression);
-    case MTR_EXPR_CALL: return write_call(chunk, (struct mtr_call*) expr);
+    case MTR_EXPR_BINARY:  write_binary(chunk, (struct mtr_binary*) expr); return;;
+    case MTR_EXPR_PRIMARY: write_primary(chunk, (struct mtr_primary*) expr); return;;
+    case MTR_EXPR_LITERAL: write_literal(chunk, (struct mtr_literal*) expr); return;;
+    case MTR_EXPR_UNARY:   write_unary(chunk, (struct mtr_unary*) expr); return;;
+    case MTR_EXPR_GROUPING: write_expr(chunk, ((struct mtr_grouping*) expr)->expression); return;;
+    case MTR_EXPR_CALL: write_call(chunk, (struct mtr_call*) expr); return;;
     default:
         break;
     }
@@ -288,12 +343,12 @@ static void write_return(struct mtr_chunk* chunk, struct mtr_return* stmt) {
 static void write(struct mtr_chunk* chunk, struct mtr_stmt* stmt) {
     switch (stmt->type)
     {
-    case MTR_STMT_VAR:   return write_variable(chunk, (struct mtr_variable*) stmt);
-    case MTR_STMT_IF:    return write_if(chunk, (struct mtr_if*) stmt);
-    case MTR_STMT_WHILE: return write_while(chunk, (struct mtr_while*) stmt);
-    case MTR_STMT_BLOCK: return write_block(chunk, (struct mtr_block*) stmt);
-    case MTR_STMT_ASSIGNMENT: return write_assignment(chunk, (struct mtr_assignment*) stmt);
-    case MTR_STMT_RETURN: return write_return(chunk, (struct mtr_return*) stmt);
+    case MTR_STMT_VAR:   write_variable(chunk, (struct mtr_variable*) stmt); return;
+    case MTR_STMT_IF:    write_if(chunk, (struct mtr_if*) stmt); return;
+    case MTR_STMT_WHILE: write_while(chunk, (struct mtr_while*) stmt); return;
+    case MTR_STMT_BLOCK: write_block(chunk, (struct mtr_block*) stmt); return;
+    case MTR_STMT_ASSIGNMENT: write_assignment(chunk, (struct mtr_assignment*) stmt); return;
+    case MTR_STMT_RETURN: write_return(chunk, (struct mtr_return*) stmt); return;
     default:
         break;
     }

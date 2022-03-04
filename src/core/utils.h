@@ -1,5 +1,5 @@
-#ifndef _MTR_UTILS_H
-#define _MTR_UTILS_H
+#ifndef MTR_UTILS_H
+#define MTR_UTILS_H
 
 #include "types.h"
 

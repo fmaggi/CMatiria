@@ -1,5 +1,6 @@
 #include "vm.h"
 
+#include "bytecode.h"
 #include "core/log.h"
 #include "debug/disassemble.h"
 
@@ -47,7 +48,7 @@ static void call(struct mtr_vm* vm, const struct mtr_chunk* chunk, u8 argc) {
     register u8* ip = chunk->bytecode;
     u8* end = chunk->bytecode + chunk->size;
     while (ip < end) {
-        // mtr_dump_stack(frame.stack, vm->stack_top);
+        mtr_dump_stack(frame.stack, vm->stack_top);
         mtr_disassemble_instruction(ip, ip - chunk->bytecode);
 
         switch (*ip++)
@@ -114,6 +115,10 @@ static void call(struct mtr_vm* vm, const struct mtr_chunk* chunk, u8 argc) {
             case MTR_OP_SUB_F: BINARY_OP(-, floating); break;
             case MTR_OP_MUL_F: BINARY_OP(*, floating); break;
             case MTR_OP_DIV_F: BINARY_OP(/, floating); break;
+
+            case MTR_OP_LESS_I: BINARY_OP(<, integer); MTR_PROFILE_FUNC(); break;
+            case MTR_OP_GREATER_I: BINARY_OP(>, integer); break;
+            case MTR_OP_EQUAL_I: BINARY_OP(==, integer); break;
 
             case MTR_OP_GET: {
                 const u16 index = READ(u16);

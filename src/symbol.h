@@ -1,5 +1,5 @@
-#ifndef _MTR_SYMBOL_H
-#define _MTR_SYMBOL_H
+#ifndef MTR_SYMBOL_H
+#define MTR_SYMBOL_H
 
 #include "token.h"
 #include "core/types.h"

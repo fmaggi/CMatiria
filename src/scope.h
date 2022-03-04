@@ -1,5 +1,5 @@
-#ifndef _MTR_SCOPE_H
-#define _MTR_SCOPE_H
+#ifndef MTR_SCOPE_H
+#define MTR_SCOPE_H
 
 #include "symbol.h"
 
@@ -16,7 +16,7 @@ struct mtr_symbol_table {
     size_t capacity;
 };
 
-struct mtr_symbol_table mtr_new_symbol_table();
+struct mtr_symbol_table mtr_new_symbol_table(void);
 void mtr_delete_symbol_table(struct mtr_symbol_table* table);
 
 void mtr_symbol_table_insert(struct mtr_symbol_table* table, const char* key, size_t length, struct mtr_symbol symbol, struct mtr_stmt* parent);

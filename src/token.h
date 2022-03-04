@@ -1,5 +1,5 @@
-#ifndef _MTR_TOKEN_H
-#define _MTR_TOKEN_H
+#ifndef MTR_TOKEN_H
+#define MTR_TOKEN_H
 
 #include "core/types.h"
 

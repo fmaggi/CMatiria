@@ -1,7 +1,7 @@
 #ifndef NDEBUG
 
-#ifndef _MTR_DUMP_H
-#define _MTR_DUMP_H
+#ifndef MTR_DUMP_H
+#define MTR_DUMP_H
 
 
 #include "token.h"

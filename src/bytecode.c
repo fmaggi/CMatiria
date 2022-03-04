@@ -4,7 +4,7 @@
 
 #include <stdlib.h>
 
-struct mtr_chunk mtr_new_chunk() {
+struct mtr_chunk mtr_new_chunk(void) {
     struct mtr_chunk chunk = {
         .bytecode = NULL,
         .capacity = 0,

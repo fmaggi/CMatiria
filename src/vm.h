@@ -1,5 +1,5 @@
-#ifndef _MTR_VM_H
-#define _MTR_VM_H
+#ifndef MTR_VM_H
+#define MTR_VM_H
 
 #include "value.h"
 #include "bytecode.h"
