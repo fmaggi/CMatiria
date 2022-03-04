@@ -25,10 +25,11 @@ endif
 $(MATIRIA): $(OBJS)
 	@echo [EXE] $(MATIRIA)
 	@$(CC) -o $@ $^ $(EXEFLAGS)
+	sed -e '1s/^/[\n/' -e '$s/,$/\n]/' src/*.o.json > compile_commands.json
 
 %.o: %.c
 	@echo [CC] $<
-	@$(CC) $(CFLAGS) -o $@ -c $<
+	@$(CC) -MJ $@.json $(CFLAGS) -o $@ -c $<
 
 clean:
 	@rm $(OBJS) $(MATIRIA)
