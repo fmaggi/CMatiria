@@ -10,6 +10,45 @@
     TODO: Fix bug where you can assign to functions
 */
 
+static void expr_error(struct mtr_expr* expr, const char* message, const char* const source) {
+    switch (expr->type)
+    {
+    case MTR_EXPR_BINARY: {
+        struct mtr_binary* b = (struct mtr_binary*) expr;
+        mtr_report_error(b->operator.token, message, source);
+        break;
+    }
+    case MTR_EXPR_CALL: {
+        struct mtr_call* c = (struct mtr_call*) expr;
+        mtr_report_error(c->symbol.token, message, source);
+        break;
+    }
+    case MTR_EXPR_GROUPING: {
+        struct mtr_grouping* g = (struct mtr_grouping*) expr;
+        expr_error(g->expression, message, source);
+        break;
+    }
+    case MTR_EXPR_LITERAL: {
+        struct mtr_literal* l = (struct mtr_literal*) expr;
+        mtr_report_error(l->literal, message, source);
+        break;
+    }
+    case MTR_EXPR_PRIMARY: {
+        struct mtr_primary* p = (struct mtr_primary*) expr;
+        mtr_report_error(p->symbol.token, message, source);
+        break;
+    }
+    case MTR_EXPR_UNARY: {
+        struct mtr_unary* u = (struct mtr_unary*) expr;
+        mtr_report_error(u->operator.token, message, source);
+        break;
+    }
+
+    default:
+        break;
+    }
+}
+
 static const struct mtr_data_type invalid_type = {
     .length = 0,
     .type = MTR_DATA_INVALID,
@@ -99,7 +138,7 @@ static const struct mtr_data_type analyze_call(struct mtr_call* call, struct mtr
 
             struct mtr_variable p = f->argv[i];
             if (!mtr_data_type_match(ta, p.symbol.type)) {
-                MTR_LOG_ERROR("Wrong type of argument passed");
+                expr_error(a, "Wrong type of argument.", source);
                 s.type.type = MTR_DATA_INVALID;
             }
         }
@@ -241,7 +280,7 @@ static bool analyze_variable(struct mtr_variable* decl, struct mtr_scope* parent
 static bool analyze_if(struct mtr_if* stmt, struct mtr_scope* parent, const char* const source) {
     bool condition_ok = analyze_expr(stmt->condition, parent, source).type == MTR_DATA_BOOL;
     if (!condition_ok) {
-        MTR_LOG_ERROR("Invalid condtion.");
+        expr_error(stmt->condition, "Expression doesn't return Bool.", source);
     }
 
     bool then_ok = analyze(stmt->then, parent, source);
@@ -257,7 +296,7 @@ static bool analyze_if(struct mtr_if* stmt, struct mtr_scope* parent, const char
 static bool analyze_while(struct mtr_while* stmt, struct mtr_scope* parent, const char* const source) {
     bool condition_ok = analyze_expr(stmt->condition, parent, source).type == MTR_DATA_BOOL;
     if (!condition_ok) {
-        MTR_LOG_ERROR("Invalid condtion.");
+        expr_error(stmt->condition, "Expression doesn't return Bool.", source);
     }
 
     bool body_ok = analyze(stmt->body, parent, source);
@@ -268,7 +307,8 @@ static bool analyze_while(struct mtr_while* stmt, struct mtr_scope* parent, cons
 static bool analyze_return(struct mtr_return* stmt, struct mtr_scope* parent, const char* const source) {
     bool ok = mtr_data_type_match(analyze_expr(stmt->expr, parent, source), stmt->from.type);
     if (!ok) {
-        MTR_LOG_ERROR("Wrong return type.");
+        expr_error(stmt->expr, "Incompatible return type.", source);
+        mtr_report_message(stmt->from.token, "As declared here.", source);
     }
     return ok;
 }

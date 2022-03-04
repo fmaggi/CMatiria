@@ -22,8 +22,8 @@ struct keyword_entry {
 #define KEYWORD_COUNT LAST_KEYWORD - FIRST_KEYWORD + 1
 
 static const struct keyword_entry keywords[KEYWORD_COUNT] = {
-    { .type = MTR_TOKEN_LET,     .str = "let",    .str_len = strlen("let")   },
-    { .type = MTR_TOKEN_STRUCT, .str = "struct", .str_len = strlen("struct") },
+    { .type = MTR_TOKEN_LET,    .str = "let",    .str_len = strlen("let")    },
+    { .type = MTR_TOKEN_TYPE,   .str = "type",   .str_len = strlen("type")   },
     { .type = MTR_TOKEN_IF,     .str = "if",     .str_len = strlen("if")     },
     { .type = MTR_TOKEN_ELSE,   .str = "else",   .str_len = strlen("else")   },
     { .type = MTR_TOKEN_TRUE,   .str = "true",   .str_len = strlen("true")   },

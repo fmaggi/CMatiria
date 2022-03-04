@@ -171,7 +171,7 @@ static const struct parser_rule rules[] = {
     [MTR_TOKEN_AND] = { .prefix = NULL, .infix = binary, .precedence = LOGIC },
     [MTR_TOKEN_OR] = { .prefix = NULL, .infix = binary, .precedence = LOGIC },
     [MTR_TOKEN_LET] = { NO_OP },
-    [MTR_TOKEN_STRUCT] = { NO_OP },
+    [MTR_TOKEN_TYPE] = { NO_OP },
     [MTR_TOKEN_IF] = { NO_OP },
     [MTR_TOKEN_ELSE] = { NO_OP },
     [MTR_TOKEN_TRUE] = { .prefix = literal, .infix = NULL, .precedence = LITERAL },
@@ -299,8 +299,8 @@ static struct mtr_stmt* block(struct mtr_parser* parser) {
         synchronize(parser);
         write_block(node, s);
     }
-
     consume(parser, MTR_TOKEN_CURLY_R, "Expected '}'.");
+
     return (struct mtr_stmt*) node;
 }
 
@@ -409,9 +409,9 @@ static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
     consume(parser, MTR_TOKEN_ARROW, "Expected '->'.");
 
     node->symbol.type.type = mtr_get_data_type(consume_type(parser).type);
-    node->body = (struct mtr_block*) block(parser);
-
     parser->current_function = node->symbol;
+
+    node->body = (struct mtr_block*) block(parser);
 
     return (struct mtr_stmt*) node;
 }
@@ -466,6 +466,7 @@ static struct mtr_stmt* global_declaration(struct mtr_parser* parser) {
     switch (parser->token.type)
     {
     case MTR_TOKEN_FN: return func_decl(parser);
+    // case MTR_TOKEN_TYPE: return type(parser);
     default:
         break;
     }

@@ -1,29 +1,8 @@
 fn main(Int y, Int z) -> Int {
-    y := 45;
-    z := 32;
-    let w := false;
-    z := x(3 * 2 - 4);
-    {
-        let f := 3;
-    }
 
-    Bool t := true;
-    while t {
-        Int wret;
-        t := false;
-        Float asdgas;
-    }
-
-    if true {
-        x := 3;
-    } else {
-        x := 0;
-    }
-
-    Int f := 45;
 }
 
-fn x(Int y) -> Int {
+fn x(Int y) -> Float {
     y := 0;
 
     {
@@ -31,5 +10,5 @@ fn x(Int y) -> Int {
         Int r := 32;
     }
 
-    return 42;
+    return 42.0;
 }
