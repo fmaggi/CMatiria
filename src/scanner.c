@@ -28,7 +28,7 @@ static const struct keyword_entry keywords[KEYWORD_COUNT] = {
     { .type = MTR_TOKEN_ELSE,   .str = "else",   .str_len = strlen("else")   },
     { .type = MTR_TOKEN_TRUE,   .str = "true",   .str_len = strlen("true")   },
     { .type = MTR_TOKEN_FALSE,  .str = "false",  .str_len = strlen("false")  },
-    { .type = MTR_TOKEN_FN,     .str = "Fn",     .str_len = strlen("Fn")     },
+    { .type = MTR_TOKEN_FN,     .str = "fn",     .str_len = strlen("fn")     },
     { .type = MTR_TOKEN_RETURN, .str = "return", .str_len = strlen("return") },
     { .type = MTR_TOKEN_WHILE,  .str = "while",  .str_len = strlen("while")  },
     { .type = MTR_TOKEN_FOR,    .str = "for",    .str_len = strlen("for")    },

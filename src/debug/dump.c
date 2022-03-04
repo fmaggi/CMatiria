@@ -59,7 +59,8 @@ static void dump_expr(struct mtr_expr* expr, u32 offset) {
     }
 
     case MTR_EXPR_LITERAL: {
-        IMPLEMENT
+        struct mtr_literal* l = (struct mtr_literal*) expr;
+        MTR_PRINT_DEBUG("%.*s", (u32) l->literal.length, l->literal.start);
         break;
     }
     }
@@ -72,7 +73,6 @@ void mtr_dump_expr(struct mtr_expr* expr) {
 static void dump_stmt(struct mtr_stmt* stmt, u32 offset);
 
 static void dump_block(struct mtr_block* block, u32 offset) {
-    MTR_LOG_DEBUG("%zu", block->size);
     for (size_t i = 0; i < block->size; ++i) {
         struct mtr_stmt* s = block->statements[i];
         dump_stmt(s, offset + 1);

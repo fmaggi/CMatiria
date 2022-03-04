@@ -117,7 +117,8 @@ enum precedence {
     FACTOR,
     UNARY,
     CALL,
-    PRIMARY
+    PRIMARY,
+    LITERAL = PRIMARY
 };
 
 typedef struct mtr_expr* (*prefix_fn)(struct mtr_parser*, struct mtr_token);
@@ -164,16 +165,17 @@ static const struct parser_rule rules[] = {
     [MTR_TOKEN_GREATER_EQUAL] = { .prefix = NULL, .infix = binary, .precedence = COMPARISON },
     [MTR_TOKEN_LESS_EQUAL] = { .prefix = NULL, .infix = binary, .precedence = COMPARISON },
     [MTR_TOKEN_DOUBLE_SLASH] = { .prefix = NULL, .infix = binary, .precedence = FACTOR },
-    [MTR_TOKEN_STRING_LITERAL] = { .prefix = literal, .infix = NULL, .precedence = NONE },
-    [MTR_TOKEN_INT_LITERAL] = { .prefix = literal, .infix = NULL, .precedence = NONE },
-    [MTR_TOKEN_FLOAT_LITERAL] = { .prefix = literal, .infix = NULL, .precedence = NONE },
+    [MTR_TOKEN_STRING_LITERAL] = { .prefix = literal, .infix = NULL, .precedence = LITERAL },
+    [MTR_TOKEN_INT_LITERAL] = { .prefix = literal, .infix = NULL, .precedence = LITERAL },
+    [MTR_TOKEN_FLOAT_LITERAL] = { .prefix = literal, .infix = NULL, .precedence = LITERAL },
     [MTR_TOKEN_AND] = { .prefix = NULL, .infix = binary, .precedence = LOGIC },
     [MTR_TOKEN_OR] = { .prefix = NULL, .infix = binary, .precedence = LOGIC },
+    [MTR_TOKEN_LET] = { NO_OP },
     [MTR_TOKEN_STRUCT] = { NO_OP },
     [MTR_TOKEN_IF] = { NO_OP },
     [MTR_TOKEN_ELSE] = { NO_OP },
-    [MTR_TOKEN_TRUE] = { .prefix = literal, .infix = NULL, .precedence = NONE },
-    [MTR_TOKEN_FALSE] = { .prefix = literal, .infix = NULL, .precedence = NONE },
+    [MTR_TOKEN_TRUE] = { .prefix = literal, .infix = NULL, .precedence = LITERAL },
+    [MTR_TOKEN_FALSE] = { .prefix = literal, .infix = NULL, .precedence = LITERAL },
     [MTR_TOKEN_FN] = { NO_OP },
     [MTR_TOKEN_RETURN] = { NO_OP },
     [MTR_TOKEN_WHILE] = { NO_OP },
@@ -202,6 +204,10 @@ static struct mtr_expr* parse_precedence(struct mtr_parser* parser, enum precede
     while (precedece <= rules[parser->token.type].precedence) {
         struct mtr_token t = advance(parser);
         infix_fn infix = rules[t.type].infix;
+        if (NULL == infix) {
+            parser_error(parser, "Expected operator or '{'.");
+            return node;
+        }
         node = infix(parser, t, node);
     }
 
@@ -302,16 +308,14 @@ static struct mtr_stmt* if_stmt(struct mtr_parser* parser) {
     struct mtr_if* node = ALLOCATE_STMT(MTR_STMT_IF, mtr_if);
 
     advance(parser);
-    consume(parser, MTR_TOKEN_PAREN_L, "Expected '('.");
     node->condition = expression(parser);
-    consume(parser, MTR_TOKEN_PAREN_R, "Expected ')'.");
 
-    node->then = declaration(parser);
+    node->then = block(parser);
     node->otherwise = NULL;
 
     if (CHECK(MTR_TOKEN_ELSE)) {
         advance(parser);
-        node->otherwise = declaration(parser);
+        node->otherwise = block(parser);
     }
 
     return (struct mtr_stmt*) node;
@@ -321,11 +325,8 @@ static struct mtr_stmt* while_stmt(struct mtr_parser* parser) {
     struct mtr_while* node = ALLOCATE_STMT(MTR_STMT_WHILE, mtr_while);
 
     advance(parser);
-    consume(parser, MTR_TOKEN_PAREN_L, "Expected '('.");
     node->condition = expression(parser);
-    consume(parser, MTR_TOKEN_PAREN_R, "Expected ')'.");
-
-    node->body = declaration(parser);
+    node->body = block(parser);
 
     return (struct mtr_stmt*) node;
 }
@@ -368,6 +369,8 @@ static struct mtr_stmt* statement(struct mtr_parser* parser) {
 
 static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
     struct mtr_function* node = ALLOCATE_STMT(MTR_STMT_FN, mtr_function);
+
+    advance(parser);
 
     node->symbol.token = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
     consume(parser, MTR_TOKEN_PAREN_L, "Expected '('.");
@@ -438,7 +441,7 @@ static struct mtr_stmt* let_variable(struct mtr_parser* parser) {
     node->symbol.token = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
     node->value = NULL;
 
-    consume(parser, MTR_TOKEN_ASSIGN, "Expected ':='.");
+    consume(parser, MTR_TOKEN_ASSIGN, "Expected an expression.");
     node->value = expression(parser);
     consume(parser, MTR_TOKEN_SEMICOLON, "Expected ';'.");
 
@@ -462,7 +465,7 @@ static struct mtr_stmt* declaration(struct mtr_parser* parser) {
 static struct mtr_stmt* global_declaration(struct mtr_parser* parser) {
     switch (parser->token.type)
     {
-    case MTR_TOKEN_IDENTIFIER: return func_decl(parser);
+    case MTR_TOKEN_FN: return func_decl(parser);
     default:
         break;
     }
