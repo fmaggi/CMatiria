@@ -208,8 +208,7 @@ i32 mtr_execute(struct mtr_package* package) {
         return -1;
     }
 
-    vm.stack_top = vm.stack + 2;
-    call(&vm, main_chunk, 2);
+    call(&vm, main_chunk, 0);
 
     mtr_dump_stack(vm.stack, vm.stack_top);
     return 0;

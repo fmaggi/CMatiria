@@ -381,7 +381,7 @@ static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
     bool cont = true;
     while (argc < 255 && !CHECK(MTR_TOKEN_PAREN_R) && cont) {
         struct mtr_variable* var = vars + argc++;
-        var->symbol.type.type = mtr_get_data_type(consume_type(parser).type);
+        var->symbol.type = mtr_get_data_type(consume_type(parser));
         var->symbol.token = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
         var->value = NULL;
 
@@ -409,7 +409,7 @@ static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
 
     consume(parser, MTR_TOKEN_ARROW, "Expected '->'.");
 
-    node->symbol.type.type = mtr_get_data_type(consume_type(parser).type);
+    node->symbol.type = mtr_get_data_type(consume_type(parser));
     parser->current_function = node->symbol;
 
     node->body = (struct mtr_block*) block(parser);
@@ -420,7 +420,7 @@ static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
 static struct mtr_stmt* variable(struct mtr_parser* parser) {
     struct mtr_variable* node = ALLOCATE_STMT(MTR_STMT_VAR, mtr_variable);
 
-    node->symbol.type.type = mtr_get_data_type(advance(parser).type); // because we are here we alredy know its a type!
+    node->symbol.type = mtr_get_data_type(advance(parser)); // because we are here we alredy know its a type!
     node->symbol.token = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
     node->value = NULL;
 

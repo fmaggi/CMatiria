@@ -20,13 +20,14 @@ enum mtr_data_type_e {
 
 #undef BIT
 
-enum mtr_data_type_e mtr_get_data_type(enum mtr_token_type type);
 
 struct mtr_data_type {
     const char* user_struct;
     size_t length;
     enum mtr_data_type_e type;
 };
+
+struct mtr_data_type mtr_get_data_type(struct mtr_token token);
 
 struct mtr_symbol {
     struct mtr_token token;

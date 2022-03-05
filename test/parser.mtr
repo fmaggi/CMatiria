@@ -1,12 +1,10 @@
-fn main(Int y, Int z) -> Int {
-    Int x := 3;
-    Int w := 45;
+fn main() -> Int {
+    Int x := 45;
+    Int w := 42;
 
-    if x > w {
+    if false || x > w {
         let f := 4;
     } else {
         let f := 5;
     }
-
-    Bool b := x > w;
 }

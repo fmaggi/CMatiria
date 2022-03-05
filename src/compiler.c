@@ -146,12 +146,14 @@ static void write_and(struct mtr_chunk* chunk, struct mtr_binary* expr) {
 
 static void write_or(struct mtr_chunk* chunk, struct mtr_binary* expr) {
     write_expr(chunk, expr->left);
-    mtr_write_chunk(chunk, MTR_OP_NOT); // we negate the first condition to use the same instruction JMP_Z which jumps on false.
     u16 left_false = write_jump(chunk, MTR_OP_JMP_Z);
+    u16 left_true = write_jump(chunk, MTR_OP_JMP);
+
+    patch_jump(chunk, left_false);
     mtr_write_chunk(chunk, MTR_OP_POP);
 
     write_expr(chunk, expr->right);
-    patch_jump(chunk, left_false);
+    patch_jump(chunk, left_true);
 }
 
 static void write_binary(struct mtr_chunk* chunk, struct mtr_binary* expr) {
