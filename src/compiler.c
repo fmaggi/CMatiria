@@ -1,6 +1,7 @@
 #include "compiler.h"
 
 #include "bytecode.h"
+#include "expr.h"
 #include "package.h"
 #include "scanner.h"
 #include "parser.h"
@@ -166,13 +167,15 @@ static void write_binary(struct mtr_chunk* chunk, struct mtr_binary* expr) {
     write_expr(chunk, expr->left);
     write_expr(chunk, expr->right);
 
-#define BINARY_OP(op)                                     \
-    do {                                                  \
-        if (expr->operator.type.type == MTR_DATA_INT) {   \
-            mtr_write_chunk(chunk, MTR_OP_ ## op ## _I);  \
-        } else {                                          \
-            mtr_write_chunk(chunk, MTR_OP_ ## op ## _F);  \
-        }                                                 \
+#define BINARY_OP(op)                                             \
+    do {                                                          \
+        if (expr->operator.type.type & MTR_DATA_INT) {            \
+            mtr_write_chunk(chunk, MTR_OP_ ## op ## _I);          \
+        } else if (expr->operator.type.type & MTR_DATA_FLOAT) {   \
+            mtr_write_chunk(chunk, MTR_OP_ ## op ## _F);          \
+        } else {                                                  \
+            MTR_LOG_WARN("Invalid data type.");                   \
+        }                                                         \
     } while (false)
 
     switch (expr->operator.token.type)
@@ -258,17 +261,35 @@ static void write_call(struct mtr_chunk* chunk, struct mtr_call* call) {
     mtr_write_chunk(chunk, call->argc);
 }
 
+static void write_cast(struct mtr_chunk* chunk, struct mtr_cast* cast) {
+    write_expr(chunk, cast->right);
+
+    switch (cast->to.type) {
+    case MTR_DATA_FLOAT: {
+        mtr_write_chunk(chunk, MTR_OP_FLOAT_CAST);
+        break;
+    }
+
+    case MTR_DATA_INT: {
+        mtr_write_chunk(chunk, MTR_OP_INT_CAST);
+        break;
+    }
+
+    default:
+        break;
+    }
+}
+
 static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr) {
     switch (expr->type)
     {
-    case MTR_EXPR_BINARY:  write_binary(chunk, (struct mtr_binary*) expr); return;;
-    case MTR_EXPR_PRIMARY: write_primary(chunk, (struct mtr_primary*) expr); return;;
-    case MTR_EXPR_LITERAL: write_literal(chunk, (struct mtr_literal*) expr); return;;
-    case MTR_EXPR_UNARY:   write_unary(chunk, (struct mtr_unary*) expr); return;;
-    case MTR_EXPR_GROUPING: write_expr(chunk, ((struct mtr_grouping*) expr)->expression); return;;
-    case MTR_EXPR_CALL: write_call(chunk, (struct mtr_call*) expr); return;;
-    default:
-        break;
+    case MTR_EXPR_BINARY:  write_binary(chunk, (struct mtr_binary*) expr); return;
+    case MTR_EXPR_PRIMARY: write_primary(chunk, (struct mtr_primary*) expr); return;
+    case MTR_EXPR_LITERAL: write_literal(chunk, (struct mtr_literal*) expr); return;
+    case MTR_EXPR_UNARY:   write_unary(chunk, (struct mtr_unary*) expr); return;
+    case MTR_EXPR_GROUPING: write_expr(chunk, ((struct mtr_grouping*) expr)->expression); return;
+    case MTR_EXPR_CALL: write_call(chunk, (struct mtr_call*) expr); return;
+    case MTR_EXPR_CAST: write_cast(chunk, (struct mtr_cast*) expr); return;
     }
 }
 

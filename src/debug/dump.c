@@ -1,3 +1,5 @@
+#include "expr.h"
+#include "symbol.h"
 #ifndef NDEBUG
 
 #include "dump.h"
@@ -63,6 +65,8 @@ static void dump_expr(struct mtr_expr* expr, u32 offset) {
         MTR_PRINT_DEBUG("%.*s", (u32) l->literal.length, l->literal.start);
         break;
     }
+    case MTR_EXPR_CAST:
+        break;
     }
 }
 
@@ -216,6 +220,7 @@ const char* mtr_data_type_to_str(struct mtr_data_type type) {
     case MTR_DATA_INT:     return "Int";
     case MTR_DATA_INVALID: return "Invalid";
     case MTR_DATA_USER_DEFINED: break;
+    case MTR_DATA_NUM: return "num";
     }
 
     static char buf[256];

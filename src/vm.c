@@ -116,9 +116,13 @@ static void call(struct mtr_vm* vm, const struct mtr_chunk* chunk, u8 argc) {
             case MTR_OP_MUL_F: BINARY_OP(*, floating); break;
             case MTR_OP_DIV_F: BINARY_OP(/, floating); break;
 
-            case MTR_OP_LESS_I: BINARY_OP(<, integer); MTR_PROFILE_FUNC(); break;
+            case MTR_OP_LESS_I: BINARY_OP(<, integer); break;
             case MTR_OP_GREATER_I: BINARY_OP(>, integer); break;
             case MTR_OP_EQUAL_I: BINARY_OP(==, integer); break;
+
+            case MTR_OP_LESS_F: BINARY_OP(<, floating); break;
+            case MTR_OP_GREATER_F: BINARY_OP(>, floating); break;
+            case MTR_OP_EQUAL_F: BINARY_OP(==, floating); break;
 
             case MTR_OP_GET: {
                 const u16 index = READ(u16);
@@ -174,8 +178,19 @@ static void call(struct mtr_vm* vm, const struct mtr_chunk* chunk, u8 argc) {
                 return;
             }
 
-            default:
+            case MTR_OP_INT_CAST: {
+                const mtr_value from = pop(vm);
+                const mtr_value to = MTR_INT_VAL((i64) from.floating);
+                push(vm, to);
                 break;
+            }
+
+            case MTR_OP_FLOAT_CAST: {
+                const mtr_value from = pop(vm);
+                const mtr_value to = MTR_FLOAT_VAL((f64) from.integer);
+                push(vm, to);
+                break;
+            }
         }
     }
 }
@@ -195,5 +210,7 @@ i32 mtr_execute(struct mtr_package* package) {
 
     vm.stack_top = vm.stack + 2;
     call(&vm, main_chunk, 2);
+
+    mtr_dump_stack(vm.stack, vm.stack_top);
     return 0;
 }

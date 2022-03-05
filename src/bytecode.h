@@ -46,6 +46,9 @@ enum mtr_op_code {
 
     MTR_OP_CALL,
 
+    MTR_OP_INT_CAST,
+    MTR_OP_FLOAT_CAST,
+
     MTR_OP_RETURN
 };
 

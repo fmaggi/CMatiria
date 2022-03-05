@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "debug/dump.h"
+#include "expr.h"
 
 #define ALLOCATE_EXPR(type, expr) allocate_expr(type, sizeof(struct expr))
 #define ALLOCATE_STMT(type, stmt) allocate_stmt(type, sizeof(struct stmt))
@@ -647,5 +648,6 @@ void mtr_free_expr(struct mtr_expr* node) {
     case MTR_EXPR_UNARY:    free_unary((struct mtr_unary*) node); return;
     case MTR_EXPR_LITERAL:  free_literal((struct mtr_literal*) node); return;
     case MTR_EXPR_CALL:     free_call((struct mtr_call*) node); return;
+    case MTR_EXPR_CAST:     return;
     }
 }

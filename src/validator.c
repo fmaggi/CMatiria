@@ -1,10 +1,15 @@
 #include "validator.h"
 
+#include "expr.h"
 #include "scope.h"
 
 #include "core/report.h"
 #include "core/log.h"
 #include "debug/dump.h"
+#include "symbol.h"
+#include "token.h"
+
+#include <string.h>
 
 /*
     TODO: Fix bug where you can assign to functions
@@ -61,23 +66,27 @@ static struct mtr_data_type get_operator_type(struct mtr_token op, struct mtr_da
     switch (op.type)
     {
     case MTR_TOKEN_BANG:
-    case MTR_TOKEN_EQUAL:
-    case MTR_TOKEN_BANG_EQUAL:
-    case MTR_TOKEN_LESS:
-    case MTR_TOKEN_LESS_EQUAL:
-    case MTR_TOKEN_GREATER:
-    case MTR_TOKEN_GREATER_EQUAL:
     case MTR_TOKEN_OR:
     case MTR_TOKEN_AND:
         t.type = MTR_DATA_BOOL;
         t.length = 0;
         t.user_struct = NULL;
         break;
+
     case MTR_TOKEN_PLUS:
     case MTR_TOKEN_MINUS:
     case MTR_TOKEN_STAR:
     case MTR_TOKEN_SLASH:
-        t = lhs;
+        t = lhs.type > rhs.type ? lhs : rhs;
+        break;
+    case MTR_TOKEN_EQUAL:
+    case MTR_TOKEN_BANG_EQUAL:
+    case MTR_TOKEN_LESS:
+    case MTR_TOKEN_LESS_EQUAL:
+    case MTR_TOKEN_GREATER:
+    case MTR_TOKEN_GREATER_EQUAL:
+        t = lhs.type > rhs.type ? lhs : rhs;
+        t.type |= MTR_DATA_BOOL;
         break;
     default:
         t.type = MTR_DATA_INVALID;
@@ -86,18 +95,90 @@ static struct mtr_data_type get_operator_type(struct mtr_token op, struct mtr_da
     return t;
 }
 
+enum mtr_data_type_e mtr_get_data_type(enum mtr_token_type type) {
+    switch (type)
+    {
+    case MTR_TOKEN_INT_LITERAL:
+    case MTR_TOKEN_INT:
+        return MTR_DATA_INT;
+
+    case MTR_TOKEN_FLOAT_LITERAL:
+    case MTR_TOKEN_FLOAT:
+        return MTR_DATA_FLOAT;
+
+    case MTR_TOKEN_BOOL:
+    case MTR_TOKEN_TRUE:
+    case MTR_TOKEN_FALSE:
+        return MTR_DATA_BOOL;
+
+    case MTR_TOKEN_IDENTIFIER:
+        return MTR_DATA_USER_DEFINED;
+    default:
+        break;
+    }
+    // MTR_LOG_WARN("Invalid data type");
+    return MTR_DATA_INVALID;
+}
+
+bool mtr_data_type_match(struct mtr_data_type lhs, struct mtr_data_type rhs) {
+    return (lhs.type & rhs.type)
+        && (
+            (lhs.type != MTR_DATA_USER_DEFINED) || (lhs.length == rhs.length) && (memcmp(lhs.user_struct, rhs.user_struct, lhs.length) == 0)
+        );
+}
+
+static struct mtr_cast* try_promoting(struct mtr_expr* expr, struct mtr_data_type type, struct mtr_data_type to) {
+    if (type.type > to.type) {
+        return NULL;
+    }
+
+    if (type.type == MTR_DATA_USER_DEFINED) {
+        return NULL;
+    }
+
+    struct mtr_cast* cast = malloc(sizeof(*cast));
+    cast->expr_.type = MTR_EXPR_CAST;
+    cast->to = to;
+    cast->right = expr;
+    return cast;
+}
+
 static const struct mtr_data_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* scope, const char* const source);
 
 static struct mtr_data_type analyze_binary(struct mtr_binary* expr, struct mtr_scope* scope, const char* const source) {
     const struct mtr_data_type l = analyze_expr(expr->left, scope, source);
     const struct mtr_data_type r = analyze_expr(expr->right, scope, source);
 
-    if (!mtr_data_type_match(l, r)) {
+    struct mtr_data_type t = get_operator_type(expr->operator.token, l, r);
+
+    if (t.type == MTR_DATA_INVALID) {
         mtr_report_error(expr->operator.token, "Invalid operation between objects of different types.", source);
         return invalid_type;
+    } else if (t.type == MTR_DATA_USER_DEFINED) {
+        mtr_report_error(expr->operator.token, "Custom types not yet supported.", source);
+        return invalid_type;
+    }else if (!mtr_data_type_match(l, r)) {
+        // try and mathc the types. Cast if needed
+        if (l.type != t.type) {
+            struct mtr_cast* cast = try_promoting(expr->left, l, t);
+            if (NULL != cast) {
+                expr->left = (struct mtr_expr*) cast;
+            } else {
+                mtr_report_error(expr->operator.token, "Invalid operation between objects of different types.", source);
+                return invalid_type;
+            }
+        } else if (r.type != t.type) {
+            struct mtr_cast* cast = try_promoting(expr->right, r, t);
+            if (NULL != cast) {
+                expr->right = (struct mtr_expr*) cast;
+            } else {
+                mtr_report_error(expr->operator.token, "Invalid operation between objects of different types.", source);
+                return invalid_type;
+            }
+        }
     }
 
-    expr->operator.type = get_operator_type(expr->operator.token, l, r);
+    expr->operator.type = t;
     return  expr->operator.type;
 }
 
@@ -251,9 +332,16 @@ static bool analyze_assignment(struct mtr_assignment* stmt, struct mtr_scope* pa
     stmt->variable.index = s.index;
     stmt->variable.type = s.type;
     const struct mtr_data_type expr = analyze_expr(stmt->expression, parent, source);
-    bool expr_ok = mtr_data_type_match(expr, s.type);
-    if (!expr_ok) {
-        mtr_report_error(stmt->variable.token, "Invalid assignement to variable of different type", source);
+    bool expr_ok = true;
+    if (!mtr_data_type_match(expr, s.type)) {
+        // try and mathc the types. Cast if needed
+        struct mtr_cast* cast = try_promoting(stmt->expression, expr, stmt->variable.type);
+        if (NULL != cast) {
+            stmt->expression = (struct mtr_expr*) cast;
+        } else {
+            mtr_report_error(stmt->variable.token, "Invalid assignement to variable of different type", source);
+            expr_ok = false;
+        }
     }
 
     return var_ok && expr_ok;
@@ -265,10 +353,14 @@ static bool analyze_variable(struct mtr_variable* decl, struct mtr_scope* parent
         const struct mtr_data_type type = analyze_expr(decl->value, parent, source);
         if (decl->symbol.type.type == MTR_DATA_INVALID) {
             decl->symbol.type = type;
-        } else {
-            expr = mtr_data_type_match(decl->symbol.type, type);
-            if (!expr) {
-                mtr_report_error(decl->symbol.token, "Invalid expression to variable of different type", source);
+        } else if (!mtr_data_type_match(decl->symbol.type, type)) {
+            // try and mathc the types. Cast if needed
+            struct mtr_cast* cast = try_promoting(decl->value, type, decl->symbol.type);
+            if (NULL != cast) {
+                decl->value = (struct mtr_expr*) cast;
+            } else {
+                mtr_report_error(decl->symbol.token, "Invalid assignement to variable of different type", source);
+                expr = false;
             }
         }
     }
@@ -278,7 +370,7 @@ static bool analyze_variable(struct mtr_variable* decl, struct mtr_scope* parent
 }
 
 static bool analyze_if(struct mtr_if* stmt, struct mtr_scope* parent, const char* const source) {
-    bool condition_ok = analyze_expr(stmt->condition, parent, source).type == MTR_DATA_BOOL;
+    bool condition_ok = analyze_expr(stmt->condition, parent, source).type & (MTR_DATA_NUM | MTR_DATA_BOOL);
     if (!condition_ok) {
         expr_error(stmt->condition, "Expression doesn't return Bool.", source);
     }
@@ -294,7 +386,7 @@ static bool analyze_if(struct mtr_if* stmt, struct mtr_scope* parent, const char
 }
 
 static bool analyze_while(struct mtr_while* stmt, struct mtr_scope* parent, const char* const source) {
-    bool condition_ok = analyze_expr(stmt->condition, parent, source).type == MTR_DATA_BOOL;
+    bool condition_ok = analyze_expr(stmt->condition, parent, source).type & (MTR_DATA_NUM | MTR_DATA_BOOL);
     if (!condition_ok) {
         expr_error(stmt->condition, "Expression doesn't return Bool.", source);
     }

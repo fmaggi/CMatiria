@@ -10,11 +10,18 @@ enum mtr_expr_type {
     MTR_EXPR_LITERAL,
     MTR_EXPR_GROUPING,
     MTR_EXPR_UNARY,
-    MTR_EXPR_CALL
+    MTR_EXPR_CALL,
+    MTR_EXPR_CAST
 };
 
 struct mtr_expr {
     enum mtr_expr_type type;
+};
+
+struct mtr_cast {
+    struct mtr_expr expr_;
+    struct mtr_expr* right;
+    struct mtr_data_type to;
 };
 
 struct mtr_unary {

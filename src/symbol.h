@@ -4,13 +4,21 @@
 #include "token.h"
 #include "core/types.h"
 
+#define BIT(x) 1 << x
+
 enum mtr_data_type_e {
-    MTR_DATA_INVALID,
-    MTR_DATA_INT,
-    MTR_DATA_FLOAT,
-    MTR_DATA_BOOL,
-    MTR_DATA_USER_DEFINED
+    MTR_DATA_INVALID = 0,
+
+    MTR_DATA_USER_DEFINED = BIT(0),
+
+    MTR_DATA_BOOL = BIT(1),
+    MTR_DATA_INT = BIT(2),
+    MTR_DATA_FLOAT = BIT(3),
+
+    MTR_DATA_NUM = MTR_DATA_INT | MTR_DATA_FLOAT
 };
+
+#undef BIT
 
 enum mtr_data_type_e mtr_get_data_type(enum mtr_token_type type);
 
@@ -19,8 +27,6 @@ struct mtr_data_type {
     size_t length;
     enum mtr_data_type_e type;
 };
-
-bool mtr_data_type_match(struct mtr_data_type lhs, struct mtr_data_type rhs);
 
 struct mtr_symbol {
     struct mtr_token token;

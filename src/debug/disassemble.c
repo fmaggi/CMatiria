@@ -1,5 +1,6 @@
 #include "disassemble.h"
 
+#include "bytecode.h"
 #include "core/log.h"
 
 u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {
@@ -59,6 +60,14 @@ u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {
     case MTR_OP_MUL_F: MTR_LOG("fMUL"); break;
     case MTR_OP_DIV_F: MTR_LOG("fDIV"); break;
 
+    case MTR_OP_EQUAL_I: MTR_LOG("EQU"); break;
+    case MTR_OP_LESS_I: MTR_LOG("LSS"); break;
+    case MTR_OP_GREATER_I: MTR_LOG("GTR"); break;
+
+    case MTR_OP_EQUAL_F: MTR_LOG("fEQU"); break;
+    case MTR_OP_LESS_F: MTR_LOG("fLSS"); break;
+    case MTR_OP_GREATER_F: MTR_LOG("fGTR"); break;
+
     case MTR_OP_GET: {
         u16 index = READ(u16);
         MTR_LOG("GET at %u", index);
@@ -100,8 +109,10 @@ u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {
         break;
     }
 
-    default:
+    case MTR_OP_FLOAT_CAST: {
+        MTR_LOG("fCAST");
         break;
+    }
     }
     return instruction;
 #undef READ

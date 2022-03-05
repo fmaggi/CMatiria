@@ -1,14 +1,12 @@
 fn main(Int y, Int z) -> Int {
-    if 3 < 2 {
-        let x := 3;
+    Int x := 3;
+    Int w := 45;
+
+    if x > w {
+        let f := 4;
     } else {
-        let x := 4;
+        let f := 5;
     }
 
-    if false && true {
-        let f := 45;
-    } else {
-        let f := 32;
-    }
-
+    Bool b := x > w;
 }
