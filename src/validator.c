@@ -8,6 +8,7 @@
 #include "debug/dump.h"
 #include "symbol.h"
 #include "token.h"
+#include "type.h"
 
 #include <string.h>
 
@@ -54,14 +55,13 @@ static void expr_error(struct mtr_expr* expr, const char* message, const char* c
     }
 }
 
-static const struct mtr_data_type invalid_type = {
-    .length = 0,
+static const struct mtr_type invalid_type = {
     .type = MTR_DATA_INVALID,
-    .user_struct = NULL
+    .obj = NULL
 };
 
-static struct mtr_data_type get_operator_type(struct mtr_token op, struct mtr_data_type lhs, struct mtr_data_type rhs) {
-    struct mtr_data_type t;
+static struct mtr_type get_operator_type(struct mtr_token op, struct mtr_type lhs, struct mtr_type rhs) {
+    struct mtr_type t;
 
     switch (op.type)
     {
@@ -69,8 +69,7 @@ static struct mtr_data_type get_operator_type(struct mtr_token op, struct mtr_da
     case MTR_TOKEN_OR:
     case MTR_TOKEN_AND:
         t.type = MTR_DATA_BOOL;
-        t.length = 0;
-        t.user_struct = NULL;
+        t.obj = NULL;
         break;
 
     case MTR_TOKEN_PLUS:
@@ -86,7 +85,6 @@ static struct mtr_data_type get_operator_type(struct mtr_token op, struct mtr_da
     case MTR_TOKEN_GREATER:
     case MTR_TOKEN_GREATER_EQUAL:
         t = lhs.type > rhs.type ? lhs : rhs;
-        t.type |= MTR_DATA_BOOL;
         break;
     default:
         t.type = MTR_DATA_INVALID;
@@ -95,8 +93,8 @@ static struct mtr_data_type get_operator_type(struct mtr_token op, struct mtr_da
     return t;
 }
 
-struct mtr_data_type mtr_get_data_type(struct mtr_token type) {
-    struct mtr_data_type t = invalid_type;
+struct mtr_type mtr_get_data_type(struct mtr_token type) {
+    struct mtr_type t = invalid_type;
     switch (type.type)
     {
     case MTR_TOKEN_INT_LITERAL:
@@ -117,31 +115,38 @@ struct mtr_data_type mtr_get_data_type(struct mtr_token type) {
 
     case MTR_TOKEN_IDENTIFIER:
         t.type = MTR_DATA_USER_DEFINED;
-        t.user_struct = type.start;
-        t.length = type.length;
         break;
 
     default:
+        MTR_LOG_WARN("Invalid data type  %s", mtr_token_type_to_str(type.type));
         break;
     }
-    // MTR_LOG_WARN("Invalid data type");
     return t;
 }
 
-static bool data_type_match(struct mtr_data_type lhs, struct mtr_data_type rhs) {
-    return (lhs.type & rhs.type)
-        && (
-            (lhs.type != MTR_DATA_USER_DEFINED) || (lhs.length == rhs.length) && (memcmp(lhs.user_struct, rhs.user_struct, lhs.length) == 0)
-        );
+static bool data_type_match(struct mtr_type lhs, struct mtr_type rhs) {
+    return (lhs.type == rhs.type);
+        // && (
+        //     (lhs.type != MTR_DATA_USER_DEFINED) || (lhs.length == rhs.length) && (memcmp(lhs.user_struct, rhs.user_struct, lhs.length) == 0)
+        // );
 }
 
-static struct mtr_cast* try_promoting(struct mtr_expr* expr, struct mtr_data_type type, struct mtr_data_type to) {
-    if (to.type == MTR_DATA_USER_DEFINED || to.type == MTR_DATA_INVALID || type.type > to.type) {
+static struct mtr_cast* try_promoting(struct mtr_expr* expr, struct mtr_type type, struct mtr_type to) {
+    switch (type.type) {
+
+    case MTR_DATA_INVALID:
+    case MTR_DATA_USER_DEFINED:
+    case MTR_DATA_ARRAY:
         return NULL;
+    case MTR_DATA_BOOL:
+    case MTR_DATA_INT:
+    case MTR_DATA_FLOAT: {
+        if (type.type > to.type) {
+            return NULL;
+        }
+        break;
     }
 
-    if (type.type == MTR_DATA_USER_DEFINED) {
-        return NULL;
     }
 
     struct mtr_cast* cast = malloc(sizeof(*cast));
@@ -151,13 +156,13 @@ static struct mtr_cast* try_promoting(struct mtr_expr* expr, struct mtr_data_typ
     return cast;
 }
 
-static const struct mtr_data_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* scope, const char* const source);
+static const struct mtr_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* scope, const char* const source);
 
-static struct mtr_data_type analyze_binary(struct mtr_binary* expr, struct mtr_scope* scope, const char* const source) {
-    const struct mtr_data_type l = analyze_expr(expr->left, scope, source);
-    const struct mtr_data_type r = analyze_expr(expr->right, scope, source);
+static struct mtr_type analyze_binary(struct mtr_binary* expr, struct mtr_scope* scope, const char* const source) {
+    const struct mtr_type l = analyze_expr(expr->left, scope, source);
+    const struct mtr_type r = analyze_expr(expr->right, scope, source);
 
-    struct mtr_data_type t = get_operator_type(expr->operator.token, l, r);
+    struct mtr_type t = get_operator_type(expr->operator.token, l, r);
 
     if (t.type == MTR_DATA_INVALID) {
         mtr_report_error(expr->operator.token, "Invalid operation between objects of different types.", source);
@@ -165,7 +170,9 @@ static struct mtr_data_type analyze_binary(struct mtr_binary* expr, struct mtr_s
     } else if (t.type == MTR_DATA_USER_DEFINED) {
         mtr_report_error(expr->operator.token, "Custom types not yet supported.", source);
         return invalid_type;
-    } else if (!data_type_match(l, r)) {
+    }
+
+    if (!data_type_match(l, r)) {
         // if they dont match, t has type either l or r. Depends which one has higher rank.
 
         // try and mathc the types. Cast if needed
@@ -192,7 +199,7 @@ static struct mtr_data_type analyze_binary(struct mtr_binary* expr, struct mtr_s
     return  expr->operator.type;
 }
 
-static const struct mtr_data_type analyze_primary(struct mtr_primary* expr, struct mtr_scope* scope, const char* const source) {
+static const struct mtr_type analyze_primary(struct mtr_primary* expr, struct mtr_scope* scope, const char* const source) {
     struct mtr_symbol_entry* e = mtr_scope_find(scope, expr->symbol.token);
     if (NULL == e) {
         mtr_report_error(expr->symbol.token, "Undeclared variable.", source);
@@ -205,12 +212,12 @@ static const struct mtr_data_type analyze_primary(struct mtr_primary* expr, stru
     return s.type;
 }
 
-static const struct mtr_data_type analyze_literal(struct mtr_literal* literal, struct mtr_scope* scope, const char* const source) {
-    struct mtr_data_type t = mtr_get_data_type(literal->literal);
+static const struct mtr_type analyze_literal(struct mtr_literal* literal, struct mtr_scope* scope, const char* const source) {
+    struct mtr_type t = mtr_get_data_type(literal->literal);
     return t;
 }
 
-static const struct mtr_data_type analyze_call(struct mtr_call* call, struct mtr_scope* scope, const char* const source) {
+static const struct mtr_type analyze_call(struct mtr_call* call, struct mtr_scope* scope, const char* const source) {
     struct mtr_symbol_entry* e = mtr_scope_find(scope, call->symbol.token);
     if (NULL == e) {
         mtr_report_error(call->symbol.token, "Call to undefined function.", source);
@@ -222,7 +229,7 @@ static const struct mtr_data_type analyze_call(struct mtr_call* call, struct mtr
     if (f->argc == call->argc) {
         for (u8 i = 0 ; i < call->argc; ++i) {
             struct mtr_expr* a = call->argv[i];
-            struct mtr_data_type ta = analyze_expr(a, scope, source);
+            struct mtr_type ta = analyze_expr(a, scope, source);
 
             struct mtr_variable p = f->argv[i];
             if (!data_type_match(ta, p.symbol.type)) {
@@ -243,15 +250,15 @@ static const struct mtr_data_type analyze_call(struct mtr_call* call, struct mtr
     return s.type;
 }
 
-static const struct mtr_data_type analyze_unary(struct mtr_unary* expr, struct mtr_scope* scope, const char* const source) {
-    const struct mtr_data_type r = analyze_expr(expr->right, scope, source);
-    struct mtr_data_type dummy = invalid_type;
+static const struct mtr_type analyze_unary(struct mtr_unary* expr, struct mtr_scope* scope, const char* const source) {
+    const struct mtr_type r = analyze_expr(expr->right, scope, source);
+    struct mtr_type dummy = invalid_type;
     expr->operator.type = get_operator_type(expr->operator.token, r, dummy);
 
     return  expr->operator.type;
 }
 
-static const struct mtr_data_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* scope, const char* const source) {
+static const struct mtr_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* scope, const char* const source) {
     switch (expr->type)
     {
     case MTR_EXPR_BINARY:   return analyze_binary((struct mtr_binary*) expr, scope, source);
@@ -338,16 +345,17 @@ static bool analyze_assignment(struct mtr_assignment* stmt, struct mtr_scope* pa
     struct mtr_symbol s = e->symbol;
     stmt->variable.index = s.index;
     stmt->variable.type = s.type;
-    const struct mtr_data_type expr = analyze_expr(stmt->expression, parent, source);
-    bool expr_ok = true;
-    if (!data_type_match(expr, s.type)) {
+    const struct mtr_type expr = analyze_expr(stmt->expression, parent, source);
+
+    bool expr_ok = data_type_match(expr, s.type);
+    if (!expr_ok) {
         // try and mathc the types. Cast if needed
         struct mtr_cast* cast = try_promoting(stmt->expression, expr, stmt->variable.type);
         if (NULL != cast) {
             stmt->expression = (struct mtr_expr*) cast;
+            expr_ok = true;
         } else {
             mtr_report_error(stmt->variable.token, "Invalid assignement to variable of different type", source);
-            expr_ok = false;
         }
     }
 
@@ -357,8 +365,8 @@ static bool analyze_assignment(struct mtr_assignment* stmt, struct mtr_scope* pa
 static bool analyze_variable(struct mtr_variable* decl, struct mtr_scope* parent, const char* const source) {
     bool expr = true;
     if (decl->value) {
-        const struct mtr_data_type type = analyze_expr(decl->value, parent, source);
-        if (decl->symbol.type.type == MTR_DATA_INVALID) {
+        const struct mtr_type type = analyze_expr(decl->value, parent, source);
+        if (decl->symbol.type.type == MTR_DATA_INVALID) { // this means it was a 'let' var decl
             decl->symbol.type = type;
         } else if (!data_type_match(decl->symbol.type, type)) {
             // try and mathc the types. Cast if needed
@@ -377,7 +385,8 @@ static bool analyze_variable(struct mtr_variable* decl, struct mtr_scope* parent
 }
 
 static bool analyze_if(struct mtr_if* stmt, struct mtr_scope* parent, const char* const source) {
-    bool condition_ok = analyze_expr(stmt->condition, parent, source).type & (MTR_DATA_NUM | MTR_DATA_BOOL);
+    struct mtr_type expr_type = analyze_expr(stmt->condition, parent, source);
+    bool condition_ok = expr_type.type == MTR_DATA_FLOAT || expr_type.type == MTR_DATA_INT || expr_type.type == MTR_DATA_BOOL;
     if (!condition_ok) {
         expr_error(stmt->condition, "Expression doesn't return Bool.", source);
     }
@@ -393,7 +402,8 @@ static bool analyze_if(struct mtr_if* stmt, struct mtr_scope* parent, const char
 }
 
 static bool analyze_while(struct mtr_while* stmt, struct mtr_scope* parent, const char* const source) {
-    bool condition_ok = analyze_expr(stmt->condition, parent, source).type & (MTR_DATA_NUM | MTR_DATA_BOOL);
+    struct mtr_type expr_type = analyze_expr(stmt->condition, parent, source);
+    bool condition_ok = expr_type.type == MTR_DATA_FLOAT || expr_type.type == MTR_DATA_INT || expr_type.type == MTR_DATA_BOOL;
     if (!condition_ok) {
         expr_error(stmt->condition, "Expression doesn't return Bool.", source);
     }

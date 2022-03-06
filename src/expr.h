@@ -21,7 +21,7 @@ struct mtr_expr {
 struct mtr_cast {
     struct mtr_expr expr_;
     struct mtr_expr* right;
-    struct mtr_data_type to;
+    struct mtr_type to;
 };
 
 struct mtr_unary {

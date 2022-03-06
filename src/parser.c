@@ -12,6 +12,7 @@
 #include "debug/dump.h"
 #include "expr.h"
 #include "token.h"
+#include "type.h"
 
 #define ALLOCATE_EXPR(type, expr) allocate_expr(type, sizeof(struct expr))
 #define ALLOCATE_STMT(type, stmt) allocate_stmt(type, sizeof(struct stmt))
@@ -418,10 +419,36 @@ static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
     return (struct mtr_stmt*) node;
 }
 
+static struct mtr_type type_attributes(struct mtr_parser* parser, struct mtr_type type) {
+    struct mtr_type ret;
+
+    switch (parser->token.type) {
+    case MTR_TOKEN_SQR_L: {
+        advance(parser);
+        ret.type = MTR_DATA_ARRAY;
+        ret.obj = mtr_new_array_obj(type);
+        consume(parser, MTR_TOKEN_SQR_R, "Expected ']'.");
+        break;
+    }
+    default:
+        parser_error(parser, "Expected a modifier.");
+        ret.type = MTR_DATA_INVALID;
+        break;
+    }
+    return ret;
+}
+
 static struct mtr_stmt* variable(struct mtr_parser* parser) {
     struct mtr_variable* node = ALLOCATE_STMT(MTR_STMT_VAR, mtr_variable);
 
-    node->symbol.type = mtr_get_data_type(advance(parser)); // because we are here we alredy know its a type!
+    struct mtr_type type = mtr_get_data_type(advance(parser));
+
+    if (!CHECK(MTR_TOKEN_IDENTIFIER)) {
+        node->symbol.type = type_attributes(parser, type);
+    } else {
+        node->symbol.type = type;
+    }
+
     node->symbol.token = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
     node->value = NULL;
 

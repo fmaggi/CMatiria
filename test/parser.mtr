@@ -1,18 +1,9 @@
 fn main() -> Int {
+    Int[] y;
     Int x := 0;
-    Int w := 42;
-    Float f := -x;
 
-    if true || false {
-        x := 3;
-    } else {
-        x := 45;
-    }
-
-    if true && false {
-        w := 3;
-    } else {
-        w := 45;
+    while x < 5 {
+        x := x + 1;
     }
 
     Int asdf;

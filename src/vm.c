@@ -4,7 +4,7 @@
 #include "core/log.h"
 #include "debug/disassemble.h"
 
-void dump_value(mtr_value value, enum mtr_data_type_e type) {
+void dump_value(mtr_value value, enum mtr_data_type type) {
     if (type == MTR_DATA_FLOAT) {
         MTR_LOG_DEBUG("%.3f", value.floating);
     } else {

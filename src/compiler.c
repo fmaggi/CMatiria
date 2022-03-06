@@ -166,9 +166,9 @@ static void write_binary(struct mtr_chunk* chunk, struct mtr_binary* expr) {
 
 #define BINARY_OP(op)                                             \
     do {                                                          \
-        if (expr->operator.type.type & MTR_DATA_INT) {            \
+        if (expr->operator.type.type == MTR_DATA_INT) {           \
             mtr_write_chunk(chunk, MTR_OP_ ## op ## _I);          \
-        } else if (expr->operator.type.type & MTR_DATA_FLOAT) {   \
+        } else if (expr->operator.type.type == MTR_DATA_FLOAT) {  \
             mtr_write_chunk(chunk, MTR_OP_ ## op ## _F);          \
         } else {                                                  \
             MTR_LOG_WARN("Invalid data type.");                   \

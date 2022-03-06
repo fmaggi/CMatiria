@@ -1,5 +1,6 @@
 #include "expr.h"
 #include "symbol.h"
+#include "type.h"
 #ifndef NDEBUG
 
 #include "dump.h"
@@ -212,7 +213,7 @@ const char* mtr_token_type_to_str(enum mtr_token_type type) {
     return "invalid";
 }
 
-const char* mtr_data_type_to_str(struct mtr_data_type type) {
+const char* mtr_data_type_to_str(struct mtr_type type) {
     switch (type.type)
     {
     case MTR_DATA_BOOL:    return "Bool";
@@ -220,12 +221,12 @@ const char* mtr_data_type_to_str(struct mtr_data_type type) {
     case MTR_DATA_INT:     return "Int";
     case MTR_DATA_INVALID: return "Invalid";
     case MTR_DATA_USER_DEFINED: break;
-    case MTR_DATA_NUM: return "num";
+    case MTR_DATA_ARRAY: return "Array";
     }
 
     static char buf[256];
-    memset(buf, 0, 256);
-    memcpy(buf, type.user_struct, type.length < 256 ? type.length : 256);
+    // memset(buf, 0, 256);
+    // memcpy(buf, type.user_struct, type.length < 256 ? type.length : 256);
     return buf;
 }
 
