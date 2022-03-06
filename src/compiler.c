@@ -137,8 +137,7 @@ static void write_literal(struct mtr_chunk* chunk, struct mtr_literal* expr) {
 
 static void write_and(struct mtr_chunk* chunk, struct mtr_binary* expr) {
     write_expr(chunk, expr->left);
-    u16 offset = write_jump(chunk, MTR_OP_JMP_Z);
-    mtr_write_chunk(chunk, MTR_OP_POP);
+    u16 offset = write_jump(chunk, MTR_OP_AND);
 
     write_expr(chunk, expr->right);
     patch_jump(chunk, offset);
@@ -146,11 +145,7 @@ static void write_and(struct mtr_chunk* chunk, struct mtr_binary* expr) {
 
 static void write_or(struct mtr_chunk* chunk, struct mtr_binary* expr) {
     write_expr(chunk, expr->left);
-    u16 left_false = write_jump(chunk, MTR_OP_JMP_Z);
-    u16 left_true = write_jump(chunk, MTR_OP_JMP);
-
-    patch_jump(chunk, left_false);
-    mtr_write_chunk(chunk, MTR_OP_POP);
+    u16 left_true = write_jump(chunk, MTR_OP_OR);
 
     write_expr(chunk, expr->right);
     patch_jump(chunk, left_true);
@@ -318,25 +313,22 @@ static void write_block(struct mtr_chunk* chunk, struct mtr_block* stmt) {
 static void write_if(struct mtr_chunk* chunk, struct mtr_if* stmt) {
     write_expr(chunk, stmt->condition);
     u16 offset = write_jump(chunk, MTR_OP_JMP_Z);
-    mtr_write_chunk(chunk, MTR_OP_POP);
 
     write(chunk, stmt->then);
 
-    u16 otherwise = write_jump(chunk, MTR_OP_JMP);
-
-    patch_jump(chunk, offset);
-    mtr_write_chunk(chunk, MTR_OP_POP);
-
     if (stmt->otherwise) {
+        u16 otherwise = write_jump(chunk, MTR_OP_JMP);
+        patch_jump(chunk, offset);
         write(chunk, stmt->otherwise);
+        patch_jump(chunk, otherwise);
+    } else {
+        patch_jump(chunk, offset);
     }
-    patch_jump(chunk, otherwise);
 }
 
 static void write_while(struct mtr_chunk* chunk, struct mtr_while* stmt) {
     write_expr(chunk, stmt->condition);
     u16 offset = write_jump(chunk, MTR_OP_JMP_Z);
-    mtr_write_chunk(chunk, MTR_OP_POP);
 
     write(chunk, stmt->body);
 
@@ -344,7 +336,6 @@ static void write_while(struct mtr_chunk* chunk, struct mtr_while* stmt) {
     write_loop(chunk, offset);
 
     patch_jump(chunk, offset);
-    mtr_write_chunk(chunk, MTR_OP_POP);
 }
 
 static void write_assignment(struct mtr_chunk* chunk, struct mtr_assignment* stmt) {

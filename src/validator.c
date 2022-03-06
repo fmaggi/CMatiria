@@ -136,7 +136,7 @@ static bool data_type_match(struct mtr_data_type lhs, struct mtr_data_type rhs) 
 }
 
 static struct mtr_cast* try_promoting(struct mtr_expr* expr, struct mtr_data_type type, struct mtr_data_type to) {
-    if (type.type > to.type) {
+    if (to.type == MTR_DATA_USER_DEFINED || to.type == MTR_DATA_INVALID || type.type > to.type) {
         return NULL;
     }
 
@@ -165,7 +165,9 @@ static struct mtr_data_type analyze_binary(struct mtr_binary* expr, struct mtr_s
     } else if (t.type == MTR_DATA_USER_DEFINED) {
         mtr_report_error(expr->operator.token, "Custom types not yet supported.", source);
         return invalid_type;
-    }else if (!data_type_match(l, r)) {
+    } else if (!data_type_match(l, r)) {
+        // if they dont match, t has type either l or r. Depends which one has higher rank.
+
         // try and mathc the types. Cast if needed
         if (l.type != t.type) {
             struct mtr_cast* cast = try_promoting(expr->left, l, t);
@@ -243,7 +245,7 @@ static const struct mtr_data_type analyze_call(struct mtr_call* call, struct mtr
 
 static const struct mtr_data_type analyze_unary(struct mtr_unary* expr, struct mtr_scope* scope, const char* const source) {
     const struct mtr_data_type r = analyze_expr(expr->right, scope, source);
-    struct mtr_data_type dummy;
+    struct mtr_data_type dummy = invalid_type;
     expr->operator.type = get_operator_type(expr->operator.token, r, dummy);
 
     return  expr->operator.type;

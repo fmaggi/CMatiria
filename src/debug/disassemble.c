@@ -38,6 +38,16 @@ u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {
         MTR_LOG("NIL");
         break;
 
+    case MTR_OP_OR: {
+        MTR_LOG("OR");
+        break;
+    }
+
+    case MTR_OP_AND: {
+        MTR_LOG("AND");
+        break;
+    }
+
     case MTR_OP_NOT:
         MTR_LOG("NOT");
         break;

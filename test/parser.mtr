@@ -1,10 +1,23 @@
 fn main() -> Int {
-    Int x := 45;
+    Int x := 0;
     Int w := 42;
+    Float f := -x;
 
-    if false || x > w {
-        let f := 4;
+    if true || false {
+        x := 3;
     } else {
-        let f := 5;
+        x := 45;
     }
+
+    if true && false {
+        w := 3;
+    } else {
+        w := 45;
+    }
+
+    Int asdf;
+}
+
+fn test(Int x) -> Int {
+    return x * 32;
 }

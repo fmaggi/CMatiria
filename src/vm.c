@@ -28,6 +28,10 @@ static void push(struct mtr_vm* vm, mtr_value value) {
     *(vm->stack_top++) = value;
 }
 
+struct call_frame {
+    mtr_value* stack;
+};
+
 #define BINARY_OP(op, type)                                            \
     do {                                                               \
         const mtr_value r = pop(vm);                                   \
@@ -37,10 +41,6 @@ static void push(struct mtr_vm* vm, mtr_value value) {
     } while (false)
 
 #define READ(type) *((type*)ip); ip += sizeof(type)
-
-struct call_frame {
-    mtr_value* stack;
-};
 
 static void call(struct mtr_vm* vm, const struct mtr_chunk* chunk, u8 argc) {
     struct call_frame frame;
@@ -86,23 +86,39 @@ static void call(struct mtr_vm* vm, const struct mtr_chunk* chunk, u8 argc) {
             }
 
             case MTR_OP_NOT: {
-                const mtr_value value = pop(vm);
-                const mtr_value res = MTR_INT_VAL(!value.integer);
-                push(vm, res);
+                (vm->stack_top - 1)->integer = !((vm->stack_top - 1)->integer);
+                break;
+            }
+
+            case MTR_OP_OR: {
+                const i16 where = READ(i16);
+                const mtr_value condition = peek(vm, 0);
+                if (condition.integer) {
+                    ip += where;
+                } else {
+                    pop(vm);
+                }
+                break;
+            }
+
+            case MTR_OP_AND: {
+                const i16 where = READ(i16);
+                const mtr_value condition = peek(vm, 0);
+                if (!condition.integer) {
+                    ip += where;
+                } else {
+                    pop(vm);
+                }
                 break;
             }
 
             case MTR_OP_NEGATE_I: {
-                const mtr_value value = pop(vm);
-                const mtr_value res = MTR_INT_VAL(-value.integer);
-                push(vm, res);
+                (vm->stack_top - 1)->integer = -((vm->stack_top - 1)->integer);
                 break;
             }
 
             case MTR_OP_NEGATE_F: {
-                const mtr_value value = pop(vm);
-                const mtr_value res = MTR_FLOAT_VAL(-value.floating);
-                push(vm, res);
+                (vm->stack_top - 1)->floating = -((vm->stack_top - 1)->floating);
                 break;
             }
 
@@ -143,10 +159,10 @@ static void call(struct mtr_vm* vm, const struct mtr_chunk* chunk, u8 argc) {
             }
 
             case MTR_OP_JMP_Z: {
-                const mtr_value value = peek(vm , 0);
-                const bool con = MTR_AS_INT(value);
+                const mtr_value value = pop(vm);
+                const bool condition = MTR_AS_INT(value);
                 const i16 where = READ(i16);
-                if (!con) {
+                if (!condition) {
                     ip += where;
                 }
                 break;
@@ -209,7 +225,5 @@ i32 mtr_execute(struct mtr_package* package) {
     }
 
     call(&vm, main_chunk, 0);
-
-    mtr_dump_stack(vm.stack, vm.stack_top);
     return 0;
 }

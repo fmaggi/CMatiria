@@ -14,6 +14,9 @@ enum mtr_op_code {
 
     MTR_OP_NOT,
 
+    MTR_OP_OR,
+    MTR_OP_AND,
+
     MTR_OP_NEGATE_I,
     MTR_OP_NEGATE_F,
 
