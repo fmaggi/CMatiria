@@ -159,6 +159,45 @@ void mtr_dump_stmt(struct mtr_stmt* stmt) {
     dump_stmt(stmt, 0);
 }
 
+static void dump_type(struct mtr_type type, u32 offset);
+
+static void dump_object_type(struct mtr_object_type* obj, enum mtr_data_type type, u32 offset) {
+    if (offset > 0 && offset < 256) {
+        char buf[256];
+        memset(buf, ' ', 256);
+        MTR_PRINT_DEBUG("%.*s", offset, buf);
+    }
+
+    switch (type) {
+    case MTR_DATA_INVALID : return;
+    case MTR_DATA_ARRAY: {
+        struct mtr_array_type* a = (struct mtr_array_type*) obj;
+        dump_type(a->type, offset+1);
+    }
+    case MTR_DATA_USER_DEFINED: return;
+    default:
+        break;
+    }
+    MTR_ASSERT(false, "Invalid type.");
+}
+
+static void dump_type(struct mtr_type type, u32 offset) {
+    if (offset > 0 && offset < 256) {
+        char buf[256];
+        memset(buf, ' ', 256);
+        MTR_PRINT_DEBUG("%.*s", offset, buf);
+    }
+
+    MTR_LOG("%s", mtr_data_type_to_str(type));
+    if (type.obj) {
+        dump_object_type(type.obj, type.type, offset + 1);
+    }
+}
+
+void mtr_dump_type(struct mtr_type type) {
+    dump_type(type, 0);
+}
+
 const char* mtr_token_type_to_str(enum mtr_token_type type) {
     switch (type)
     {
@@ -220,8 +259,8 @@ const char* mtr_data_type_to_str(struct mtr_type type) {
     case MTR_DATA_FLOAT:   return "Float";
     case MTR_DATA_INT:     return "Int";
     case MTR_DATA_INVALID: return "Invalid";
-    case MTR_DATA_USER_DEFINED: break;
     case MTR_DATA_ARRAY: return "Array";
+    case MTR_DATA_USER_DEFINED: break;
     }
 
     static char buf[256];

@@ -124,13 +124,6 @@ struct mtr_type mtr_get_data_type(struct mtr_token type) {
     return t;
 }
 
-static bool data_type_match(struct mtr_type lhs, struct mtr_type rhs) {
-    return (lhs.type == rhs.type);
-        // && (
-        //     (lhs.type != MTR_DATA_USER_DEFINED) || (lhs.length == rhs.length) && (memcmp(lhs.user_struct, rhs.user_struct, lhs.length) == 0)
-        // );
-}
-
 static struct mtr_cast* try_promoting(struct mtr_expr* expr, struct mtr_type type, struct mtr_type to) {
     switch (type.type) {
 
@@ -172,7 +165,7 @@ static struct mtr_type analyze_binary(struct mtr_binary* expr, struct mtr_scope*
         return invalid_type;
     }
 
-    if (!data_type_match(l, r)) {
+    if (!mtr_type_match(l, r)) {
         // if they dont match, t has type either l or r. Depends which one has higher rank.
 
         // try and mathc the types. Cast if needed
@@ -232,12 +225,11 @@ static const struct mtr_type analyze_call(struct mtr_call* call, struct mtr_scop
             struct mtr_type ta = analyze_expr(a, scope, source);
 
             struct mtr_variable p = f->argv[i];
-            if (!data_type_match(ta, p.symbol.type)) {
+            if (!mtr_type_match(ta, p.symbol.type)) {
                 expr_error(a, "Wrong type of argument.", source);
                 s.type.type = MTR_DATA_INVALID;
             }
         }
-
 
     } else if (f->argc > call->argc) {
         mtr_report_error(call->symbol.token, "Expected more arguments.", source);
@@ -347,7 +339,7 @@ static bool analyze_assignment(struct mtr_assignment* stmt, struct mtr_scope* pa
     stmt->variable.type = s.type;
     const struct mtr_type expr = analyze_expr(stmt->expression, parent, source);
 
-    bool expr_ok = data_type_match(expr, s.type);
+    bool expr_ok = mtr_type_match(expr, s.type);
     if (!expr_ok) {
         // try and mathc the types. Cast if needed
         struct mtr_cast* cast = try_promoting(stmt->expression, expr, stmt->variable.type);
@@ -368,7 +360,7 @@ static bool analyze_variable(struct mtr_variable* decl, struct mtr_scope* parent
         const struct mtr_type type = analyze_expr(decl->value, parent, source);
         if (decl->symbol.type.type == MTR_DATA_INVALID) { // this means it was a 'let' var decl
             decl->symbol.type = type;
-        } else if (!data_type_match(decl->symbol.type, type)) {
+        } else if (!mtr_type_match(decl->symbol.type, type)) {
             // try and mathc the types. Cast if needed
             struct mtr_cast* cast = try_promoting(decl->value, type, decl->symbol.type);
             if (NULL != cast) {
@@ -414,7 +406,7 @@ static bool analyze_while(struct mtr_while* stmt, struct mtr_scope* parent, cons
 }
 
 static bool analyze_return(struct mtr_return* stmt, struct mtr_scope* parent, const char* const source) {
-    bool ok = data_type_match(analyze_expr(stmt->expr, parent, source), stmt->from.type);
+    bool ok = mtr_type_match(analyze_expr(stmt->expr, parent, source), stmt->from.type);
     if (!ok) {
         expr_error(stmt->expr, "Incompatible return type.", source);
         mtr_report_message(stmt->from.token, "As declared here.", source);

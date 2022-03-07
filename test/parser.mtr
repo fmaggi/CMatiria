@@ -1,12 +1,7 @@
 fn main() -> Int {
-    Int[] y;
-    Int x := 0;
-
-    while x < 5 {
-        x := x + 1;
-    }
-
-    Int asdf;
+    Int[][] y;
+    Int[][] x;
+    y := x;
 }
 
 fn test(Int x) -> Int {

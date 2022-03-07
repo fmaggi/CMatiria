@@ -15,19 +15,23 @@ enum mtr_data_type {
     MTR_DATA_FLOAT,
 };
 
-struct mtr_object {
+struct mtr_object_type {
 };
 
 struct mtr_type {
-    struct mtr_object* obj;
+    struct mtr_object_type* obj;
     enum mtr_data_type type;
 };
 
-struct mtr_array {
-    struct mtr_object obj;
+void mtr_delete_type(struct mtr_type type);
+
+bool mtr_type_match(struct mtr_type lhs, struct mtr_type rhs);
+
+struct mtr_array_type {
+    struct mtr_object_type obj;
     struct mtr_type type;
 };
 
-struct mtr_object* mtr_new_array_obj(struct mtr_type type);
+struct mtr_array_type* mtr_new_array_obj(struct mtr_type type);
 
 #endif

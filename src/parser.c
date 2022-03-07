@@ -290,6 +290,45 @@ static struct mtr_expr* expression(struct mtr_parser* parser) {
 
 // ============================ STMT =====================================
 
+static struct mtr_type type_attributes(struct mtr_parser* parser, struct mtr_type type) {
+    struct mtr_type ret = type;
+    while (true) {
+        switch (parser->token.type) {
+        case MTR_TOKEN_SQR_L: {
+            advance(parser);
+            struct mtr_array_type* a = mtr_new_array_obj(ret);
+            ret.type = MTR_DATA_ARRAY;
+            ret.obj = (struct mtr_object_type*) a;
+            consume(parser, MTR_TOKEN_SQR_R, "Expected ']'.");
+            break;
+        }
+
+        case MTR_TOKEN_CURLY_L:
+        case MTR_TOKEN_IDENTIFIER:
+            goto r;
+
+        default:
+            parser_error(parser, "Expected a modifier or and identifier.");
+            ret.type = MTR_DATA_INVALID;
+            goto r;
+        }
+
+    }
+r:
+    return ret;
+}
+
+static struct mtr_type type(struct mtr_parser* parser) {
+    struct mtr_token t = consume_type(parser);
+    struct mtr_type type = mtr_get_data_type(t);
+
+    if (!CHECK(MTR_TOKEN_IDENTIFIER) || !CHECK(MTR_TOKEN_CURLY_L)) {
+        type = type_attributes(parser, type);
+    }
+
+    return type;
+}
+
 static struct mtr_stmt* declaration(struct mtr_parser* parser);
 
 static struct mtr_stmt* block(struct mtr_parser* parser) {
@@ -383,7 +422,7 @@ static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
     bool cont = true;
     while (argc < 255 && !CHECK(MTR_TOKEN_PAREN_R) && cont) {
         struct mtr_variable* var = vars + argc++;
-        var->symbol.type = mtr_get_data_type(consume_type(parser));
+        var->symbol.type = type(parser);
         var->symbol.token = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
         var->value = NULL;
 
@@ -411,7 +450,7 @@ static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
 
     consume(parser, MTR_TOKEN_ARROW, "Expected '->'.");
 
-    node->symbol.type = mtr_get_data_type(consume_type(parser));
+    node->symbol.type = type(parser);
     parser->current_function = node->symbol;
 
     node->body = (struct mtr_block*) block(parser);
@@ -419,35 +458,10 @@ static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
     return (struct mtr_stmt*) node;
 }
 
-static struct mtr_type type_attributes(struct mtr_parser* parser, struct mtr_type type) {
-    struct mtr_type ret;
-
-    switch (parser->token.type) {
-    case MTR_TOKEN_SQR_L: {
-        advance(parser);
-        ret.type = MTR_DATA_ARRAY;
-        ret.obj = mtr_new_array_obj(type);
-        consume(parser, MTR_TOKEN_SQR_R, "Expected ']'.");
-        break;
-    }
-    default:
-        parser_error(parser, "Expected a modifier.");
-        ret.type = MTR_DATA_INVALID;
-        break;
-    }
-    return ret;
-}
-
 static struct mtr_stmt* variable(struct mtr_parser* parser) {
     struct mtr_variable* node = ALLOCATE_STMT(MTR_STMT_VAR, mtr_variable);
 
-    struct mtr_type type = mtr_get_data_type(advance(parser));
-
-    if (!CHECK(MTR_TOKEN_IDENTIFIER)) {
-        node->symbol.type = type_attributes(parser, type);
-    } else {
-        node->symbol.type = type;
-    }
+    node->symbol.type = type(parser);
 
     node->symbol.token = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
     node->value = NULL;
@@ -587,10 +601,16 @@ void mtr_free_stmt(struct mtr_stmt* s) {
         }
         case MTR_STMT_FN: {
             struct mtr_function* f = (struct mtr_function*) s;
-            if (f->argc > 0)
+            if (f->argc > 0) {
+                for (u8 i = 0; i < f->argc; ++i) {
+                    struct mtr_variable* v = f->argv + i;
+                    mtr_delete_type(v->symbol.type);
+                }
                 free(f->argv);
+            }
             f->argv = NULL;
             delete_block(f->body);
+            mtr_delete_type(f->symbol.type);
             free(f);
             break;
         }
@@ -615,6 +635,7 @@ void mtr_free_stmt(struct mtr_stmt* s) {
             if (v->value)
                 mtr_free_expr(v->value);
             v->value = NULL;
+            mtr_delete_type(v->symbol.type);
             free(v);
             break;
         }
@@ -624,6 +645,7 @@ void mtr_free_stmt(struct mtr_stmt* s) {
             if (r->expr) {
                 mtr_free_expr(r->expr);
             }
+            mtr_delete_type(r->from.type);
             free(r);
             break;
         }
@@ -664,6 +686,12 @@ static void free_call(struct mtr_call* node) {
         node->argv = NULL;
         node->argc = 0;
     }
+    free(node);
+}
+
+static void free_cast(struct mtr_cast* node) {
+    mtr_free_expr(node->right);
+    node->right = NULL;
     free(node);
 }
 
