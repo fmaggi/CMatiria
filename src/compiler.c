@@ -62,12 +62,12 @@ static void write_u64(struct mtr_chunk* chunk, u64 value) {
     mtr_write_chunk(chunk, (u8) (value >> 56));
 }
 
-static void write_u32(struct mtr_chunk* chunk, u32 value) {
-    mtr_write_chunk(chunk, (u8) (value >> 0));
-    mtr_write_chunk(chunk, (u8) (value >> 8));
-    mtr_write_chunk(chunk, (u8) (value >> 16));
-    mtr_write_chunk(chunk, (u8) (value >> 24));
-}
+// static void write_u32(struct mtr_chunk* chunk, u32 value) {
+//     mtr_write_chunk(chunk, (u8) (value >> 0));
+//     mtr_write_chunk(chunk, (u8) (value >> 8));
+//     mtr_write_chunk(chunk, (u8) (value >> 16));
+//     mtr_write_chunk(chunk, (u8) (value >> 24));
+// }
 
 static void write_u16(struct mtr_chunk* chunk, u16 value) {
     mtr_write_chunk(chunk, (u8) (value >> 0));
@@ -254,7 +254,7 @@ static void write_call(struct mtr_chunk* chunk, struct mtr_call* call) {
     }
 
     mtr_write_chunk(chunk, MTR_OP_CALL);
-    write_u16(chunk, call->symbol.index);
+    write_expr(chunk, call->callable);
     mtr_write_chunk(chunk, call->argc);
 }
 
@@ -277,6 +277,10 @@ static void write_cast(struct mtr_chunk* chunk, struct mtr_cast* cast) {
     }
 }
 
+static void write_subscript(struct mtr_chunk* chunk, struct mtr_subscript* expr) {
+
+}
+
 static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr) {
     switch (expr->type)
     {
@@ -287,6 +291,7 @@ static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr) {
     case MTR_EXPR_GROUPING: write_expr(chunk, ((struct mtr_grouping*) expr)->expression); return;
     case MTR_EXPR_CALL: write_call(chunk, (struct mtr_call*) expr); return;
     case MTR_EXPR_CAST: write_cast(chunk, (struct mtr_cast*) expr); return;
+    case MTR_EXPR_SUBSCRIPT: write_subscript(chunk, (struct mtr_subscript*) expr); return;
     }
 }
 

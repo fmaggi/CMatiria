@@ -226,7 +226,7 @@ static struct mtr_token scan_number(struct mtr_scanner* scanner) {
 }
 
 static bool check_keyword(const char* start, const char* end, const struct keyword_entry k) {
-    return (end - start) == k.str_len && memcmp(k.str, start, k.str_len) == 0;
+    return (size_t) (end - start) == k.str_len && memcmp(k.str, start, k.str_len) == 0;
 }
 
 static struct mtr_token scan_identifier(struct mtr_scanner* scanner) {

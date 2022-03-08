@@ -11,7 +11,8 @@ enum mtr_expr_type {
     MTR_EXPR_GROUPING,
     MTR_EXPR_UNARY,
     MTR_EXPR_CALL,
-    MTR_EXPR_CAST
+    MTR_EXPR_CAST,
+    MTR_EXPR_SUBSCRIPT
 };
 
 struct mtr_expr {
@@ -54,9 +55,15 @@ struct mtr_binary {
 
 struct mtr_call {
     struct mtr_expr expr_;
-    struct mtr_symbol symbol;
+    struct mtr_expr* callable;
     struct mtr_expr** argv;
     u8 argc;
+};
+
+struct mtr_subscript {
+    struct mtr_expr expr_;
+    struct mtr_expr* object;
+    struct mtr_expr* index;
 };
 
 void mtr_free_expr(struct mtr_expr* node);

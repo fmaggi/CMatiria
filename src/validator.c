@@ -26,7 +26,8 @@ static void expr_error(struct mtr_expr* expr, const char* message, const char* c
     }
     case MTR_EXPR_CALL: {
         struct mtr_call* c = (struct mtr_call*) expr;
-        mtr_report_error(c->symbol.token, message, source);
+        struct mtr_primary* p = (struct mtr_primary*) c->callable;
+        mtr_report_error(p->symbol.token, message, source);
         break;
     }
     case MTR_EXPR_GROUPING: {
@@ -54,11 +55,6 @@ static void expr_error(struct mtr_expr* expr, const char* message, const char* c
         break;
     }
 }
-
-static const struct mtr_type invalid_type = {
-    .type = MTR_DATA_INVALID,
-    .obj = NULL
-};
 
 static struct mtr_type get_operator_type(struct mtr_token op, struct mtr_type lhs, struct mtr_type rhs) {
     struct mtr_type t;
@@ -118,7 +114,7 @@ struct mtr_type mtr_get_data_type(struct mtr_token type) {
         break;
 
     default:
-        MTR_LOG_WARN("Invalid data type  %s", mtr_token_type_to_str(type.type));
+        MTR_LOG_DEBUG("Invalid data type  %s", mtr_token_type_to_str(type.type));
         break;
     }
     return t;
@@ -149,7 +145,7 @@ static struct mtr_cast* try_promoting(struct mtr_expr* expr, struct mtr_type typ
     return cast;
 }
 
-static const struct mtr_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* scope, const char* const source);
+static struct mtr_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* scope, const char* const source);
 
 static struct mtr_type analyze_binary(struct mtr_binary* expr, struct mtr_scope* scope, const char* const source) {
     const struct mtr_type l = analyze_expr(expr->left, scope, source);
@@ -192,7 +188,7 @@ static struct mtr_type analyze_binary(struct mtr_binary* expr, struct mtr_scope*
     return  expr->operator.type;
 }
 
-static const struct mtr_type analyze_primary(struct mtr_primary* expr, struct mtr_scope* scope, const char* const source) {
+static struct mtr_type analyze_primary(struct mtr_primary* expr, struct mtr_scope* scope, const char* const source) {
     struct mtr_symbol_entry* e = mtr_scope_find(scope, expr->symbol.token);
     if (NULL == e) {
         mtr_report_error(expr->symbol.token, "Undeclared variable.", source);
@@ -205,15 +201,22 @@ static const struct mtr_type analyze_primary(struct mtr_primary* expr, struct mt
     return s.type;
 }
 
-static const struct mtr_type analyze_literal(struct mtr_literal* literal, struct mtr_scope* scope, const char* const source) {
+static struct mtr_type analyze_literal(struct mtr_literal* literal, struct mtr_scope* scope, const char* const source) {
     struct mtr_type t = mtr_get_data_type(literal->literal);
     return t;
 }
 
-static const struct mtr_type analyze_call(struct mtr_call* call, struct mtr_scope* scope, const char* const source) {
-    struct mtr_symbol_entry* e = mtr_scope_find(scope, call->symbol.token);
+static struct mtr_type analyze_call(struct mtr_call* call, struct mtr_scope* scope, const char* const source) {
+    if (call->callable->type != MTR_EXPR_PRIMARY) {
+        expr_error(call->callable, "Expression is not callable.", source);
+        return invalid_type;
+    }
+
+    struct mtr_primary* p = (struct mtr_primary*) call->callable;
+
+    struct mtr_symbol_entry* e = mtr_scope_find(scope, p->symbol.token);
     if (NULL == e) {
-        mtr_report_error(call->symbol.token, "Call to undefined function.", source);
+        mtr_report_error(p->symbol.token, "Call to undefined function.", source);
         return invalid_type;
     }
 
@@ -232,17 +235,48 @@ static const struct mtr_type analyze_call(struct mtr_call* call, struct mtr_scop
         }
 
     } else if (f->argc > call->argc) {
-        mtr_report_error(call->symbol.token, "Expected more arguments.", source);
+        mtr_report_error(p->symbol.token, "Expected more arguments.", source);
     } else {
-        mtr_report_error(call->symbol.token, "Too many arguments.", source);
+        mtr_report_error(p->symbol.token, "Too many arguments.", source);
     }
 
-    call->symbol.index = s.index;
-    call->symbol.type = s.type;
+    p->symbol.index = s.index;
+    p->symbol.type = s.type;
     return s.type;
 }
 
-static const struct mtr_type analyze_unary(struct mtr_unary* expr, struct mtr_scope* scope, const char* const source) {
+static struct mtr_type analyze_subscript(struct mtr_subscript* expr, struct mtr_scope* scope, const char* const source) {
+    if (expr->object->type != MTR_EXPR_PRIMARY) {
+        expr_error(expr->object, "Expression is not subscriptable.", source);
+        return invalid_type;
+    }
+
+    struct mtr_primary* p = (struct mtr_primary*) expr->object;
+    struct mtr_symbol_entry* e = mtr_scope_find(scope, p->symbol.token);
+    if (NULL == e) {
+        mtr_report_error(p->symbol.token, "Undefined variable.", source);
+        return invalid_type;
+    }
+
+    struct mtr_symbol s = e->symbol;
+    if (s.type.type != MTR_DATA_ARRAY) {
+        mtr_report_error(p->symbol.token, "Variable is not array.", source);
+        return invalid_type;
+    }
+
+    struct mtr_type index_type = analyze_expr(expr->index, scope, source);
+    if (index_type.type != MTR_DATA_INT) {
+        expr_error(expr->index, "Index has to be integral expression.", source);
+        return invalid_type;
+    }
+
+    p->symbol.type = s.type;
+    p->symbol.index = s.index;
+
+    return mtr_get_underlying_type(s.type);
+}
+
+static struct mtr_type analyze_unary(struct mtr_unary* expr, struct mtr_scope* scope, const char* const source) {
     const struct mtr_type r = analyze_expr(expr->right, scope, source);
     struct mtr_type dummy = invalid_type;
     expr->operator.type = get_operator_type(expr->operator.token, r, dummy);
@@ -250,7 +284,7 @@ static const struct mtr_type analyze_unary(struct mtr_unary* expr, struct mtr_sc
     return  expr->operator.type;
 }
 
-static const struct mtr_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* scope, const char* const source) {
+static struct mtr_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* scope, const char* const source) {
     switch (expr->type)
     {
     case MTR_EXPR_BINARY:   return analyze_binary((struct mtr_binary*) expr, scope, source);
@@ -259,6 +293,7 @@ static const struct mtr_type analyze_expr(struct mtr_expr* expr, struct mtr_scop
     case MTR_EXPR_PRIMARY:  return analyze_primary((struct mtr_primary*) expr, scope, source);
     case MTR_EXPR_LITERAL:  return analyze_literal((struct mtr_literal*) expr, scope, source);
     case MTR_EXPR_CALL:     return analyze_call((struct mtr_call*) expr, scope, source);
+    case MTR_EXPR_SUBSCRIPT: return analyze_subscript((struct mtr_subscript*) expr, scope, source);
     default:
         break;
     }

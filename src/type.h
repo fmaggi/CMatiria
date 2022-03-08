@@ -15,20 +15,22 @@ enum mtr_data_type {
     MTR_DATA_FLOAT,
 };
 
-struct mtr_object_type {
-};
+typedef void mtr_object_type;
 
 struct mtr_type {
-    struct mtr_object_type* obj;
+    mtr_object_type* obj;
     enum mtr_data_type type;
 };
+
+extern const struct mtr_type invalid_type;
 
 void mtr_delete_type(struct mtr_type type);
 
 bool mtr_type_match(struct mtr_type lhs, struct mtr_type rhs);
 
+struct mtr_type mtr_get_underlying_type(struct mtr_type type);
+
 struct mtr_array_type {
-    struct mtr_object_type obj;
     struct mtr_type type;
 };
 

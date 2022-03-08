@@ -1,7 +1,7 @@
 CC = clang
 LL = llvm-ar
 
-CFLAGS = -Isrc -Werror -D_FORTIFY_SOURCE=2 -std=c17
+CFLAGS = -Isrc -Werror -Wall -Wextra -pedantic -Wno-unused-parameter -D_FORTIFY_SOURCE=2 -std=c17
 EXEFLAGS =
 
 MATIRIA = matiria

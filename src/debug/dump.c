@@ -68,6 +68,9 @@ static void dump_expr(struct mtr_expr* expr, u32 offset) {
     }
     case MTR_EXPR_CAST:
         break;
+
+    case MTR_EXPR_SUBSCRIPT:
+        break;
     }
 }
 
@@ -144,12 +147,12 @@ static void dump_stmt(struct mtr_stmt* stmt, u32 offset) {
 
     switch (stmt->type)
     {
-    case MTR_STMT_FN: return dump_fn((struct mtr_function*) stmt, offset);
-    case MTR_STMT_BLOCK: return dump_block((struct mtr_block*) stmt, offset);
-    case MTR_STMT_VAR: return dump_var((struct mtr_variable*) stmt, offset);
-    case MTR_STMT_IF: return dump_if((struct mtr_if*) stmt, offset);
-    case MTR_STMT_WHILE: return dump_while((struct mtr_while*) stmt, offset);
-    case MTR_STMT_ASSIGNMENT: return dump_assignment((struct mtr_assignment*) stmt, offset);
+    case MTR_STMT_FN: dump_fn((struct mtr_function*) stmt, offset); return;
+    case MTR_STMT_BLOCK: dump_block((struct mtr_block*) stmt, offset); return;
+    case MTR_STMT_VAR: dump_var((struct mtr_variable*) stmt, offset); return;
+    case MTR_STMT_IF: dump_if((struct mtr_if*) stmt, offset); return;
+    case MTR_STMT_WHILE: dump_while((struct mtr_while*) stmt, offset); return;
+    case MTR_STMT_ASSIGNMENT: dump_assignment((struct mtr_assignment*) stmt, offset); return;
     default:
         break;
     }
@@ -161,7 +164,7 @@ void mtr_dump_stmt(struct mtr_stmt* stmt) {
 
 static void dump_type(struct mtr_type type, u32 offset);
 
-static void dump_object_type(struct mtr_object_type* obj, enum mtr_data_type type, u32 offset) {
+static void dump_object_type(mtr_object_type* obj, enum mtr_data_type type, u32 offset) {
     if (offset > 0 && offset < 256) {
         char buf[256];
         memset(buf, ' ', 256);

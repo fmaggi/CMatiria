@@ -1,7 +1,8 @@
 fn main() -> Int {
     Int[][] y;
-    Int[][] x;
-    y := x;
+    Int[] x;
+    Int w := 0;
+    let z := x[ w * test(3) ];
 }
 
 fn test(Int x) -> Int {

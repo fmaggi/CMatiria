@@ -120,6 +120,7 @@ enum precedence {
     FACTOR,
     UNARY,
     CALL,
+    SUB,
     PRIMARY,
     LITERAL = PRIMARY
 };
@@ -139,6 +140,7 @@ static struct mtr_expr* grouping(struct mtr_parser* parser, struct mtr_token tok
 static struct mtr_expr* primary(struct mtr_parser* parser, struct mtr_token primary);
 static struct mtr_expr* literal(struct mtr_parser* parser, struct mtr_token literal);
 static struct mtr_expr* call(struct mtr_parser* parser, struct mtr_token paren, struct mtr_expr* name);
+static struct mtr_expr* subscript(struct mtr_parser* parser, struct mtr_token square, struct mtr_expr* object);
 
 #define NO_OP .prefix = NULL, .infix = NULL, .precedence = NONE
 
@@ -154,7 +156,7 @@ static const struct parser_rule rules[] = {
     [MTR_TOKEN_DOT] = { .prefix = NULL, .infix = NULL, .precedence = NONE },
     [MTR_TOKEN_PAREN_L] = { .prefix = grouping, .infix = call, .precedence = CALL },
     [MTR_TOKEN_PAREN_R] = { NO_OP },
-    [MTR_TOKEN_SQR_L] = { NO_OP },
+    [MTR_TOKEN_SQR_L] = { .prefix = NULL, .infix = subscript, .precedence = SUB },
     [MTR_TOKEN_SQR_R] = { NO_OP },
     [MTR_TOKEN_CURLY_L] = { NO_OP },
     [MTR_TOKEN_CURLY_R] = { NO_OP },
@@ -252,12 +254,8 @@ static struct mtr_expr* literal(struct mtr_parser* parser, struct mtr_token lite
 }
 
 static struct mtr_expr* call(struct mtr_parser* parser, struct mtr_token paren, struct mtr_expr* name) {
-    if (name->type != MTR_EXPR_PRIMARY) {
-        parser_error(parser, "Expression is not callable.");
-        return NULL;
-    }
     struct mtr_call* node = ALLOCATE_EXPR(MTR_EXPR_CALL, mtr_call);
-    node->symbol = ((struct mtr_primary*) name)->symbol;
+    node->callable = name;
 
     u8 argc = 0;
     struct mtr_expr* exprs[255];
@@ -284,6 +282,14 @@ static struct mtr_expr* call(struct mtr_parser* parser, struct mtr_token paren, 
     return (struct mtr_expr*) node;
 }
 
+static struct mtr_expr* subscript(struct mtr_parser* parser, struct mtr_token square, struct mtr_expr* object) {
+    struct mtr_subscript* node = ALLOCATE_EXPR(MTR_EXPR_SUBSCRIPT, mtr_subscript);
+    node->object = object;
+    node->index = expression(parser);
+    consume(parser, MTR_TOKEN_SQR_R, "Expected ']'.");
+    return (struct mtr_expr*) node;
+}
+
 static struct mtr_expr* expression(struct mtr_parser* parser) {
     return parse_precedence(parser, LOGIC);
 }
@@ -298,7 +304,7 @@ static struct mtr_type type_attributes(struct mtr_parser* parser, struct mtr_typ
             advance(parser);
             struct mtr_array_type* a = mtr_new_array_obj(ret);
             ret.type = MTR_DATA_ARRAY;
-            ret.obj = (struct mtr_object_type*) a;
+            ret.obj = a;
             consume(parser, MTR_TOKEN_SQR_R, "Expected ']'.");
             break;
         }
@@ -695,6 +701,14 @@ static void free_cast(struct mtr_cast* node) {
     free(node);
 }
 
+static void free_sub(struct mtr_subscript* node) {
+    mtr_free_expr(node->object);
+    mtr_free_expr(node->index);
+    node->object = NULL;
+    node->index = NULL;
+    free(node);
+}
+
 void mtr_free_expr(struct mtr_expr* node) {
     switch (node->type)
     {
@@ -704,6 +718,7 @@ void mtr_free_expr(struct mtr_expr* node) {
     case MTR_EXPR_UNARY:    free_unary((struct mtr_unary*) node); return;
     case MTR_EXPR_LITERAL:  free_literal((struct mtr_literal*) node); return;
     case MTR_EXPR_CALL:     free_call((struct mtr_call*) node); return;
-    case MTR_EXPR_CAST:     return;
+    case MTR_EXPR_CAST:     free_cast((struct mtr_cast*) node); return;
+    case MTR_EXPR_SUBSCRIPT: free_sub((struct mtr_subscript*) node); return;
     }
 }

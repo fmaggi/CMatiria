@@ -17,11 +17,11 @@ int main(int argc, char* argv[])
     if (NULL == package)
         return -1;
 
-    i32 result = mtr_execute(package);
-    MTR_LOG_DEBUG("return %i", result);
+    // i32 result = mtr_execute(package);
+    // MTR_LOG_DEBUG("return %i", result);
 
     mtr_delete_package(package);
     free(source);
 
-    return result;
+    return 0;
 }
