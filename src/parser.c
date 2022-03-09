@@ -688,10 +688,12 @@ static void free_literal(struct mtr_literal* node) {
 
 static void free_call(struct mtr_call* node) {
     if (node->argv) {
+        for (u8 i = 0; i < node->argc; ++i) {
+            mtr_free_expr(node->argv[i]);
+        }
         free(node->argv);
-        node->argv = NULL;
-        node->argc = 0;
     }
+    mtr_free_expr(node->callable);
     free(node);
 }
 

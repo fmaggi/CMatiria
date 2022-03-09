@@ -1,4 +1,5 @@
 #include "expr.h"
+#include "stmt.h"
 #include "symbol.h"
 #include "type.h"
 #ifndef NDEBUG
@@ -57,7 +58,7 @@ static void dump_expr(struct mtr_expr* expr, u32 offset) {
     }
 
     case MTR_EXPR_CALL: {
-        IMPLEMENT
+        MTR_PRINT_DEBUG("Call");
         break;
     }
 
@@ -67,10 +68,17 @@ static void dump_expr(struct mtr_expr* expr, u32 offset) {
         break;
     }
     case MTR_EXPR_CAST:
+        IMPLEMENT
         break;
 
-    case MTR_EXPR_SUBSCRIPT:
+    case MTR_EXPR_SUBSCRIPT: {
+        struct mtr_subscript* s = (struct mtr_subscript*) expr;
+        dump_expr(s->object, 0);
+        MTR_PRINT_DEBUG("[");
+        dump_expr(s->index, offset);
+        MTR_PRINT_DEBUG("]");
         break;
+    }
     }
 }
 
@@ -138,6 +146,14 @@ static void dump_assignment(struct mtr_assignment* stmt, u32 offset) {
     MTR_PRINT_DEBUG(";\n");
 }
 
+static void dump_return(struct mtr_return* stmt, u32 offset) {
+    MTR_PRINT_DEBUG("return ");
+    if (stmt->expr) {
+        dump_expr(stmt->expr, 0);
+    }
+    MTR_PRINT_DEBUG(";\n");
+}
+
 static void dump_stmt(struct mtr_stmt* stmt, u32 offset) {
     if (offset > 0 && offset < 256) {
         char buf[256];
@@ -153,8 +169,7 @@ static void dump_stmt(struct mtr_stmt* stmt, u32 offset) {
     case MTR_STMT_IF: dump_if((struct mtr_if*) stmt, offset); return;
     case MTR_STMT_WHILE: dump_while((struct mtr_while*) stmt, offset); return;
     case MTR_STMT_ASSIGNMENT: dump_assignment((struct mtr_assignment*) stmt, offset); return;
-    default:
-        break;
+    case MTR_STMT_RETURN: dump_return((struct mtr_return*) stmt, offset); return;
     }
 }
 

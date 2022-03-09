@@ -422,6 +422,7 @@ struct mtr_package* mtr_compile(const char* source) {
         write_bytecode(s, package);
     }
 
+
     mtr_delete_ast(&ast);
     return package;
 }
