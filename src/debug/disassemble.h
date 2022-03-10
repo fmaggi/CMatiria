@@ -1,7 +1,7 @@
 #ifndef MTR_DISASSEMBLE_H
 #define MTR_DISASSEMBLE_H
 
-#include "value.h"
+#include "runtime/value.h"
 #include "bytecode.h"
 
 void mtr_disassemble(struct mtr_chunk chunk, const char* name);

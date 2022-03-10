@@ -1,7 +1,7 @@
 #ifndef MTR_SCOPE_H
 #define MTR_SCOPE_H
 
-#include "symbol.h"
+#include "AST/symbol.h"
 
 struct mtr_symbol_entry {
     struct mtr_stmt* parent;

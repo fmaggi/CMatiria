@@ -1,8 +1,8 @@
 #ifndef MTR_TYPE_H
 #define MTR_TYPE_H
 
+#include "scanner/token.h"
 #include "core/types.h"
-
 
 enum mtr_data_type {
     MTR_DATA_INVALID = 0,
@@ -21,6 +21,8 @@ struct mtr_type {
     mtr_object_type* obj;
     enum mtr_data_type type;
 };
+
+struct mtr_type mtr_get_data_type(struct mtr_token token);
 
 extern const struct mtr_type invalid_type;
 

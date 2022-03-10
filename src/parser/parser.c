@@ -10,9 +10,6 @@
 #include <string.h>
 
 #include "debug/dump.h"
-#include "expr.h"
-#include "token.h"
-#include "type.h"
 
 #define ALLOCATE_EXPR(type, expr) allocate_expr(type, sizeof(struct expr))
 #define ALLOCATE_STMT(type, stmt) allocate_stmt(type, sizeof(struct stmt))

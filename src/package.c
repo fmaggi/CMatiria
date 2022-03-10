@@ -1,6 +1,6 @@
 #include "package.h"
 
-#include "stmt.h"
+#include "AST/stmt.h"
 
 #include "core/log.h"
 #include "core/utils.h"

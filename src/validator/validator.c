@@ -1,14 +1,11 @@
 #include "validator.h"
 
-#include "expr.h"
+#include "type.h"
 #include "scope.h"
 
 #include "core/report.h"
 #include "core/log.h"
 #include "debug/dump.h"
-#include "symbol.h"
-#include "token.h"
-#include "type.h"
 
 #include <string.h>
 

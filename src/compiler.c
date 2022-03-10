@@ -1,15 +1,11 @@
 #include "compiler.h"
 
+#include "scanner/scanner.h"
+#include "parser/parser.h"
+#include "validator/validator.h"
+
 #include "bytecode.h"
-#include "expr.h"
 #include "package.h"
-#include "scanner.h"
-#include "parser.h"
-#include "symbol.h"
-#include "token.h"
-#include "type.h"
-#include "validator.h"
-#include "vm.h"
 
 #include "core/file.h"
 #include "core/log.h"

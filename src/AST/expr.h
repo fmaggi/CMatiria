@@ -1,7 +1,7 @@
 #ifndef MTR_EXPR_H
 #define MTR_EXPR_H
 
-#include "token.h"
+#include "scanner/token.h"
 #include "symbol.h"
 
 enum mtr_expr_type {

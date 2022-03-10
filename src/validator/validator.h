@@ -1,7 +1,7 @@
 #ifndef MTR_SEMA_H
 #define MTR_SEMA_H
 
-#include "stmt.h"
+#include "AST/stmt.h"
 
 #include "core/types.h"
 

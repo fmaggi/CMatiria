@@ -1,6 +1,5 @@
 #include "disassemble.h"
 
-#include "bytecode.h"
 #include "core/log.h"
 
 u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {

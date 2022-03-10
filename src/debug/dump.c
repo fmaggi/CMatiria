@@ -1,7 +1,3 @@
-#include "expr.h"
-#include "stmt.h"
-#include "symbol.h"
-#include "type.h"
 #ifndef NDEBUG
 
 #include "dump.h"

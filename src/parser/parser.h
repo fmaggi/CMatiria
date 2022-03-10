@@ -1,9 +1,8 @@
 #ifndef MTR_PARSER_H
 #define MTR_PARSER_H
 
-#include "scanner.h"
-#include "expr.h"
-#include "stmt.h"
+#include "scanner/scanner.h"
+#include "AST/stmt.h"
 
 #include "core/types.h"
 

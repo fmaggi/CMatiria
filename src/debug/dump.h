@@ -4,10 +4,10 @@
 #define MTR_DUMP_H
 
 
-#include "token.h"
-#include "expr.h"
-#include "symbol.h"
-#include "stmt.h"
+#include "scanner/token.h"
+#include "AST/expr.h"
+#include "AST/symbol.h"
+#include "AST/stmt.h"
 
 const char* mtr_token_type_to_str(enum mtr_token_type type);
 const char* mtr_data_type_to_str(struct mtr_type type);

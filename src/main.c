@@ -1,7 +1,7 @@
 // this file is just temporary (probably :) )
 
 #include "compiler.h"
-#include "vm.h"
+#include "runtime/vm.h"
 #include "core/file.h"
 #include "core/log.h"
 
