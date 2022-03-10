@@ -1,3 +1,4 @@
+#include "scanner/token.h"
 #ifndef NDEBUG
 
 #include "dump.h"
@@ -91,7 +92,7 @@ static void dump_block(struct mtr_block* block, u32 offset) {
     }
 }
 
-static void dump_fn(struct mtr_function* decl, u32 offset) {
+static void dump_fn(struct mtr_function_decl* decl, u32 offset) {
     MTR_PRINT_DEBUG("Function: %.*s(", (u32)decl->symbol.token.length, decl->symbol.token.start);
     if (decl->argc > 0) {
         for (u32 i = 0; i < decl->argc - 1; ++i) {
@@ -159,7 +160,7 @@ static void dump_stmt(struct mtr_stmt* stmt, u32 offset) {
 
     switch (stmt->type)
     {
-    case MTR_STMT_FN: dump_fn((struct mtr_function*) stmt, offset); return;
+    case MTR_STMT_FN: dump_fn((struct mtr_function_decl*) stmt, offset); return;
     case MTR_STMT_BLOCK: dump_block((struct mtr_block*) stmt, offset); return;
     case MTR_STMT_VAR: dump_var((struct mtr_variable*) stmt, offset); return;
     case MTR_STMT_IF: dump_if((struct mtr_if*) stmt, offset); return;
@@ -245,6 +246,7 @@ const char* mtr_token_type_to_str(enum mtr_token_type type) {
     case MTR_TOKEN_FLOAT_LITERAL: return "FLOAT";
     case MTR_TOKEN_AND:           return "&&";
     case MTR_TOKEN_OR:            return "||";
+    case MTR_TOKEN_ELLIPSIS:      return "...";
     case MTR_TOKEN_LET:           return "let";
     case MTR_TOKEN_TYPE:          return "type";
     case MTR_TOKEN_IF:            return "if";

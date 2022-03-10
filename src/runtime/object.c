@@ -1,8 +1,42 @@
 #include "object.h"
 
+#include "AST/expr.h"
+#include "engine.h"
+
 #include "core/log.h"
 
 #include <stdlib.h>
+
+void mtr_delete_object(struct mtr_object* object) {
+    IMPLEMENT
+}
+
+static void native_fn_call(struct mtr_object* function, struct mtr_engine* engine, u8 argc) {
+    struct mtr_native_fn* n = (struct mtr_native_fn*) function;
+    mtr_value val = n->function(argc, engine->stack_top - argc);
+    mtr_push(engine, val);
+}
+
+static void function_call(struct mtr_object* function, struct mtr_engine* engine, u8 argc) {
+    struct mtr_function* f = (struct mtr_function*) function;
+    mtr_call(engine, f->chunk, argc);
+}
+
+struct mtr_native_fn* mtr_new_native_function(mtr_native native) {
+    struct mtr_native_fn* fn = malloc(sizeof(*fn));
+    fn->method.call = native_fn_call;
+    fn->method.obj.type = MTR_OBJ_NATIVE_FN;
+    fn->function = native;
+    return fn;
+}
+
+struct mtr_function* mtr_new_function(struct mtr_chunk chunk) {
+    struct mtr_function* fn = malloc(sizeof(*fn));
+    fn->method.call = function_call;
+    fn->method.obj.type = MTR_OBJ_FUNCTION;
+    fn->chunk = chunk;
+    return fn;
+}
 
 struct mtr_array* mtr_new_array(void) {
     struct mtr_array* a = malloc(sizeof(*a));
@@ -18,9 +52,15 @@ struct mtr_array* mtr_new_array(void) {
         return NULL;
     }
 
+    a->obj.type = MTR_OBJ_ARRAY;
     a->elements = temp;
     a->capacity = 8;
     a->size = 0;
+
+    for (u8 i = 0; i < 8; ++i) {
+        a->elements[i] = (mtr_value){ .integer = i } ;
+    }
+
     return a;
 }
 

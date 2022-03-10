@@ -1,5 +1,6 @@
 #include "parser.h"
 
+#include "AST/expr.h"
 #include "core/types.h"
 
 #include "core/report.h"
@@ -10,6 +11,7 @@
 #include <string.h>
 
 #include "debug/dump.h"
+#include "scanner/token.h"
 
 #define ALLOCATE_EXPR(type, expr) allocate_expr(type, sizeof(struct expr))
 #define ALLOCATE_STMT(type, stmt) allocate_stmt(type, sizeof(struct stmt))
@@ -172,6 +174,7 @@ static const struct parser_rule rules[] = {
     [MTR_TOKEN_FLOAT_LITERAL] = { .prefix = literal, .infix = NULL, .precedence = LITERAL },
     [MTR_TOKEN_AND] = { .prefix = NULL, .infix = binary, .precedence = LOGIC },
     [MTR_TOKEN_OR] = { .prefix = NULL, .infix = binary, .precedence = LOGIC },
+    [MTR_TOKEN_ELLIPSIS] = { NO_OP },
     [MTR_TOKEN_LET] = { NO_OP },
     [MTR_TOKEN_TYPE] = { NO_OP },
     [MTR_TOKEN_IF] = { NO_OP },
@@ -252,7 +255,7 @@ static struct mtr_expr* literal(struct mtr_parser* parser, struct mtr_token lite
 
 static struct mtr_expr* call(struct mtr_parser* parser, struct mtr_token paren, struct mtr_expr* name) {
     struct mtr_call* node = ALLOCATE_EXPR(MTR_EXPR_CALL, mtr_call);
-    node->callable = name;
+    node->callable = ((struct mtr_primary*)name)->symbol;
 
     u8 argc = 0;
     struct mtr_expr* exprs[255];
@@ -308,6 +311,7 @@ static struct mtr_type type_attributes(struct mtr_parser* parser, struct mtr_typ
 
         case MTR_TOKEN_CURLY_L:
         case MTR_TOKEN_IDENTIFIER:
+        case MTR_TOKEN_ELLIPSIS:
             return ret;
 
         default:
@@ -411,7 +415,7 @@ static struct mtr_stmt* statement(struct mtr_parser* parser) {
 }
 
 static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
-    struct mtr_function* node = ALLOCATE_STMT(MTR_STMT_FN, mtr_function);
+    struct mtr_function_decl* node = ALLOCATE_STMT(MTR_STMT_FN, mtr_function_decl);
 
     advance(parser);
 
@@ -452,7 +456,15 @@ static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
     consume(parser, MTR_TOKEN_ARROW, "Expected '->'.");
 
     node->symbol.type = type(parser);
+
     parser->current_function = node->symbol;
+
+    node->body = NULL;
+    if (CHECK(MTR_TOKEN_ELLIPSIS)) {
+        // Function is extern
+        advance(parser);
+        return (struct mtr_stmt*) node;
+    }
 
     node->body = (struct mtr_block*) block(parser);
 
@@ -601,7 +613,7 @@ void mtr_free_stmt(struct mtr_stmt* s) {
             break;
         }
         case MTR_STMT_FN: {
-            struct mtr_function* f = (struct mtr_function*) s;
+            struct mtr_function_decl* f = (struct mtr_function_decl*) s;
             if (f->argc > 0) {
                 for (u8 i = 0; i < f->argc; ++i) {
                     struct mtr_variable* v = f->argv + i;
@@ -695,10 +707,10 @@ static void free_call(struct mtr_call* node) {
         }
         free(node->argv);
     }
-    mtr_free_expr(node->callable);
+    // mtr_free_expr(node->callable);
     node->argv = NULL;
     node->argc = 0;
-    node->callable = NULL;
+    // node->callable = NULL;
     free(node);
 }
 

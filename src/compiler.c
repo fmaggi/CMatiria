@@ -1,5 +1,6 @@
 #include "compiler.h"
 
+#include "runtime/object.h"
 #include "scanner/scanner.h"
 #include "parser/parser.h"
 #include "validator/validator.h"
@@ -250,8 +251,9 @@ static void write_call(struct mtr_chunk* chunk, struct mtr_call* call) {
         write_expr(chunk, expr);
     }
 
+
     mtr_write_chunk(chunk, MTR_OP_CALL);
-    write_expr(chunk, call->callable);
+    write_u16(chunk, call->callable.index);
     mtr_write_chunk(chunk, call->argc);
 }
 
@@ -378,7 +380,7 @@ static void write(struct mtr_chunk* chunk, struct mtr_stmt* stmt) {
     }
 }
 
-static void write_function(struct mtr_chunk* chunk, struct mtr_function* fn) {
+static void write_function(struct mtr_chunk* chunk, struct mtr_function_decl* fn) {
     struct mtr_block* b = fn->body;
     for (size_t i = 0; i < b->size; ++i) {
         struct mtr_stmt* s = b->statements[i];
@@ -391,9 +393,15 @@ static void write_bytecode(struct mtr_stmt* stmt, struct mtr_package* package) {
     switch (stmt->type)
     {
     case MTR_STMT_FN: {
-        struct mtr_function* fn = (struct mtr_function*) stmt;
-        struct mtr_chunk* chunk = mtr_package_get_chunk(package, fn->symbol);
-        write_function(chunk, fn);
+        struct mtr_function_decl* fd = (struct mtr_function_decl*) stmt;
+        if (NULL == fd->body) {
+            // Function is extern
+            break;
+        }
+        struct mtr_chunk chunk = mtr_new_chunk();
+        write_function(&chunk, fd);
+        struct mtr_function* f = mtr_new_function(chunk);
+        mtr_package_insert_function(package, (struct mtr_object*) f, fd->symbol);
         break;
     }
     default:
@@ -428,6 +436,6 @@ struct mtr_package* mtr_compile(const char* source) {
     }
 
 
-    mtr_delete_ast(&ast);
+    // mtr_delete_ast(&ast);
     return package;
 }

@@ -22,9 +22,10 @@ static void expr_error(struct mtr_expr* expr, const char* message, const char* c
         break;
     }
     case MTR_EXPR_CALL: {
-        struct mtr_call* c = (struct mtr_call*) expr;
-        struct mtr_primary* p = (struct mtr_primary*) c->callable;
-        mtr_report_error(p->symbol.token, message, source);
+        IMPLEMENT
+        // struct mtr_call* c = (struct mtr_call*) expr;
+        // struct mtr_primary* p = (struct mtr_primary*) c->callable;
+        // mtr_report_error(p->symbol.token, message, source);
         break;
     }
     case MTR_EXPR_GROUPING: {
@@ -204,21 +205,21 @@ static struct mtr_type analyze_literal(struct mtr_literal* literal, struct mtr_s
 }
 
 static struct mtr_type analyze_call(struct mtr_call* call, struct mtr_scope* scope, const char* const source) {
-    if (call->callable->type != MTR_EXPR_PRIMARY) {
-        expr_error(call->callable, "Expression is not callable.", source);
-        return invalid_type;
-    }
+    // if (call->callable->type != MTR_EXPR_PRIMARY) {
+    //     expr_error(call->callable, "Expression is not callable.", source);
+    //     return invalid_type;
+    // }
 
-    struct mtr_primary* p = (struct mtr_primary*) call->callable;
+    // struct mtr_primary* p = (struct mtr_primary*) call->callable;
 
-    struct mtr_symbol_entry* e = mtr_scope_find(scope, p->symbol.token);
+    struct mtr_symbol_entry* e = mtr_scope_find(scope, call->callable.token);
     if (NULL == e) {
-        mtr_report_error(p->symbol.token, "Call to undefined function.", source);
+        mtr_report_error(call->callable.token, "Call to undefined function.", source);
         return invalid_type;
     }
 
     struct mtr_symbol s = e->symbol;
-    struct mtr_function* f = (struct mtr_function*) e->parent;
+    struct mtr_function_decl* f = (struct mtr_function_decl*) e->parent;
     if (f->argc == call->argc) {
         for (u8 i = 0 ; i < call->argc; ++i) {
             struct mtr_expr* a = call->argv[i];
@@ -232,13 +233,13 @@ static struct mtr_type analyze_call(struct mtr_call* call, struct mtr_scope* sco
         }
 
     } else if (f->argc > call->argc) {
-        mtr_report_error(p->symbol.token, "Expected more arguments.", source);
+        mtr_report_error(call->callable.token, "Expected more arguments.", source);
     } else {
-        mtr_report_error(p->symbol.token, "Too many arguments.", source);
+        mtr_report_error(call->callable.token, "Too many arguments.", source);
     }
 
-    p->symbol.index = s.index;
-    p->symbol.type = s.type;
+    call->callable.index = s.index;
+    call->callable.type = s.type;
     return s.type;
 }
 
@@ -298,7 +299,7 @@ static struct mtr_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* sco
     return invalid_type;
 }
 
-static bool load_fn(struct mtr_function* stmt, struct mtr_scope* scope, const char* const source) {
+static bool load_fn(struct mtr_function_decl* stmt, struct mtr_scope* scope, const char* const source) {
     const struct mtr_symbol_entry* e = mtr_scope_find(scope, stmt->symbol.token);
     if (NULL != e) {
         mtr_report_error(stmt->symbol.token, "Redefinition of name.", source);
@@ -343,7 +344,12 @@ static bool analyze_block(struct mtr_block* block, struct mtr_scope* parent, con
     return all_ok;
 }
 
-static bool analyze_fn(struct mtr_function* stmt, struct mtr_scope* parent, const char* const source) {
+static bool analyze_fn(struct mtr_function_decl* stmt, struct mtr_scope* parent, const char* const source) {
+    if (NULL == stmt->body) {
+        // Function is extern
+        return true;
+    }
+
     bool all_ok = true;
 
     struct mtr_scope scope = mtr_new_scope(parent);
@@ -451,7 +457,7 @@ static bool analyze(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* 
     {
     case MTR_STMT_BLOCK:      return analyze_block((struct mtr_block*) stmt, scope, source);
     case MTR_STMT_ASSIGNMENT: return analyze_assignment((struct mtr_assignment*) stmt, scope, source);
-    case MTR_STMT_FN:         return analyze_fn((struct mtr_function*) stmt, scope, source);
+    case MTR_STMT_FN:         return analyze_fn((struct mtr_function_decl*) stmt, scope, source);
     case MTR_STMT_VAR:        return analyze_variable((struct mtr_variable*) stmt, scope, source);
     case MTR_STMT_IF:         return analyze_if((struct mtr_if*) stmt, scope, source);
     case MTR_STMT_WHILE:      return analyze_while((struct mtr_while*) stmt, scope, source);
@@ -466,7 +472,7 @@ static bool analyze(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* 
 static bool global_analysis(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* const source) {
     switch (stmt->type)
     {
-    case MTR_STMT_FN: return analyze_fn((struct mtr_function*) stmt, scope, source);
+    case MTR_STMT_FN: return analyze_fn((struct mtr_function_decl*) stmt, scope, source);
     default:
         break;
     }
@@ -477,7 +483,7 @@ static bool global_analysis(struct mtr_stmt* stmt, struct mtr_scope* scope, cons
 static bool load_global(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* const source) {
     switch (stmt->type)
     {
-    case MTR_STMT_FN:     return load_fn((struct mtr_function*) stmt, scope, source);
+    case MTR_STMT_FN:     return load_fn((struct mtr_function_decl*) stmt, scope, source);
     default:
         break;
     }

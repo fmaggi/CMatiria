@@ -1,9 +1,11 @@
 // this file is just temporary (probably :) )
 
 #include "compiler.h"
-#include "runtime/vm.h"
+#include "runtime/engine.h"
 #include "core/file.h"
 #include "core/log.h"
+
+#include "stl/mtr_stdlib.h"
 
 #include <stdlib.h>
 
@@ -17,7 +19,11 @@ int main(int argc, char* argv[])
     if (NULL == package)
         return -1;
 
-    i32 result = mtr_execute(package);
+    mtr_add_io(package);
+
+    struct mtr_engine engine;
+
+    i32 result = mtr_execute(&engine, package);
     MTR_LOG_DEBUG("return %i", result);
 
     mtr_delete_package(package);

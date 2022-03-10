@@ -47,7 +47,7 @@ struct mtr_variable {
     struct mtr_expr* value;
 };
 
-struct mtr_function {
+struct mtr_function_decl {
     struct mtr_stmt stmt;
     struct mtr_block* body;
     struct mtr_symbol symbol;

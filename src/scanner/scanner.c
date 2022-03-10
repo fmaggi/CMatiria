@@ -94,7 +94,19 @@ struct mtr_token mtr_next_token(struct mtr_scanner* scanner) {
         }
         return make_token(scanner, MTR_TOKEN_COLON);
     case ';': return make_token(scanner, MTR_TOKEN_SEMICOLON);
-    case '.': return make_token(scanner, MTR_TOKEN_DOT);
+
+    case '.': {
+        if (current == '.') {
+            advance(scanner);
+            if (*scanner->current == '.') {
+                advance(scanner);
+                return make_token(scanner, MTR_TOKEN_ELLIPSIS);
+            }
+            return invalid_token;
+        }
+        return make_token(scanner, MTR_TOKEN_DOT);
+    }
+
     case '(': return make_token(scanner, MTR_TOKEN_PAREN_L);
     case ')': return make_token(scanner, MTR_TOKEN_PAREN_R);
     case '[': return make_token(scanner, MTR_TOKEN_SQR_L);
