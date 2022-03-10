@@ -2,7 +2,11 @@
 
 #include "bytecode.h"
 #include "core/log.h"
+
+#include "object.h"
+
 #include "debug/disassemble.h"
+#include "value.h"
 
 void dump_value(mtr_value value, enum mtr_data_type type) {
     if (type == MTR_DATA_FLOAT) {
@@ -41,6 +45,7 @@ struct call_frame {
     } while (false)
 
 #define READ(type) *((type*)ip); ip += sizeof(type)
+#define AS(type, value) *((type*)&value)
 
 static void call(struct mtr_vm* vm, const struct mtr_chunk* chunk, u8 argc) {
     struct call_frame frame;
@@ -82,6 +87,13 @@ static void call(struct mtr_vm* vm, const struct mtr_chunk* chunk, u8 argc) {
             case MTR_OP_NIL: {
                 const mtr_value c = MTR_NIL;
                 push(vm, c);
+                break;
+            }
+
+            case MTR_OP_NEW_ARRAY: {
+                struct mtr_array* a = mtr_new_array();
+                const mtr_value v = { .object = a };
+                push(vm, v);
                 break;
             }
 
@@ -152,6 +164,23 @@ static void call(struct mtr_vm* vm, const struct mtr_chunk* chunk, u8 argc) {
                 break;
             }
 
+            case MTR_OP_GET_A: {
+                const i64 i = MTR_AS_INT(pop(vm));
+                const size_t index = AS(size_t, i);
+                const struct mtr_array* a = MTR_AS_OBJ(pop(vm));
+                push(vm, a->elements[index]);
+                break;
+            }
+
+            case MTR_OP_SET_A: {
+                // const u16 index = READ(u16);
+                // const u16 array_index = READ(u16);
+                // const mtr_value val = frame.stack[index];
+                // const struct mtr_array* a = val.object;
+                // a->elements[array_index] = pop(vm);
+                break;
+            }
+
             case MTR_OP_JMP: {
                 const i16 where = READ(i16);
                 ip += where;
@@ -162,9 +191,7 @@ static void call(struct mtr_vm* vm, const struct mtr_chunk* chunk, u8 argc) {
                 const mtr_value value = pop(vm);
                 const bool condition = MTR_AS_INT(value);
                 const i16 where = READ(i16);
-                if (!condition) {
-                    ip += where;
-                }
+                ip += where * !condition;
                 break;
             }
 
@@ -213,6 +240,7 @@ static void call(struct mtr_vm* vm, const struct mtr_chunk* chunk, u8 argc) {
 
 #undef BINARY_OP
 #undef READ
+#undef AS
 
 i32 mtr_execute(struct mtr_package* package) {
     struct mtr_vm vm;
@@ -225,5 +253,7 @@ i32 mtr_execute(struct mtr_package* package) {
     }
 
     call(&vm, main_chunk, 0);
+
+    mtr_dump_stack(vm.stack, vm.stack_top);
     return 0;
 }

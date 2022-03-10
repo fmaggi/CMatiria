@@ -38,6 +38,11 @@ u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {
         MTR_LOG("NIL");
         break;
 
+    case MTR_OP_NEW_ARRAY: {
+        MTR_LOG("aNEW");
+        break;
+    }
+
     case MTR_OP_OR: {
         MTR_LOG("OR");
         break;
@@ -86,6 +91,16 @@ u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {
     case  MTR_OP_SET: {
         u16 index = READ(u16);
         MTR_LOG("SET at %u", index);
+        break;
+    }
+
+    case MTR_OP_GET_A: {
+        MTR_LOG("aGET");
+        break;
+    }
+
+    case MTR_OP_SET_A: {
+        MTR_LOG("aSET");
         break;
     }
 
@@ -140,7 +155,7 @@ void mtr_disassemble(struct mtr_chunk chunk, const char* name) {
 void mtr_dump_stack(mtr_value* stack, mtr_value* top) {
     MTR_PRINT_DEBUG("[");
     while(stack < top) {
-        MTR_PRINT_DEBUG("%lu,", stack->integer);
+        MTR_PRINT_DEBUG("%li,", stack->integer);
         stack++;
     }
     MTR_LOG("]");

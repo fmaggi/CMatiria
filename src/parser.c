@@ -311,17 +311,15 @@ static struct mtr_type type_attributes(struct mtr_parser* parser, struct mtr_typ
 
         case MTR_TOKEN_CURLY_L:
         case MTR_TOKEN_IDENTIFIER:
-            goto r;
+            return ret;
 
         default:
             parser_error(parser, "Expected a modifier or and identifier.");
             ret.type = MTR_DATA_INVALID;
-            goto r;
+            return ret;
         }
 
     }
-r:
-    return ret;
 }
 
 static struct mtr_type type(struct mtr_parser* parser) {
@@ -614,9 +612,11 @@ void mtr_free_stmt(struct mtr_stmt* s) {
                 }
                 free(f->argv);
             }
-            f->argv = NULL;
             delete_block(f->body);
             mtr_delete_type(f->symbol.type);
+            f->argv = NULL;
+            f->argc = 0;
+            f->body = NULL;
             free(f);
             break;
         }
@@ -626,6 +626,8 @@ void mtr_free_stmt(struct mtr_stmt* s) {
             if (i->otherwise)
                 mtr_free_stmt(i->otherwise);
             mtr_free_expr(i->condition);
+            i->otherwise = NULL;
+            i->condition = NULL;
             free(i);
             break;
         }
@@ -633,6 +635,8 @@ void mtr_free_stmt(struct mtr_stmt* s) {
             struct mtr_while* w = (struct mtr_while*) s;
             mtr_free_stmt(w->body);
             mtr_free_expr(w->condition);
+            w->body = NULL;
+            w->condition = NULL;
             free(w);
             break;
         }
@@ -651,6 +655,7 @@ void mtr_free_stmt(struct mtr_stmt* s) {
             if (r->expr) {
                 mtr_free_expr(r->expr);
             }
+            r->expr = NULL;
             mtr_delete_type(r->from.type);
             free(r);
             break;
@@ -687,18 +692,22 @@ static void free_literal(struct mtr_literal* node) {
 }
 
 static void free_call(struct mtr_call* node) {
-    if (node->argv) {
+    if (node->argc > 0) {
         for (u8 i = 0; i < node->argc; ++i) {
             mtr_free_expr(node->argv[i]);
         }
         free(node->argv);
     }
     mtr_free_expr(node->callable);
+    node->argv = NULL;
+    node->argc = 0;
+    node->callable = NULL;
     free(node);
 }
 
 static void free_cast(struct mtr_cast* node) {
     mtr_free_expr(node->right);
+    mtr_delete_type(node->to);
     node->right = NULL;
     free(node);
 }

@@ -1,10 +1,11 @@
 fn main() -> Int {
-    Int[][] y;
     Int[] x;
-    Int w := 0;
-    let z := x[ w * test(3) ];
-}
+    Int i := 0;
 
-fn test(Int x) -> Int {
-    return x * 32;
+    Int w;
+
+    while i < 8 {
+        w := x[i];
+        i := i + 1;
+    }
 }

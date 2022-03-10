@@ -7,6 +7,7 @@
 #include "parser.h"
 #include "symbol.h"
 #include "token.h"
+#include "type.h"
 #include "validator.h"
 #include "vm.h"
 
@@ -100,7 +101,7 @@ static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr);
 
 static void write_primary(struct mtr_chunk* chunk, struct mtr_primary* expr) {
     mtr_write_chunk(chunk, MTR_OP_GET);
-    write_u16(chunk, expr->symbol.index);
+    write_u16(chunk, (u16)expr->symbol.index);
 }
 
 static void write_literal(struct mtr_chunk* chunk, struct mtr_literal* expr) {
@@ -278,7 +279,9 @@ static void write_cast(struct mtr_chunk* chunk, struct mtr_cast* cast) {
 }
 
 static void write_subscript(struct mtr_chunk* chunk, struct mtr_subscript* expr) {
-
+    write_expr(chunk, expr->object);
+    write_expr(chunk, expr->index);
+    mtr_write_chunk(chunk, MTR_OP_GET_A);
 }
 
 static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr) {
@@ -298,6 +301,12 @@ static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr) {
 static void write(struct mtr_chunk* chunk, struct mtr_stmt* stmt);
 
 static void write_variable(struct mtr_chunk* chunk, struct mtr_variable* var) {
+    switch (var->symbol.type.type) {
+    case MTR_DATA_ARRAY: mtr_write_chunk(chunk, MTR_OP_NEW_ARRAY); return;
+    default:
+        break;
+    }
+
     if (var->value) {
         write_expr(chunk, var->value);
     } else {
