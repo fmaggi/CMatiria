@@ -22,7 +22,4 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc);
 void mtr_push(struct mtr_engine* engine, mtr_value value);
 mtr_value mtr_pop(struct mtr_engine* engine);
 
-bool mtr_native_return(struct mtr_engine* engine, mtr_value value);
-
-
 #endif

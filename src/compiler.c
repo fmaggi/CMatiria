@@ -366,6 +366,11 @@ static void write_return(struct mtr_chunk* chunk, struct mtr_return* stmt) {
     mtr_write_chunk(chunk, MTR_OP_RETURN);
 }
 
+static void write_call_stmt(struct mtr_chunk* chunk, struct mtr_call_stmt* call) {
+    write_expr(chunk, call->call);
+    mtr_write_chunk(chunk, MTR_OP_POP);
+}
+
 static void write(struct mtr_chunk* chunk, struct mtr_stmt* stmt) {
     switch (stmt->type)
     {
@@ -375,7 +380,7 @@ static void write(struct mtr_chunk* chunk, struct mtr_stmt* stmt) {
     case MTR_STMT_BLOCK: write_block(chunk, (struct mtr_block*) stmt); return;
     case MTR_STMT_ASSIGNMENT: write_assignment(chunk, (struct mtr_assignment*) stmt); return;
     case MTR_STMT_RETURN: write_return(chunk, (struct mtr_return*) stmt); return;
-    case MTR_STMT_CALL: write_expr(chunk, ((struct mtr_call_stmt*) stmt)->call); return;
+    case MTR_STMT_CALL: write_call_stmt(chunk, (struct mtr_call_stmt*) stmt); return;
     case MTR_STMT_NATIVE_FN: return;
     case MTR_STMT_FN: return;
     }

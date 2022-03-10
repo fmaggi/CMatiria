@@ -28,7 +28,7 @@ struct mtr_invokable {
     mtr_invoke call;
 };
 
-typedef bool (*mtr_native)(struct mtr_engine* engine, u8 argc, mtr_value* first);
+typedef mtr_value (*mtr_native)(u8 argc, mtr_value* first);
 
 struct mtr_native_fn {
     struct mtr_invokable method;

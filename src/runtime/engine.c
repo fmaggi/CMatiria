@@ -62,6 +62,9 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
     u8* end = chunk.bytecode + chunk.size;
     while (ip < end) {
 
+        // mtr_dump_stack(engine->stack, engine->stack_top);
+        // mtr_disassemble_instruction(ip, ip - chunk.bytecode);
+
         switch (*ip++)
         {
             case MTR_OP_INT: {
@@ -261,10 +264,7 @@ i32 mtr_execute(struct mtr_engine* engine, struct mtr_package* package) {
     }
     struct mtr_function* f = (struct mtr_function*) o;
     mtr_call(engine, f->chunk, 0);
-    return 0;
-}
 
-bool mtr_native_return(struct mtr_engine* engine, mtr_value value) {
-    push(engine, value);
-    return true;
+    // mtr_dump_stack(engine->stack, engine->stack_top);
+    return 0;
 }

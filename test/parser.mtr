@@ -2,6 +2,11 @@ fn main() -> Int {
     Int x := 42;
     x := 35;
     print(x);
+    test(x);
 }
 
 fn print(Int x) ...
+
+fn test(Int x) {
+    x := 32;
+}

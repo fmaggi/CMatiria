@@ -8,12 +8,12 @@
 
 #include "core/types.h"
 
-bool mtr_print(struct mtr_engine* engine, u8 argc, mtr_value* argv) {
+mtr_value mtr_print(u8 argc, mtr_value* argv) {
     for (u8 i = 0; i < argc; ++i) {
         mtr_value value = argv[i];
         printf("%li\n", value.integer);
     }
-    return false;
+    return (mtr_value)MTR_NIL;
 }
 
 void mtr_add_io(struct mtr_package* package) {
