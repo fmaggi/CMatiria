@@ -1,5 +1,6 @@
 #include "compiler.h"
 
+#include "AST/stmt.h"
 #include "runtime/object.h"
 #include "scanner/scanner.h"
 #include "parser/parser.h"
@@ -251,7 +252,6 @@ static void write_call(struct mtr_chunk* chunk, struct mtr_call* call) {
         write_expr(chunk, expr);
     }
 
-
     mtr_write_chunk(chunk, MTR_OP_CALL);
     write_u16(chunk, call->callable.index);
     mtr_write_chunk(chunk, call->argc);
@@ -375,8 +375,9 @@ static void write(struct mtr_chunk* chunk, struct mtr_stmt* stmt) {
     case MTR_STMT_BLOCK: write_block(chunk, (struct mtr_block*) stmt); return;
     case MTR_STMT_ASSIGNMENT: write_assignment(chunk, (struct mtr_assignment*) stmt); return;
     case MTR_STMT_RETURN: write_return(chunk, (struct mtr_return*) stmt); return;
-    default:
-        break;
+    case MTR_STMT_CALL: write_expr(chunk, ((struct mtr_call_stmt*) stmt)->call); return;
+    case MTR_STMT_NATIVE_FN: return;
+    case MTR_STMT_FN: return;
     }
 }
 
@@ -394,10 +395,6 @@ static void write_bytecode(struct mtr_stmt* stmt, struct mtr_package* package) {
     {
     case MTR_STMT_FN: {
         struct mtr_function_decl* fd = (struct mtr_function_decl*) stmt;
-        if (NULL == fd->body) {
-            // Function is extern
-            break;
-        }
         struct mtr_chunk chunk = mtr_new_chunk();
         write_function(&chunk, fd);
         struct mtr_function* f = mtr_new_function(chunk);

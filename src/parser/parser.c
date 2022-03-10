@@ -1,6 +1,7 @@
 #include "parser.h"
 
 #include "AST/expr.h"
+#include "AST/stmt.h"
 #include "core/types.h"
 
 #include "core/report.h"
@@ -336,6 +337,35 @@ static struct mtr_type type(struct mtr_parser* parser) {
 
 static struct mtr_stmt* declaration(struct mtr_parser* parser);
 
+static struct mtr_stmt* expr_stmt(struct mtr_parser* parser) {
+    struct mtr_stmt* node = NULL;
+    struct mtr_expr* expr = expression(parser);
+    switch (expr->type) {
+    case MTR_EXPR_PRIMARY: {
+        struct mtr_assignment* a = ALLOCATE_STMT(MTR_STMT_ASSIGNMENT, mtr_assignment);
+        struct mtr_primary* p = (struct mtr_primary*) expr;
+        a->variable = p->symbol;
+        consume(parser, MTR_TOKEN_ASSIGN, "Expected ':='.");
+        a->expression = expression(parser);
+        node = (struct mtr_stmt*) a;
+        break;
+    }
+    case MTR_EXPR_CALL: {
+        struct mtr_call_stmt* c = ALLOCATE_STMT(MTR_STMT_CALL, mtr_call_stmt);
+        c->call = expr;
+        node = (struct mtr_stmt*) c;
+        break;
+    }
+    default: {
+        parser_error(parser, "Expression has no effect.");
+        break;
+    }
+    }
+
+    consume(parser, MTR_TOKEN_SEMICOLON, "Expected ';'.");
+    return node;
+}
+
 static struct mtr_stmt* block(struct mtr_parser* parser) {
     struct mtr_block* node = ALLOCATE_STMT(MTR_STMT_BLOCK, mtr_block);
     init_block(node);
@@ -378,15 +408,6 @@ static struct mtr_stmt* while_stmt(struct mtr_parser* parser) {
     return (struct mtr_stmt*) node;
 }
 
-static struct mtr_stmt* assignment(struct mtr_parser* parser) {
-    struct mtr_assignment* node = ALLOCATE_STMT(MTR_STMT_ASSIGNMENT, mtr_assignment);
-    node->variable.token = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected a name.");
-    consume(parser, MTR_TOKEN_ASSIGN, "Expected ':='.");
-    node->expression = expression(parser);
-    consume(parser, MTR_TOKEN_SEMICOLON, "Expected ';'.");
-    return (struct mtr_stmt*) node;
-}
-
 static struct mtr_stmt* return_stmt(struct mtr_parser* parser) {
     struct mtr_return* node = ALLOCATE_STMT(MTR_STMT_RETURN, mtr_return);
     node->expr = NULL;
@@ -410,7 +431,7 @@ static struct mtr_stmt* statement(struct mtr_parser* parser) {
     case MTR_TOKEN_CURLY_L: return block(parser);
     case MTR_TOKEN_RETURN:  return return_stmt(parser);
     default:
-        return assignment(parser);
+        return expr_stmt(parser);
     }
 }
 
@@ -453,15 +474,18 @@ static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
             memcpy(node->argv, vars, sizeof(struct mtr_variable) * argc);
     }
 
-    consume(parser, MTR_TOKEN_ARROW, "Expected '->'.");
+    if (CHECK(MTR_TOKEN_ARROW)) {
+        advance(parser);
+        node->symbol.type = type(parser);
+    } else {
+        node->symbol.type.type = MTR_DATA_VOID;
+    }
 
-    node->symbol.type = type(parser);
-
-    parser->current_function = node->symbol;
+    parser->current_function = node;
 
     node->body = NULL;
     if (CHECK(MTR_TOKEN_ELLIPSIS)) {
-        // Function is extern
+        node->stmt.type = MTR_STMT_NATIVE_FN;
         advance(parser);
         return (struct mtr_stmt*) node;
     }
@@ -612,6 +636,7 @@ void mtr_free_stmt(struct mtr_stmt* s) {
             free(a);
             break;
         }
+        case MTR_STMT_NATIVE_FN:
         case MTR_STMT_FN: {
             struct mtr_function_decl* f = (struct mtr_function_decl*) s;
             if (f->argc > 0) {
@@ -621,7 +646,9 @@ void mtr_free_stmt(struct mtr_stmt* s) {
                 }
                 free(f->argv);
             }
-            delete_block(f->body);
+            if (f->body) {
+                delete_block(f->body);
+            }
             mtr_delete_type(f->symbol.type);
             f->argv = NULL;
             f->argc = 0;
@@ -665,8 +692,13 @@ void mtr_free_stmt(struct mtr_stmt* s) {
                 mtr_free_expr(r->expr);
             }
             r->expr = NULL;
-            mtr_delete_type(r->from.type);
+            r->from = NULL;
             free(r);
+            break;
+        }
+
+        case MTR_STMT_CALL: {
+            IMPLEMENT
             break;
         }
     }

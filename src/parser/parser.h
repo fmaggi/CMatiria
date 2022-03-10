@@ -9,7 +9,7 @@
 struct mtr_parser {
     struct mtr_scanner scanner;
     struct mtr_token token;
-    struct mtr_symbol current_function;
+    struct mtr_function_decl* current_function;
     bool had_error;
     bool panic;
 };

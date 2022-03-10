@@ -19,7 +19,7 @@ struct mtr_package* mtr_new_package(const char* const source, struct mtr_ast* as
 
     for (size_t i = 0; i < block->size; ++i) {
         struct mtr_function_decl* f = (struct mtr_function_decl*) block->statements[i];
-        MTR_ASSERT(f->stmt.type == MTR_STMT_FN, "Stmt should be function declaration.");
+        MTR_ASSERT(f->stmt.type == MTR_STMT_FN || f->stmt.type == MTR_STMT_NATIVE_FN, "Stmt should be function declaration.");
         f->symbol.index = i;
         mtr_scope_add(&package->globals, f->symbol, (struct mtr_stmt*) f);
     }

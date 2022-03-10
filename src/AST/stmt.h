@@ -9,11 +9,13 @@
 enum mtr_stmt_type {
     MTR_STMT_ASSIGNMENT,
     MTR_STMT_FN,
+    MTR_STMT_NATIVE_FN,
     MTR_STMT_RETURN,
     MTR_STMT_VAR,
     MTR_STMT_IF,
     MTR_STMT_WHILE,
-    MTR_STMT_BLOCK
+    MTR_STMT_BLOCK,
+    MTR_STMT_CALL
 };
 
 struct mtr_stmt {
@@ -57,7 +59,7 @@ struct mtr_function_decl {
 
 struct mtr_return {
     struct mtr_stmt stmt;
-    struct mtr_symbol from;
+    struct mtr_function_decl* from;
     struct mtr_expr* expr;
 };
 
@@ -65,6 +67,11 @@ struct mtr_assignment {
     struct mtr_stmt stmt;
     struct mtr_symbol variable;
     struct mtr_expr* expression;
+};
+
+struct mtr_call_stmt {
+    struct mtr_stmt stmt;
+    struct mtr_expr* call;
 };
 
 struct mtr_ast {

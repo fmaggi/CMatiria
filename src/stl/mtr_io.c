@@ -1,20 +1,17 @@
-#include "bytecode.h"
 #include "mtr_stdlib.h"
+
+#include "runtime/engine.h"
+#include "runtime/object.h"
+#include "runtime/value.h"
+#include <stdio.h>
 
 #include "core/types.h"
 
-#include "runtime/object.h"
-#include "runtime/value.h"
-#include "validator/type.h"
-#include <stdio.h>
-
-mtr_value mtr_print(u8 argc, mtr_value* argv) {
+void mtr_print(struct mtr_engine* engine, u8 argc, mtr_value* argv) {
     for (u8 i = 0; i < argc; ++i) {
         mtr_value value = argv[i];
         printf("%li\n", value.integer);
     }
-    mtr_value ret = MTR_NIL;
-    return ret;
 }
 
 void mtr_add_io(struct mtr_package* package) {

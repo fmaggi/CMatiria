@@ -10,6 +10,8 @@ enum mtr_data_type {
     MTR_DATA_USER_DEFINED,
     MTR_DATA_ARRAY,
 
+    MTR_DATA_VOID,
+
     MTR_DATA_BOOL,
     MTR_DATA_INT,
     MTR_DATA_FLOAT,

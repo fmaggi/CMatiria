@@ -199,7 +199,9 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
                 const mtr_value value = pop(engine);
                 const bool condition = MTR_AS_INT(value);
                 const i16 where = READ(i16);
-                ip += where * !condition;
+                if (!condition) {
+                    ip += where;
+                }
                 break;
             }
 
@@ -217,7 +219,6 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
             case MTR_OP_CALL: {
                 const u16 index = READ(u16);
                 const u8 argc = READ(u8);
-
                 struct mtr_object* val = engine->package->functions[index];
                 struct mtr_invokable* i = (struct mtr_invokable*) val;
                 i->call(val, engine, argc);

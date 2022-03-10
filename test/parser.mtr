@@ -1,14 +1,7 @@
 fn main() -> Int {
-    Int[] x;
-    Int i := 0;
-
-    Int w;
-
-    while i < 8 {
-        w := x[i];
-        i := i + 1;
-        Int z := print(w);
-    }
+    Int x := 42;
+    x := 35;
+    print(x);
 }
 
-fn print(Int x) -> Int ...
+fn print(Int x) ...

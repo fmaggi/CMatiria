@@ -1,3 +1,4 @@
+#include "AST/stmt.h"
 #include "scanner/token.h"
 #ifndef NDEBUG
 
@@ -104,9 +105,14 @@ static void dump_fn(struct mtr_function_decl* decl, u32 offset) {
         MTR_PRINT_DEBUG("%.*s", (u32)param.symbol.token.length, param.symbol.token.start);
     }
 
-    MTR_PRINT_DEBUG(") -> %s {\n", mtr_data_type_to_str(decl->symbol.type));
-    dump_block(decl->body, offset + 1);
-    MTR_PRINT_DEBUG("}\n");
+    MTR_PRINT_DEBUG(") -> %s", mtr_data_type_to_str(decl->symbol.type));
+    if (decl->body) {
+        MTR_PRINT_DEBUG("{\n");
+        dump_block(decl->body, offset + 1);
+        MTR_PRINT_DEBUG("}\n");
+    } else {
+        MTR_PRINT_DEBUG(" ...\n");
+    }
 }
 
 static void dump_var(struct mtr_variable* decl, u32 offset) {
@@ -160,13 +166,17 @@ static void dump_stmt(struct mtr_stmt* stmt, u32 offset) {
 
     switch (stmt->type)
     {
-    case MTR_STMT_FN: dump_fn((struct mtr_function_decl*) stmt, offset); return;
+    case MTR_STMT_NATIVE_FN:
+    case MTR_STMT_FN:
+        dump_fn((struct mtr_function_decl*) stmt, offset); return;
+
     case MTR_STMT_BLOCK: dump_block((struct mtr_block*) stmt, offset); return;
     case MTR_STMT_VAR: dump_var((struct mtr_variable*) stmt, offset); return;
     case MTR_STMT_IF: dump_if((struct mtr_if*) stmt, offset); return;
     case MTR_STMT_WHILE: dump_while((struct mtr_while*) stmt, offset); return;
     case MTR_STMT_ASSIGNMENT: dump_assignment((struct mtr_assignment*) stmt, offset); return;
     case MTR_STMT_RETURN: dump_return((struct mtr_return*) stmt, offset); return;
+    case MTR_STMT_CALL: dump_expr(((struct mtr_call_stmt*) stmt)->call, offset); return;
     }
 }
 
@@ -271,6 +281,7 @@ const char* mtr_token_type_to_str(enum mtr_token_type type) {
 const char* mtr_data_type_to_str(struct mtr_type type) {
     switch (type.type)
     {
+    case MTR_DATA_VOID: return "void";
     case MTR_DATA_BOOL:    return "Bool";
     case MTR_DATA_FLOAT:   return "Float";
     case MTR_DATA_INT:     return "Int";

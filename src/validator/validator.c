@@ -1,5 +1,7 @@
 #include "validator.h"
 
+#include "AST/expr.h"
+#include "AST/stmt.h"
 #include "type.h"
 #include "scope.h"
 
@@ -124,6 +126,7 @@ static struct mtr_cast* try_promoting(struct mtr_expr* expr, struct mtr_type typ
     case MTR_DATA_INVALID:
     case MTR_DATA_USER_DEFINED:
     case MTR_DATA_ARRAY:
+    case MTR_DATA_VOID:
         return NULL;
     case MTR_DATA_BOOL:
     case MTR_DATA_INT:
@@ -292,8 +295,7 @@ static struct mtr_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* sco
     case MTR_EXPR_LITERAL:  return analyze_literal((struct mtr_literal*) expr, scope, source);
     case MTR_EXPR_CALL:     return analyze_call((struct mtr_call*) expr, scope, source);
     case MTR_EXPR_SUBSCRIPT: return analyze_subscript((struct mtr_subscript*) expr, scope, source);
-    default:
-        break;
+    case MTR_EXPR_CAST:     IMPLEMENT return invalid_type;
     }
     MTR_ASSERT(false, "Invalid stmt type.");
     return invalid_type;
@@ -308,6 +310,7 @@ static bool load_fn(struct mtr_function_decl* stmt, struct mtr_scope* scope, con
     }
 
     stmt->symbol.index = scope->current++;
+
     mtr_scope_add(scope, stmt->symbol, (struct mtr_stmt*) stmt);
     return true;
 }
@@ -444,12 +447,26 @@ static bool analyze_while(struct mtr_while* stmt, struct mtr_scope* parent, cons
 }
 
 static bool analyze_return(struct mtr_return* stmt, struct mtr_scope* parent, const char* const source) {
-    bool ok = mtr_type_match(analyze_expr(stmt->expr, parent, source), stmt->from.type);
+    if (stmt->from->symbol.type.type == MTR_DATA_VOID) {
+        if (NULL == stmt->expr) {
+            return true;
+        } else {
+            expr_error(stmt->expr, "Void function returns a value.", source);
+            return false;
+        }
+    }
+
+    bool ok = mtr_type_match(analyze_expr(stmt->expr, parent, source), stmt->from->symbol.type);
     if (!ok) {
         expr_error(stmt->expr, "Incompatible return type.", source);
-        mtr_report_message(stmt->from.token, "As declared here.", source);
+        mtr_report_message(stmt->from->symbol.token, "As declared here.", source);
     }
     return ok;
+}
+
+static bool analyze_call_stmt(struct mtr_call_stmt* call, struct mtr_scope* scope, const char* const source) {
+    struct mtr_type type = analyze_expr(call->call, scope, source);
+    return !mtr_type_match(type, invalid_type);
 }
 
 static bool analyze(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* const source) {
@@ -462,8 +479,8 @@ static bool analyze(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* 
     case MTR_STMT_IF:         return analyze_if((struct mtr_if*) stmt, scope, source);
     case MTR_STMT_WHILE:      return analyze_while((struct mtr_while*) stmt, scope, source);
     case MTR_STMT_RETURN:     return analyze_return((struct mtr_return*) stmt, scope, source);
-    default:
-        break;
+    case MTR_STMT_CALL:       return analyze_call_stmt((struct mtr_call_stmt*) stmt, scope, source);
+    case MTR_STMT_NATIVE_FN:  return true;
     }
     MTR_ASSERT(false, "Invalid stmt type.");
     return false;
@@ -472,6 +489,7 @@ static bool analyze(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* 
 static bool global_analysis(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* const source) {
     switch (stmt->type)
     {
+    case MTR_STMT_NATIVE_FN: return true;
     case MTR_STMT_FN: return analyze_fn((struct mtr_function_decl*) stmt, scope, source);
     default:
         break;
@@ -483,7 +501,9 @@ static bool global_analysis(struct mtr_stmt* stmt, struct mtr_scope* scope, cons
 static bool load_global(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* const source) {
     switch (stmt->type)
     {
-    case MTR_STMT_FN:     return load_fn((struct mtr_function_decl*) stmt, scope, source);
+    case MTR_STMT_NATIVE_FN:
+    case MTR_STMT_FN:
+        return load_fn((struct mtr_function_decl*) stmt, scope, source);
     default:
         break;
     }
