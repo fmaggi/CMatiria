@@ -13,8 +13,14 @@ void mtr_delete_object(struct mtr_object* object) {
 
 static void native_fn_call(struct mtr_object* function, struct mtr_engine* engine, u8 argc) {
     struct mtr_native_fn* n = (struct mtr_native_fn*) function;
-    n->function(engine, argc, engine->stack_top - argc);
-    engine->stack_top -= argc;
+    bool returns = n->function(engine, argc, engine->stack_top - argc);
+    if (returns) {
+        mtr_value val = mtr_pop(engine);
+        engine->stack_top -= argc;
+        mtr_push(engine, val);
+    } else {
+        engine->stack_top -= argc;
+    }
 }
 
 static void function_call(struct mtr_object* function, struct mtr_engine* engine, u8 argc) {
