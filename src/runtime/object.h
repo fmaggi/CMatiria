@@ -74,5 +74,6 @@ void mtr_delete_map(struct mtr_map* map);
 
 void mtr_map_insert(struct mtr_map* map, mtr_value key, mtr_value value);
 mtr_value mtr_map_get(struct mtr_map* map, mtr_value key);
+mtr_value mtr_map_remove(struct mtr_map* map, mtr_value key);
 
 #endif

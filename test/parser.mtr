@@ -5,7 +5,13 @@ fn main() -> Int {
 
     Int y := x[5];
 
+    Int z := 45;
+    Float asdf;
+
+    asdf := 35.0;
+
     print(y);
+    print(z);
 }
 
 fn print(Int x) ...

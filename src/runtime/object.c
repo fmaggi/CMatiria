@@ -171,8 +171,18 @@ void mtr_map_insert(struct mtr_map* map, mtr_value key, mtr_value value) {
 mtr_value mtr_map_get(struct mtr_map* map, mtr_value key) {
     struct map_entry* entry = find_entry(map->entries, key, map->capacity, false);
     if (!entry->is_used) {
-        return MTR_INT_VAL(0);
+        return MTR_NIL;
     }
 
+    return entry->value;
+}
+
+
+mtr_value mtr_map_remove(struct mtr_map* map, mtr_value key) {
+    struct map_entry* entry = find_entry(map->entries, key, map->capacity, false);
+    if (!entry->is_used) {
+        return MTR_NIL;
+    }
+    entry->is_tombstone = true;
     return entry->value;
 }
