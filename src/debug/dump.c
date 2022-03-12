@@ -1,5 +1,6 @@
 #include "AST/stmt.h"
 #include "scanner/token.h"
+#include "validator/type.h"
 #ifndef NDEBUG
 
 #include "dump.h"
@@ -71,10 +72,11 @@ static void dump_expr(struct mtr_expr* expr, u32 offset) {
 
     case MTR_EXPR_SUBSCRIPT: {
         struct mtr_subscript* s = (struct mtr_subscript*) expr;
-        dump_expr(s->object, 0);
-        MTR_PRINT_DEBUG("[");
+        MTR_PRINT_DEBUG("([");
         dump_expr(s->index, offset);
-        MTR_PRINT_DEBUG("]");
+        MTR_PRINT_DEBUG("] -> ");
+        dump_expr(s->object, 0);
+        MTR_PRINT_DEBUG(")");
         break;
     }
     }
@@ -143,7 +145,7 @@ static void dump_while(struct mtr_while* stmt, u32 offset) {
 }
 
 static void dump_assignment(struct mtr_assignment* stmt, u32 offset) {
-    MTR_PRINT_DEBUG("%.*s", (u32)stmt->variable.token.length, stmt->variable.token.start);
+    dump_expr(stmt->expression, 0);
     MTR_PRINT_DEBUG(" := ");
     dump_expr(stmt->expression, 0);
     MTR_PRINT_DEBUG(";\n");
@@ -287,6 +289,7 @@ const char* mtr_data_type_to_str(struct mtr_type type) {
     case MTR_DATA_INT:     return "Int";
     case MTR_DATA_INVALID: return "Invalid";
     case MTR_DATA_ARRAY: return "Array";
+    case MTR_DATA_MAP: return "Map";
     case MTR_DATA_USER_DEFINED: break;
     }
 

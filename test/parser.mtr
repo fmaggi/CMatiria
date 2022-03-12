@@ -1,8 +1,11 @@
 fn main() -> Int {
-    Int x := 42;
-    x := 35;
-    print(x);
-    test(x);
+    [Int, Int] x;
+
+    x[5] := 32;
+
+    Int y := x[5];
+
+    print(y);
 }
 
 fn print(Int x) ...

@@ -38,7 +38,6 @@ enum mtr_token_type {
     MTR_TOKEN_FLOAT,
     MTR_TOKEN_BOOL,
 
-
     MTR_TOKEN_IDENTIFIER,
 
     MTR_TOKEN_COMMENT,

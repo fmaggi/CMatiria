@@ -1,5 +1,6 @@
 #include "disassemble.h"
 
+#include "bytecode.h"
 #include "core/log.h"
 
 u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {
@@ -39,6 +40,11 @@ u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {
 
     case MTR_OP_NEW_ARRAY: {
         MTR_LOG("aNEW");
+        break;
+    }
+
+    case MTR_OP_NEW_MAP: {
+        MTR_LOG("mNEW");
         break;
     }
 
@@ -93,13 +99,13 @@ u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {
         break;
     }
 
-    case MTR_OP_GET_A: {
-        MTR_LOG("aGET");
+    case MTR_OP_GET_O: {
+        MTR_LOG("oGET");
         break;
     }
 
-    case MTR_OP_SET_A: {
-        MTR_LOG("aSET");
+    case MTR_OP_SET_O: {
+        MTR_LOG("oSET");
         break;
     }
 

@@ -10,7 +10,8 @@
 enum mtr_object_t {
     MTR_OBJ_FUNCTION,
     MTR_OBJ_NATIVE_FN,
-    MTR_OBJ_ARRAY
+    MTR_OBJ_ARRAY,
+    MTR_OBJ_MAP
 };
 
 struct mtr_object {
@@ -57,5 +58,21 @@ void mtr_delete_array(struct mtr_array* array);
 void mtr_array_append(struct mtr_array* array, mtr_value value);
 mtr_value mtr_array_pop(struct mtr_array* array);
 // void mtr_array_insert(struct mtr_array* array, mtr_value value, size_t index);
+
+// Maps use value.integer as keys whether the key is an actual integer or not.
+// This could be problematic in the case to keys have the same integer representation even though they are different types
+// but meh
+struct mtr_map {
+    struct mtr_object obj;
+    struct map_entry* entries;
+    size_t size;
+    size_t capacity;
+};
+
+struct mtr_map* mtr_new_map(void);
+void mtr_delete_map(struct mtr_map* map);
+
+void mtr_map_insert(struct mtr_map* map, mtr_value key, mtr_value value);
+mtr_value mtr_map_get(struct mtr_map* map, mtr_value key);
 
 #endif

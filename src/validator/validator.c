@@ -51,8 +51,15 @@ static void expr_error(struct mtr_expr* expr, const char* message, const char* c
         break;
     }
 
+    case MTR_EXPR_SUBSCRIPT: {
+        struct mtr_subscript* s = (struct mtr_subscript*) expr;
+        expr_error(s->object, message, source);
+        break;
+    }
+
     default:
         break;
+
     }
 }
 
@@ -126,6 +133,7 @@ static struct mtr_cast* try_promoting(struct mtr_expr* expr, struct mtr_type typ
     case MTR_DATA_INVALID:
     case MTR_DATA_USER_DEFINED:
     case MTR_DATA_ARRAY:
+    case MTR_DATA_MAP:
     case MTR_DATA_VOID:
         return NULL;
     case MTR_DATA_BOOL:
@@ -247,34 +255,35 @@ static struct mtr_type analyze_call(struct mtr_call* call, struct mtr_scope* sco
 }
 
 static struct mtr_type analyze_subscript(struct mtr_subscript* expr, struct mtr_scope* scope, const char* const source) {
-    if (expr->object->type != MTR_EXPR_PRIMARY) {
+    struct mtr_type type = analyze_expr(expr->object, scope, source);
+    struct mtr_type index_type = analyze_expr(expr->index, scope, source);
+
+    switch (type.type) {
+
+    case MTR_DATA_ARRAY: {
+        if (index_type.type != MTR_DATA_INT) {
+            expr_error(expr->index, "Index has to be integral expression.", source);
+            return invalid_type;
+        }
+        break;
+    }
+
+    case MTR_DATA_MAP: {
+        struct mtr_map_type* m = type.obj;
+        if (!mtr_type_match(index_type, m->key)) {
+            expr_error(expr->index, "Index doesn't match key type.", source);
+            return invalid_type;
+        }
+        break;
+    }
+
+    default:
         expr_error(expr->object, "Expression is not subscriptable.", source);
         return invalid_type;
     }
 
-    struct mtr_primary* p = (struct mtr_primary*) expr->object;
-    struct mtr_symbol_entry* e = mtr_scope_find(scope, p->symbol.token);
-    if (NULL == e) {
-        mtr_report_error(p->symbol.token, "Undefined variable.", source);
-        return invalid_type;
-    }
-
-    struct mtr_symbol s = e->symbol;
-    if (s.type.type != MTR_DATA_ARRAY) {
-        mtr_report_error(p->symbol.token, "Variable is not array.", source);
-        return invalid_type;
-    }
-
-    struct mtr_type index_type = analyze_expr(expr->index, scope, source);
-    if (index_type.type != MTR_DATA_INT) {
-        expr_error(expr->index, "Index has to be integral expression.", source);
-        return invalid_type;
-    }
-
-    p->symbol.type = s.type;
-    p->symbol.index = s.index;
-
-    return mtr_get_underlying_type(s.type);
+    struct mtr_type ret = mtr_get_underlying_type(type);
+    return ret;
 }
 
 static struct mtr_type analyze_unary(struct mtr_unary* expr, struct mtr_scope* scope, const char* const source) {
@@ -369,30 +378,22 @@ static bool analyze_fn(struct mtr_function_decl* stmt, struct mtr_scope* parent,
 }
 
 static bool analyze_assignment(struct mtr_assignment* stmt, struct mtr_scope* parent, const char* const source) {
-    const struct mtr_symbol_entry* e = mtr_scope_find(parent, stmt->variable.token);
-    bool var_ok = true;
-    if (NULL == e) {
-        mtr_report_error(stmt->variable.token, "Undeclared variable.", source);
-        var_ok = false;
-    }
-    struct mtr_symbol s = e->symbol;
-    stmt->variable.index = s.index;
-    stmt->variable.type = s.type;
-    const struct mtr_type expr = analyze_expr(stmt->expression, parent, source);
+    const struct mtr_type right_t = analyze_expr(stmt->right, parent, source);
+    const struct mtr_type expr_t = analyze_expr(stmt->expression, parent, source);
 
-    bool expr_ok = mtr_type_match(expr, s.type);
+    bool expr_ok = mtr_type_match(right_t, expr_t);
     if (!expr_ok) {
         // try and mathc the types. Cast if needed
-        struct mtr_cast* cast = try_promoting(stmt->expression, expr, stmt->variable.type);
+        struct mtr_cast* cast = try_promoting(stmt->expression, expr_t, right_t);
         if (NULL != cast) {
             stmt->expression = (struct mtr_expr*) cast;
             expr_ok = true;
         } else {
-            mtr_report_error(stmt->variable.token, "Invalid assignement to variable of different type", source);
+            expr_error(stmt->right, "Invalid assignement to variable of different type", source);
         }
     }
 
-    return var_ok && expr_ok;
+    return expr_ok;
 }
 
 static bool analyze_variable(struct mtr_variable* decl, struct mtr_scope* parent, const char* const source) {

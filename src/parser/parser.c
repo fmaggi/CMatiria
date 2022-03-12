@@ -13,6 +13,7 @@
 
 #include "debug/dump.h"
 #include "scanner/token.h"
+#include "validator/type.h"
 
 #define ALLOCATE_EXPR(type, expr) allocate_expr(type, sizeof(struct expr))
 #define ALLOCATE_STMT(type, stmt) allocate_stmt(type, sizeof(struct stmt))
@@ -63,14 +64,6 @@ static struct mtr_token consume(struct mtr_parser* parser, enum mtr_token_type t
         return advance(parser);
 
     parser_error(parser, message);
-    return invalid_token;
-}
-
-static struct mtr_token consume_type(struct mtr_parser* parser) {
-    if (CHECK(MTR_TOKEN_INT) || CHECK(MTR_TOKEN_FLOAT) || CHECK(MTR_TOKEN_BOOL))
-        return advance(parser);
-
-    parser_error(parser, "Expected type.");
     return invalid_token;
 }
 
@@ -297,39 +290,69 @@ static struct mtr_expr* expression(struct mtr_parser* parser) {
 
 // ============================ STMT =====================================
 
-static struct mtr_type type_attributes(struct mtr_parser* parser, struct mtr_type type) {
-    struct mtr_type ret = type;
-    while (true) {
-        switch (parser->token.type) {
-        case MTR_TOKEN_SQR_L: {
-            advance(parser);
-            struct mtr_array_type* a = mtr_new_array_obj(ret);
-            ret.type = MTR_DATA_ARRAY;
-            ret.obj = a;
-            consume(parser, MTR_TOKEN_SQR_R, "Expected ']'.");
-            break;
-        }
+static struct mtr_type parse_type(struct mtr_parser* parser);
 
-        case MTR_TOKEN_CURLY_L:
-        case MTR_TOKEN_IDENTIFIER:
-        case MTR_TOKEN_ELLIPSIS:
-            return ret;
+static struct mtr_type array_or_map(struct mtr_parser* parser) {
+    struct mtr_type ret_type = invalid_type;
+    ret_type.type = MTR_DATA_ARRAY;
 
-        default:
-            parser_error(parser, "Expected a modifier or and identifier.");
-            ret.type = MTR_DATA_INVALID;
-            return ret;
-        }
+    struct mtr_type type1 = invalid_type;
 
+    switch (parser->token.type) {
+    case MTR_TOKEN_INT:
+    case MTR_TOKEN_FLOAT:
+    case MTR_TOKEN_BOOL:
+    case MTR_TOKEN_IDENTIFIER: {
+        type1 = mtr_get_data_type(advance(parser));
+        break;
     }
+
+    case MTR_TOKEN_SQR_L: {
+        advance(parser);
+        type1 = array_or_map(parser);
+        consume(parser, MTR_TOKEN_SQR_R, "Expected ']'.");
+        break;
+    }
+
+    default:
+        parser_error(parser, "Expected a type expression.");
+        break;
+    }
+
+    if (CHECK(MTR_TOKEN_COMMA)) {
+        advance(parser);
+        struct mtr_type type2 = parse_type(parser);
+        ret_type.type = MTR_DATA_MAP;
+        ret_type.obj = mtr_new_map_type(type1, type2);
+    } else {
+        ret_type.obj = mtr_new_array_type(type1);
+    }
+
+    return ret_type;
 }
 
-static struct mtr_type type(struct mtr_parser* parser) {
-    struct mtr_token t = consume_type(parser);
-    struct mtr_type type = mtr_get_data_type(t);
+static struct mtr_type parse_type(struct mtr_parser* parser) {
+    struct mtr_type type = invalid_type;
 
-    if (!CHECK(MTR_TOKEN_IDENTIFIER) || !CHECK(MTR_TOKEN_CURLY_L)) {
-        type = type_attributes(parser, type);
+    switch (parser->token.type) {
+    case MTR_TOKEN_INT:
+    case MTR_TOKEN_FLOAT:
+    case MTR_TOKEN_BOOL: {
+        struct mtr_token token = advance(parser);
+        type = mtr_get_data_type(token);
+        break;
+    }
+
+    case MTR_TOKEN_SQR_L: {
+        advance(parser);
+        type = array_or_map(parser);
+        consume(parser, MTR_TOKEN_SQR_R, "Expected ']'.");
+        break;
+    }
+
+    default:
+        parser_error(parser, "Expected a type expression.");
+        break;
     }
 
     return type;
@@ -341,10 +364,10 @@ static struct mtr_stmt* expr_stmt(struct mtr_parser* parser) {
     struct mtr_stmt* node = NULL;
     struct mtr_expr* expr = expression(parser);
     switch (expr->type) {
+    case MTR_EXPR_SUBSCRIPT:
     case MTR_EXPR_PRIMARY: {
         struct mtr_assignment* a = ALLOCATE_STMT(MTR_STMT_ASSIGNMENT, mtr_assignment);
-        struct mtr_primary* p = (struct mtr_primary*) expr;
-        a->variable = p->symbol;
+        a->right = expr;
         consume(parser, MTR_TOKEN_ASSIGN, "Expected ':='.");
         a->expression = expression(parser);
         node = (struct mtr_stmt*) a;
@@ -448,7 +471,7 @@ static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
     bool cont = true;
     while (argc < 255 && !CHECK(MTR_TOKEN_PAREN_R) && cont) {
         struct mtr_variable* var = vars + argc++;
-        var->symbol.type = type(parser);
+        var->symbol.type = parse_type(parser);
         var->symbol.token = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
         var->value = NULL;
 
@@ -476,7 +499,7 @@ static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
 
     if (CHECK(MTR_TOKEN_ARROW)) {
         advance(parser);
-        node->symbol.type = type(parser);
+        node->symbol.type = parse_type(parser);
     } else {
         node->symbol.type.type = MTR_DATA_VOID;
     }
@@ -498,7 +521,7 @@ static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
 static struct mtr_stmt* variable(struct mtr_parser* parser) {
     struct mtr_variable* node = ALLOCATE_STMT(MTR_STMT_VAR, mtr_variable);
 
-    node->symbol.type = type(parser);
+    node->symbol.type = parse_type(parser);
 
     node->symbol.token = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
     node->value = NULL;
@@ -534,6 +557,7 @@ static struct mtr_stmt* declaration(struct mtr_parser* parser) {
     case MTR_TOKEN_INT:
     case MTR_TOKEN_FLOAT:
     case MTR_TOKEN_BOOL:
+    case MTR_TOKEN_SQR_L:
         return variable(parser);
     case MTR_TOKEN_LET:
         return let_variable(parser);

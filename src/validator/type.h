@@ -9,6 +9,7 @@ enum mtr_data_type {
 
     MTR_DATA_USER_DEFINED,
     MTR_DATA_ARRAY,
+    MTR_DATA_MAP,
 
     MTR_DATA_VOID,
 
@@ -38,6 +39,13 @@ struct mtr_array_type {
     struct mtr_type type;
 };
 
-struct mtr_array_type* mtr_new_array_obj(struct mtr_type type);
+struct mtr_array_type* mtr_new_array_type(struct mtr_type type);
+
+struct mtr_map_type {
+    struct mtr_type key;
+    struct mtr_type value;
+};
+
+struct mtr_map_type* mtr_new_map_type(struct mtr_type key, struct mtr_type value);
 
 #endif

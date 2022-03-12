@@ -17,14 +17,8 @@ struct mtr_symbol_table mtr_new_symbol_table(void) {
         .size = 0,
     };
 
-    void* temp = calloc(8, sizeof(struct mtr_symbol_entry));
-
-    if (NULL != temp) {
-        t.capacity = 8;
-        t.entries = temp;
-    } else {
-        MTR_LOG_ERROR("Bad allocation.");
-    }
+    t.capacity = 8;
+    t.entries = calloc(8, sizeof(struct mtr_symbol_entry));
 
     return t;
 }
@@ -38,7 +32,7 @@ void mtr_delete_symbol_table(struct mtr_symbol_table* table) {
 
 static struct mtr_symbol_entry* find_entry(struct mtr_symbol_entry* entries, const char* key, size_t length, size_t cap, bool return_tombstone) {
     u32 hash_ = hash(key, length);
-    u32 index = hash_ % cap;
+    u32 index = hash_ & (cap - 1);
 
     struct mtr_symbol_entry* entry = entries + index;
 
@@ -46,7 +40,7 @@ static struct mtr_symbol_entry* find_entry(struct mtr_symbol_entry* entries, con
         if (entry->length == length && hash(entry->key, entry->length) == hash_ && memcmp(key, entry->key, entry->length) == 0)
             break;
 
-        index = (index + 1) % cap;
+        index = (index + 1) & (cap - 1);
         entry = entries + index;
     }
 
@@ -56,13 +50,6 @@ static struct mtr_symbol_entry* find_entry(struct mtr_symbol_entry* entries, con
 static struct mtr_symbol_entry* resize_entries(struct mtr_symbol_entry* entries, size_t old_cap) {
     size_t new_cap = old_cap * 2;
     struct mtr_symbol_entry* temp = calloc(new_cap, sizeof(struct mtr_symbol_entry));
-
-    if (NULL == temp) {
-        MTR_LOG_ERROR("Bad allocation.");
-        free(temp);
-        free(entries);
-        return NULL;
-    }
 
     for (size_t i = 0; i < old_cap; ++i) {
         struct mtr_symbol_entry* old = entries + i;

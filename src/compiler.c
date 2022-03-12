@@ -1,9 +1,11 @@
 #include "compiler.h"
 
+#include "AST/expr.h"
 #include "AST/stmt.h"
 #include "runtime/object.h"
 #include "scanner/scanner.h"
 #include "parser/parser.h"
+#include "validator/type.h"
 #include "validator/validator.h"
 
 #include "bytecode.h"
@@ -279,7 +281,7 @@ static void write_cast(struct mtr_chunk* chunk, struct mtr_cast* cast) {
 static void write_subscript(struct mtr_chunk* chunk, struct mtr_subscript* expr) {
     write_expr(chunk, expr->object);
     write_expr(chunk, expr->index);
-    mtr_write_chunk(chunk, MTR_OP_GET_A);
+    mtr_write_chunk(chunk, MTR_OP_GET_O);
 }
 
 static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr) {
@@ -301,6 +303,7 @@ static void write(struct mtr_chunk* chunk, struct mtr_stmt* stmt);
 static void write_variable(struct mtr_chunk* chunk, struct mtr_variable* var) {
     switch (var->symbol.type.type) {
     case MTR_DATA_ARRAY: mtr_write_chunk(chunk, MTR_OP_NEW_ARRAY); return;
+    case MTR_DATA_MAP: mtr_write_chunk(chunk, MTR_OP_NEW_MAP); return;
     default:
         break;
     }
@@ -352,8 +355,26 @@ static void write_while(struct mtr_chunk* chunk, struct mtr_while* stmt) {
 
 static void write_assignment(struct mtr_chunk* chunk, struct mtr_assignment* stmt) {
     write_expr(chunk, stmt->expression);
-    mtr_write_chunk(chunk, MTR_OP_SET);
-    write_u16(chunk, stmt->variable.index);
+
+    switch (stmt->right->type) {
+    case MTR_EXPR_PRIMARY: {
+        mtr_write_chunk(chunk, MTR_OP_SET);
+        struct mtr_primary* p = (struct mtr_primary*) stmt->right;
+        write_u16(chunk, p->symbol.index);
+        return;
+    }
+    case MTR_EXPR_SUBSCRIPT: {
+        struct mtr_subscript* s = (struct mtr_subscript*) stmt->right;
+        write_expr(chunk, s->object);
+        write_expr(chunk, s->index);
+        mtr_write_chunk(chunk, MTR_OP_SET_O);
+        return;
+    }
+
+    default:
+        break;
+    }
+    MTR_ASSERT(false, "Invalid expr type.");
 }
 
 static void write_return(struct mtr_chunk* chunk, struct mtr_return* stmt) {
@@ -414,22 +435,25 @@ static void write_bytecode(struct mtr_stmt* stmt, struct mtr_package* package) {
 #undef AS
 
 struct mtr_package* mtr_compile(const char* source) {
+    struct mtr_package* package = NULL;
+
     struct mtr_scanner scanner = mtr_scanner_init(source);
     struct mtr_parser parser = mtr_parser_init(scanner);
 
     struct mtr_ast ast = mtr_parse(&parser);
 
+
     if (parser.had_error){
-        return NULL;
+        goto ret;
     }
 
     bool all_ok = mtr_validate(&ast, source);
 
     if (!all_ok) {
-        return NULL;
+        goto ret;
     }
 
-    struct mtr_package* package = mtr_new_package(source, &ast);
+    package = mtr_new_package(source, &ast);
 
     struct mtr_block* block = (struct mtr_block*) ast.head;
     for (size_t i = 0; i < block->size; ++i) {
@@ -437,7 +461,7 @@ struct mtr_package* mtr_compile(const char* source) {
         write_bytecode(s, package);
     }
 
-
+ret:
     // mtr_delete_ast(&ast);
     return package;
 }

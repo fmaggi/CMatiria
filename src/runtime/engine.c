@@ -40,24 +40,19 @@ static void push(struct mtr_engine* engine, mtr_value value) {
     mtr_push(engine, value);
 }
 
-struct call_frame {
-    mtr_value* stack;
-};
-
 #define BINARY_OP(op, type)                                            \
     do {                                                               \
-        const mtr_value r = pop(engine);                                   \
-        const mtr_value l = pop(engine);                                   \
+        const mtr_value r = pop(engine);                               \
+        const mtr_value l = pop(engine);                               \
         const mtr_value res = { .type = l.type op r.type };            \
-        push(engine, res);                                                 \
+        push(engine, res);                                             \
     } while (false)
 
 #define READ(type) *((type*)ip); ip += sizeof(type)
 #define AS(type, value) *((type*)&value)
 
 void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) {
-    struct call_frame frame;
-    frame.stack = engine->stack_top - argc;
+    mtr_value* frame = engine->stack_top - argc;
     register u8* ip = chunk.bytecode;
     u8* end = chunk.bytecode + chunk.size;
     while (ip < end) {
@@ -100,8 +95,17 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
             }
 
             case MTR_OP_NEW_ARRAY: {
-                struct mtr_array* a = mtr_new_array();
-                const mtr_value v = { .object = a };
+                struct mtr_array* array = mtr_new_array();
+                struct mtr_object* o = (struct mtr_object*) array;
+                const mtr_value v = MTR_OBJ_VAL(o);
+                push(engine, v);
+                break;
+            }
+
+            case MTR_OP_NEW_MAP: {
+                struct mtr_map* map = mtr_new_map();
+                struct mtr_object* o = (struct mtr_object*) map;
+                const mtr_value v = MTR_OBJ_VAL(o);
                 push(engine, v);
                 break;
             }
@@ -163,30 +167,69 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
 
             case MTR_OP_GET: {
                 const u16 index = READ(u16);
-                push(engine, frame.stack[index]);
+                push(engine, frame[index]);
                 break;
             }
 
             case MTR_OP_SET: {
                 const u16 index = READ(u16);
-                frame.stack[index] = pop(engine);
+                frame[index] = pop(engine);
                 break;
             }
 
-            case MTR_OP_GET_A: {
-                const i64 i = MTR_AS_INT(pop(engine));
-                const size_t index = AS(size_t, i);
-                const struct mtr_array* a = MTR_AS_OBJ(pop(engine));
-                push(engine, a->elements[index]);
+            case MTR_OP_GET_O: {
+                const mtr_value key = pop(engine);
+                const struct mtr_object* object = MTR_AS_OBJ(pop(engine));
+                switch (object->type) {
+                case MTR_OBJ_ARRAY: {
+                    const struct mtr_array* array = (const struct mtr_array*) object;
+                    const i64 i = MTR_AS_INT(key);
+                    const size_t index = AS(size_t, i);
+                    // if (index >= a->size) {
+                    //     IMPLEMENT // runtime error;
+                    //     break;
+                    // }
+                    push(engine, array->elements[index]);
+                    break;
+                }
+                case MTR_OBJ_MAP: {
+                    struct mtr_map* map = (struct mtr_map*) object;
+                    mtr_value val = mtr_map_get(map, key);
+                    push(engine, val);
+                    break;
+                }
+                default:
+                    IMPLEMENT // runtime error
+                    break;
+                }
                 break;
             }
 
-            case MTR_OP_SET_A: {
-                // const u16 index = READ(u16);
-                // const u16 array_index = READ(u16);
-                // const mtr_value val = frame.stack[index];
-                // const struct mtr_array* a = val.object;
-                // a->elements[array_index] = pop(engine);
+            case MTR_OP_SET_O: {
+                const mtr_value key = pop(engine);
+                const struct mtr_object* object = MTR_AS_OBJ(pop(engine));
+                mtr_value val = pop(engine);
+                switch (object->type) {
+                case MTR_OBJ_ARRAY: {
+                    const struct mtr_array* array = (const struct mtr_array*) object;
+                    const i64 i = MTR_AS_INT(key);
+                    const size_t index = AS(size_t, i);
+                    // if (index >= a->size) {
+                    //     IMPLEMENT // runtime error;
+                    //     break;
+                    // }
+                    array->elements[index] = val;
+                    break;
+                }
+                case MTR_OBJ_MAP: {
+                    struct mtr_map* map = (struct mtr_map*) object;
+                    mtr_map_insert(map, key, val);
+                    break;
+                }
+                default:
+                    IMPLEMENT // runtime error
+                    break;
+                }
                 break;
             }
 
@@ -228,7 +271,7 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
 
             case MTR_OP_RETURN: {
                 mtr_value res = pop(engine);
-                engine->stack_top = frame.stack;
+                engine->stack_top = frame;
                 push(engine, res);
                 return;
             }

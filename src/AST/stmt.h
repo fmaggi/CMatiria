@@ -65,7 +65,7 @@ struct mtr_return {
 
 struct mtr_assignment {
     struct mtr_stmt stmt;
-    struct mtr_symbol variable;
+    struct mtr_expr* right;
     struct mtr_expr* expression;
 };
 

@@ -1,3 +1,4 @@
+#include "core/log.h"
 #include "mtr_stdlib.h"
 
 #include "package.h"
@@ -13,7 +14,7 @@ mtr_value mtr_print(u8 argc, mtr_value* argv) {
         mtr_value value = argv[i];
         printf("%li\n", value.integer);
     }
-    return (mtr_value)MTR_NIL;
+    return MTR_NIL;
 }
 
 void mtr_add_io(struct mtr_package* package) {

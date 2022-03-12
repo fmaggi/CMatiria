@@ -13,6 +13,7 @@ enum mtr_op_code {
     MTR_OP_NIL,
 
     MTR_OP_NEW_ARRAY,
+    MTR_OP_NEW_MAP,
 
     MTR_OP_OR,
     MTR_OP_AND,
@@ -43,8 +44,8 @@ enum mtr_op_code {
     MTR_OP_GET,
     MTR_OP_SET,
 
-    MTR_OP_GET_A,
-    MTR_OP_SET_A,
+    MTR_OP_GET_O,
+    MTR_OP_SET_O,
 
     MTR_OP_JMP,
     MTR_OP_JMP_Z,

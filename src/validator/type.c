@@ -40,6 +40,11 @@ static bool object_type_match(mtr_object_type* lhs, mtr_object_type* rhs, enum m
         struct mtr_array_type* r = (struct mtr_array_type*) rhs;
         return mtr_type_match(l->type, r->type);
     }
+    case MTR_DATA_MAP: {
+        struct mtr_map_type* l = (struct mtr_map_type*) lhs;
+        struct mtr_map_type* r = (struct mtr_map_type*) rhs;
+        return mtr_type_match(l->key, r->key) && mtr_type_match(l->value, r->value);
+    }
     default:
         break;
     }
@@ -62,13 +67,25 @@ struct mtr_type mtr_get_underlying_type(struct mtr_type type) {
         struct mtr_array_type* a = (struct mtr_array_type*) type.obj;
         return a->type;
     }
+    case MTR_DATA_MAP: {
+        struct mtr_map_type* m = (struct mtr_map_type*) type.obj;
+        return m->value;
+    }
     default:
         return invalid_type;
     }
 }
 
-struct mtr_array_type* mtr_new_array_obj(struct mtr_type type) {
+struct mtr_array_type* mtr_new_array_type(struct mtr_type type) {
     struct mtr_array_type* a = malloc(sizeof(*a));
     a->type = type;
     return a;
+}
+
+
+struct mtr_map_type* mtr_new_map_type(struct mtr_type key, struct mtr_type value) {
+    struct mtr_map_type* m = malloc(sizeof(*m));
+    m->key = key;
+    m->value = value;
+    return m;
 }
