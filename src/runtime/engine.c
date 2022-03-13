@@ -185,10 +185,10 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
                     const struct mtr_array* array = (const struct mtr_array*) object;
                     const i64 i = MTR_AS_INT(key);
                     const size_t index = AS(size_t, i);
-                    // if (index >= a->size) {
-                    //     IMPLEMENT // runtime error;
-                    //     break;
-                    // }
+                    if (index >= array->size) {
+                        IMPLEMENT // runtime error;
+                        break;
+                    }
                     push(engine, array->elements[index]);
                     break;
                 }
@@ -214,10 +214,10 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
                     const struct mtr_array* array = (const struct mtr_array*) object;
                     const i64 i = MTR_AS_INT(key);
                     const size_t index = AS(size_t, i);
-                    // if (index >= a->size) {
-                    //     IMPLEMENT // runtime error;
-                    //     break;
-                    // }
+                    if (index >= array->size) {
+                        IMPLEMENT // runtime error;
+                        break;
+                    }
                     array->elements[index] = val;
                     break;
                 }
