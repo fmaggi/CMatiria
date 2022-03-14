@@ -197,16 +197,14 @@ static struct mtr_type analyze_binary(struct mtr_binary* expr, struct mtr_scope*
 }
 
 static struct mtr_type analyze_primary(struct mtr_primary* expr, struct mtr_scope* scope, const char* const source) {
-    struct mtr_symbol_entry* e = mtr_scope_find(scope, expr->symbol.token);
-    if (NULL == e) {
+    struct mtr_symbol* s = mtr_scope_find(scope, expr->symbol.token);
+    if (NULL == s) {
         mtr_report_error(expr->symbol.token, "Undeclared variable.", source);
         return invalid_type;
     }
-
-    struct mtr_symbol s = e->symbol;
-    expr->symbol.index = s.index;
-    expr->symbol.type = s.type;
-    return s.type;
+    expr->symbol.index = s->index;
+    expr->symbol.type = s->type;
+    return s->type;
 }
 
 static struct mtr_type analyze_literal(struct mtr_literal* literal, struct mtr_scope* scope, const char* const source) {
@@ -302,29 +300,29 @@ static struct mtr_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* sco
 }
 
 static bool load_fn(struct mtr_function_decl* stmt, struct mtr_scope* scope, const char* const source) {
-    const struct mtr_symbol_entry* e = mtr_scope_find(scope, stmt->symbol.token);
-    if (NULL != e) {
+    const struct mtr_symbol* s = mtr_scope_find(scope, stmt->symbol.token);
+    if (NULL != s) {
         mtr_report_error(stmt->symbol.token, "Redefinition of name.", source);
-        mtr_report_message(e->symbol.token, "Previuosly defined here.", source);
+        mtr_report_message(s->token, "Previuosly defined here.", source);
         return false;
     }
 
     stmt->symbol.index = scope->current++;
 
-    mtr_scope_add(scope, stmt->symbol, (struct mtr_stmt*) stmt);
+    mtr_scope_add(scope, stmt->symbol);
     return true;
 }
 
 static bool load_var(struct mtr_variable* stmt, struct mtr_scope* scope, const char* const source) {
-    const struct mtr_symbol_entry* e = mtr_scope_find(scope, stmt->symbol.token);
-    if (NULL != e) {
+    const struct mtr_symbol* s = mtr_scope_find(scope, stmt->symbol.token);
+    if (NULL != s) {
         mtr_report_error(stmt->symbol.token, "Redefinition of name.", source);
-        mtr_report_message(e->symbol.token, "Previuosly defined here.", source);
+        mtr_report_message(s->token, "Previuosly defined here.", source);
         return false;
     }
 
     stmt->symbol.index = scope->current++;
-    mtr_scope_add(scope, stmt->symbol, (struct mtr_stmt*) stmt);
+    mtr_scope_add(scope, stmt->symbol);
     return true;
 }
 

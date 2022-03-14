@@ -21,7 +21,7 @@ struct mtr_package* mtr_new_package(const char* const source, struct mtr_ast* as
         struct mtr_function_decl* f = (struct mtr_function_decl*) block->statements[i];
         MTR_ASSERT(f->stmt.type == MTR_STMT_FN || f->stmt.type == MTR_STMT_NATIVE_FN, "Stmt should be function declaration.");
         f->symbol.index = i;
-        mtr_scope_add(&package->globals, f->symbol, (struct mtr_stmt*) f);
+        mtr_scope_add(&package->globals, f->symbol);
         package->functions[i] = NULL;
     }
 
@@ -31,11 +31,11 @@ struct mtr_package* mtr_new_package(const char* const source, struct mtr_ast* as
 }
 
 void mtr_package_insert_function(struct mtr_package* package, struct mtr_object* object, struct mtr_symbol symbol) {
-    const struct mtr_symbol_entry* s = mtr_scope_find(&package->globals, symbol.token);
+    const struct mtr_symbol* s = mtr_scope_find(&package->globals, symbol.token);
     if (s == NULL) {
         return;
     }
-    package->functions[s->symbol.index] = object;
+    package->functions[s->index] = object;
 }
 
 void mtr_package_insert_function_by_name(struct mtr_package* package, struct mtr_object* object, const char* name) {
@@ -46,11 +46,11 @@ void mtr_package_insert_function_by_name(struct mtr_package* package, struct mtr
 }
 
 struct mtr_object* mtr_package_get_function(struct mtr_package* package, struct mtr_symbol symbol) {
-    const struct mtr_symbol_entry* s = mtr_scope_find(&package->globals, symbol.token);
+    const struct mtr_symbol* s = mtr_scope_find(&package->globals, symbol.token);
     if (s == NULL) {
         return NULL;
     }
-    return package->functions[s->symbol.index];
+    return package->functions[s->index];
 }
 
 struct mtr_object* mtr_package_get_function_by_name(struct mtr_package* package, const char* name) {
