@@ -55,7 +55,7 @@ struct mtr_binary {
 
 struct mtr_call {
     struct mtr_expr expr_;
-    struct mtr_symbol callable;
+    struct mtr_expr* callable;
     struct mtr_expr** argv;
     u8 argc;
 };

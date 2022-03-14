@@ -25,6 +25,8 @@ struct mtr_package* mtr_new_package(const char* const source, struct mtr_ast* as
         package->functions[i] = NULL;
     }
 
+    package->count = block->size;
+
     return package;
 }
 

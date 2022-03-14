@@ -24,10 +24,8 @@ static void expr_error(struct mtr_expr* expr, const char* message, const char* c
         break;
     }
     case MTR_EXPR_CALL: {
-        IMPLEMENT
-        // struct mtr_call* c = (struct mtr_call*) expr;
-        // struct mtr_primary* p = (struct mtr_primary*) c->callable;
-        // mtr_report_error(p->symbol.token, message, source);
+        struct mtr_call* c = (struct mtr_call*) expr;
+        expr_error(c->callable, message, source);
         break;
     }
     case MTR_EXPR_GROUPING: {
@@ -134,6 +132,7 @@ static struct mtr_cast* try_promoting(struct mtr_expr* expr, struct mtr_type typ
     case MTR_DATA_USER_DEFINED:
     case MTR_DATA_ARRAY:
     case MTR_DATA_MAP:
+    case MTR_DATA_FN:
     case MTR_DATA_VOID:
         return NULL;
     case MTR_DATA_BOOL:
@@ -216,42 +215,34 @@ static struct mtr_type analyze_literal(struct mtr_literal* literal, struct mtr_s
 }
 
 static struct mtr_type analyze_call(struct mtr_call* call, struct mtr_scope* scope, const char* const source) {
-    // if (call->callable->type != MTR_EXPR_PRIMARY) {
-    //     expr_error(call->callable, "Expression is not callable.", source);
-    //     return invalid_type;
-    // }
-
-    // struct mtr_primary* p = (struct mtr_primary*) call->callable;
-
-    struct mtr_symbol_entry* e = mtr_scope_find(scope, call->callable.token);
-    if (NULL == e) {
-        mtr_report_error(call->callable.token, "Call to undefined function.", source);
+    struct mtr_type type = analyze_expr(call->callable, scope, source);
+    if (type.type != MTR_DATA_FN) {
+        expr_error(call->callable, "Expression is not callable.", source);
         return invalid_type;
     }
 
-    struct mtr_symbol s = e->symbol;
-    struct mtr_function_decl* f = (struct mtr_function_decl*) e->parent;
+    struct mtr_function_type* f = type.obj;
     if (f->argc == call->argc) {
         for (u8 i = 0 ; i < call->argc; ++i) {
             struct mtr_expr* a = call->argv[i];
             struct mtr_type ta = analyze_expr(a, scope, source);
 
-            struct mtr_variable p = f->argv[i];
-            if (!mtr_type_match(ta, p.symbol.type)) {
+            struct mtr_type tp = f->argv[i];
+            if (!mtr_type_match(ta, tp)) {
                 expr_error(a, "Wrong type of argument.", source);
-                s.type.type = MTR_DATA_INVALID;
+                return invalid_type;
             }
         }
 
     } else if (f->argc > call->argc) {
-        mtr_report_error(call->callable.token, "Expected more arguments.", source);
+        expr_error(call->callable, "Expected more arguments.", source);
+        return invalid_type;
     } else {
-        mtr_report_error(call->callable.token, "Too many arguments.", source);
+        expr_error(call->callable, "Too many arguments.", source);
+        return invalid_type;
     }
 
-    call->callable.index = s.index;
-    call->callable.type = s.type;
-    return s.type;
+    return f->return_;
 }
 
 static struct mtr_type analyze_subscript(struct mtr_subscript* expr, struct mtr_scope* scope, const char* const source) {
@@ -357,11 +348,6 @@ static bool analyze_block(struct mtr_block* block, struct mtr_scope* parent, con
 }
 
 static bool analyze_fn(struct mtr_function_decl* stmt, struct mtr_scope* parent, const char* const source) {
-    if (NULL == stmt->body) {
-        // Function is extern
-        return true;
-    }
-
     bool all_ok = true;
 
     struct mtr_scope scope = mtr_new_scope(parent);
@@ -374,11 +360,25 @@ static bool analyze_fn(struct mtr_function_decl* stmt, struct mtr_scope* parent,
     all_ok = analyze_block(stmt->body, &scope, source) && all_ok;
     mtr_delete_scope(&scope);
 
+    struct mtr_function_type* type = stmt->symbol.type.obj;
+    if (type->return_.type != MTR_DATA_VOID) {
+        struct mtr_stmt* last = stmt->body->statements[stmt->body->size-1];
+        if (last->type != MTR_STMT_RETURN) {
+            mtr_report_error(stmt->symbol.token, "Non void function doesn't return anything.", source);
+            return false;
+        }
+    }
+
     return all_ok;
 }
 
 static bool analyze_assignment(struct mtr_assignment* stmt, struct mtr_scope* parent, const char* const source) {
     const struct mtr_type right_t = analyze_expr(stmt->right, parent, source);
+    if (right_t.type == MTR_DATA_FN) {
+        expr_error(stmt->expression, "Expression is not assignable.", source);
+        return false;
+    }
+
     const struct mtr_type expr_t = analyze_expr(stmt->expression, parent, source);
 
     bool expr_ok = mtr_type_match(right_t, expr_t);
@@ -457,7 +457,9 @@ static bool analyze_return(struct mtr_return* stmt, struct mtr_scope* parent, co
         }
     }
 
-    bool ok = mtr_type_match(analyze_expr(stmt->expr, parent, source), stmt->from->symbol.type);
+    struct mtr_type type = mtr_get_underlying_type(stmt->from->symbol.type);
+
+    bool ok = mtr_type_match(analyze_expr(stmt->expr, parent, source), type);
     if (!ok) {
         expr_error(stmt->expr, "Incompatible return type.", source);
         mtr_report_message(stmt->from->symbol.token, "As declared here.", source);
@@ -523,8 +525,6 @@ bool mtr_validate(struct mtr_ast* ast, const char* const source) {
         struct mtr_stmt* s = block->statements[i];
         all_ok = load_global(s, &global, source);
     }
-
-    global.current = 0;
 
     for (size_t i = 0; i < block->size; ++i) {
         struct mtr_stmt* s = block->statements[i];

@@ -254,8 +254,8 @@ static void write_call(struct mtr_chunk* chunk, struct mtr_call* call) {
         write_expr(chunk, expr);
     }
 
+    write_expr(chunk, call->callable);
     mtr_write_chunk(chunk, MTR_OP_CALL);
-    write_u16(chunk, call->callable.index);
     mtr_write_chunk(chunk, call->argc);
 }
 

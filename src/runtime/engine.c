@@ -261,11 +261,10 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
             }
 
             case MTR_OP_CALL: {
-                const u16 index = READ(u16);
                 const u8 argc = READ(u8);
-                struct mtr_object* val = engine->package->functions[index];
-                struct mtr_invokable* i = (struct mtr_invokable*) val;
-                i->call(val, engine, argc);
+                struct mtr_object* obj = MTR_AS_OBJ(pop(engine));
+                struct mtr_invokable* i = (struct mtr_invokable*) obj;
+                i->call(obj, engine, argc);
                 break;
             }
 
@@ -295,7 +294,6 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
 
 #undef BINARY_OP
 #undef READ
-#undef AS
 
 i32 mtr_execute(struct mtr_engine* engine, struct mtr_package* package) {
     engine->package = package;
@@ -305,8 +303,14 @@ i32 mtr_execute(struct mtr_engine* engine, struct mtr_package* package) {
         MTR_LOG_ERROR("Did not find main.");
         return -1;
     }
+
+    for (size_t i = 0; i < package->count; ++i) {
+        struct mtr_object* o = package->functions[i];
+        push(engine, MTR_OBJ_VAL(o));
+    }
+
     struct mtr_function* f = (struct mtr_function*) o;
-    mtr_call(engine, f->chunk, 0);
+    mtr_call(engine, f->chunk, package->count);
 
     // mtr_dump_stack(engine->stack, engine->stack_top);
     return 0;

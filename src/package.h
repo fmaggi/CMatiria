@@ -10,6 +10,7 @@
 struct mtr_package {
     struct mtr_scope globals;
     struct mtr_object** functions;
+    size_t count;
     const char* source;
 };
 

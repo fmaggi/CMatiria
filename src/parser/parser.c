@@ -249,7 +249,7 @@ static struct mtr_expr* literal(struct mtr_parser* parser, struct mtr_token lite
 
 static struct mtr_expr* call(struct mtr_parser* parser, struct mtr_token paren, struct mtr_expr* name) {
     struct mtr_call* node = ALLOCATE_EXPR(MTR_EXPR_CALL, mtr_call);
-    node->callable = ((struct mtr_primary*)name)->symbol;
+    node->callable = name;
 
     u8 argc = 0;
     struct mtr_expr* exprs[255];
@@ -468,10 +468,14 @@ static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
 
     u32 argc = 0;
     struct mtr_variable vars[255];
+    struct mtr_type types[255];
     bool cont = true;
     while (argc < 255 && !CHECK(MTR_TOKEN_PAREN_R) && cont) {
-        struct mtr_variable* var = vars + argc++;
-        var->symbol.type = parse_type(parser);
+        struct mtr_variable* var = vars + argc;
+        struct mtr_type* type = types + argc;
+        ++argc;
+        *type = parse_type(parser);
+        var->symbol.type = *type;
         var->symbol.token = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
         var->value = NULL;
 
@@ -497,12 +501,14 @@ static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
             memcpy(node->argv, vars, sizeof(struct mtr_variable) * argc);
     }
 
+    struct mtr_type return_type;
+    return_type.type = MTR_DATA_VOID;
     if (CHECK(MTR_TOKEN_ARROW)) {
         advance(parser);
-        node->symbol.type = parse_type(parser);
-    } else {
-        node->symbol.type.type = MTR_DATA_VOID;
+        return_type = parse_type(parser);
     }
+    node->symbol.type.type = MTR_DATA_FN;
+    node->symbol.type.obj = mtr_new_function_type(return_type, argc, types);
 
     parser->current_function = node;
 
@@ -512,7 +518,6 @@ static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
         advance(parser);
         return (struct mtr_stmt*) node;
     }
-
     node->body = (struct mtr_block*) block(parser);
 
     return (struct mtr_stmt*) node;

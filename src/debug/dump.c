@@ -290,6 +290,7 @@ const char* mtr_data_type_to_str(struct mtr_type type) {
     case MTR_DATA_INVALID: return "Invalid";
     case MTR_DATA_ARRAY: return "Array";
     case MTR_DATA_MAP: return "Map";
+    case MTR_DATA_FN: return "Function";
     case MTR_DATA_USER_DEFINED: break;
     }
 

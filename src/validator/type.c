@@ -3,6 +3,7 @@
 #include "core/log.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 const struct mtr_type invalid_type = {
     .type = MTR_DATA_INVALID,
@@ -16,6 +17,16 @@ static void delete_object_type(mtr_object_type* obj, enum mtr_data_type type) {
         struct mtr_array_type* a = (struct mtr_array_type*) obj;
         mtr_delete_type(a->type);
         free(a);
+        return;
+    }
+    case MTR_DATA_FN: {
+        struct mtr_function_type* f = (struct mtr_function_type*) obj;
+        mtr_delete_type(f->return_);
+        for (u8 i = 0; i < f->argc; ++i) {
+            mtr_delete_type(f->argv[i]);
+        }
+        free(f->argv);
+        free(f);
         return;
     }
     default:
@@ -45,6 +56,11 @@ static bool object_type_match(mtr_object_type* lhs, mtr_object_type* rhs, enum m
         struct mtr_map_type* r = (struct mtr_map_type*) rhs;
         return mtr_type_match(l->key, r->key) && mtr_type_match(l->value, r->value);
     }
+    case MTR_DATA_FN: {
+        struct mtr_function_type* l = (struct mtr_function_type*) lhs;
+        struct mtr_function_type* r = (struct mtr_function_type*) rhs;
+        return mtr_type_match(l->return_, r->return_);
+    }
     default:
         break;
     }
@@ -71,6 +87,10 @@ struct mtr_type mtr_get_underlying_type(struct mtr_type type) {
         struct mtr_map_type* m = (struct mtr_map_type*) type.obj;
         return m->value;
     }
+    case MTR_DATA_FN: {
+        struct mtr_function_type* f = (struct mtr_function_type*) type.obj;
+        return f->return_;
+    }
     default:
         return invalid_type;
     }
@@ -88,4 +108,13 @@ struct mtr_map_type* mtr_new_map_type(struct mtr_type key, struct mtr_type value
     m->key = key;
     m->value = value;
     return m;
+}
+
+struct mtr_function_type* mtr_new_function_type(struct mtr_type return_, u8 argc, struct mtr_type* argv) {
+    struct mtr_function_type* f = malloc(sizeof(*f));
+    f->return_ = return_;
+    f->argc = argc;
+    f->argv = malloc(sizeof(struct mtr_type) * argc);
+    memcpy(f->argv, argv, sizeof(struct mtr_type) * argc);
+    return f;
 }

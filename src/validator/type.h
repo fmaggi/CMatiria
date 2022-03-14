@@ -10,6 +10,7 @@ enum mtr_data_type {
     MTR_DATA_USER_DEFINED,
     MTR_DATA_ARRAY,
     MTR_DATA_MAP,
+    MTR_DATA_FN,
 
     MTR_DATA_VOID,
 
@@ -47,5 +48,13 @@ struct mtr_map_type {
 };
 
 struct mtr_map_type* mtr_new_map_type(struct mtr_type key, struct mtr_type value);
+
+struct mtr_function_type {
+    struct mtr_type return_;
+    struct mtr_type* argv;
+    u8 argc;
+};
+
+struct mtr_function_type* mtr_new_function_type(struct mtr_type return_, u8 argc, struct mtr_type* argv);
 
 #endif
