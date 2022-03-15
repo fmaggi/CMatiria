@@ -1,14 +1,9 @@
 fn main() {
-    print(test(0));
+    test();
 }
 
 fn print(Int x) ...
 
-fn test(Int x) -> Int {
-    x := 32;
-    return x;
-}
-
-fn t() -> Int {
-    return 62;
+fn test() {
+    Int y := 0;
 }

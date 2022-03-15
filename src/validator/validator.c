@@ -202,8 +202,10 @@ static struct mtr_type analyze_primary(struct mtr_primary* expr, struct mtr_scop
         mtr_report_error(expr->symbol.token, "Undeclared variable.", source);
         return invalid_type;
     }
+
     expr->symbol.index = s->index;
-    expr->symbol.type = s->type;
+    expr->symbol.type = mtr_copy_type(s->type);
+
     return s->type;
 }
 

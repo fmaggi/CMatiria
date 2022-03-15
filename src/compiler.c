@@ -442,7 +442,6 @@ struct mtr_package* mtr_compile(const char* source) {
 
     struct mtr_ast ast = mtr_parse(&parser);
 
-
     if (parser.had_error){
         goto ret;
     }
@@ -462,6 +461,6 @@ struct mtr_package* mtr_compile(const char* source) {
     }
 
 ret:
-    // mtr_delete_ast(&ast);
+    mtr_delete_ast(&ast);
     return package;
 }

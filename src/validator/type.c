@@ -1,6 +1,7 @@
 #include "type.h"
 
 #include "core/log.h"
+#include "debug/dump.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -38,7 +39,6 @@ static void delete_object_type(mtr_object_type* obj, enum mtr_data_type type) {
 void mtr_delete_type(struct mtr_type type) {
     if (type.obj) {
         delete_object_type(type.obj, type.type);
-        type.obj = NULL;
     }
 }
 
@@ -94,6 +94,34 @@ struct mtr_type mtr_get_underlying_type(struct mtr_type type) {
     default:
         return invalid_type;
     }
+}
+
+struct mtr_type mtr_copy_type(struct mtr_type type) {
+    struct mtr_type ret;
+    ret.type = type.type;
+    if (type.obj) {
+        switch (type.type) {
+        case MTR_DATA_ARRAY: {
+            struct mtr_array_type* a = type.obj;
+            ret.obj = mtr_new_array_type(a->type);
+            break;
+        }
+        case MTR_DATA_MAP: {
+            struct mtr_map_type* m = type.obj;
+            ret.obj = mtr_new_map_type(m->key, m->value);
+            break;
+        }
+        case MTR_DATA_FN: {
+            struct mtr_function_type* t = type.obj;
+            ret.obj = mtr_new_function_type(t->return_, t->argc, t->argv);
+            break;
+        }
+        default:
+            MTR_ASSERT(false, "Invalid type.");
+            break;
+        }
+    }
+    return ret;
 }
 
 struct mtr_array_type* mtr_new_array_type(struct mtr_type type) {

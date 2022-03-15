@@ -107,7 +107,8 @@ static void dump_fn(struct mtr_function_decl* decl, u32 offset) {
         MTR_PRINT_DEBUG("%.*s", (u32)param.symbol.token.length, param.symbol.token.start);
     }
 
-    MTR_PRINT_DEBUG(") -> %s", mtr_data_type_to_str(decl->symbol.type));
+    struct mtr_function_type* t = decl->symbol.type.obj;
+    MTR_PRINT_DEBUG(") -> %s", mtr_data_type_to_str(t->return_));
     if (decl->body) {
         MTR_PRINT_DEBUG("{\n");
         dump_block(decl->body, offset + 1);
@@ -202,6 +203,7 @@ static void dump_object_type(mtr_object_type* obj, enum mtr_data_type type, u32 
         dump_type(a->type, offset+1);
     }
     case MTR_DATA_USER_DEFINED: return;
+    case MTR_DATA_FN: return;
     default:
         break;
     }

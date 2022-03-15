@@ -1,6 +1,7 @@
 #include "object.h"
 
 #include "AST/expr.h"
+#include "bytecode.h"
 #include "engine.h"
 
 #include "core/log.h"
@@ -9,7 +10,31 @@
 #include <stdlib.h>
 
 void mtr_delete_object(struct mtr_object* object) {
-    IMPLEMENT
+    switch (object->type) {
+    case MTR_OBJ_ARRAY: {
+        struct mtr_array* a = (struct mtr_array*) object;
+        free(a->elements);
+        free(a);
+        break;
+    }
+    case MTR_OBJ_MAP: {
+        struct mtr_map* m = (struct mtr_map*) object;
+        free(m->entries);
+        free(m);
+        break;
+    }
+    case MTR_OBJ_FUNCTION: {
+        struct mtr_function* f = (struct mtr_function*) object;
+        mtr_delete_chunk(&f->chunk);
+        free(f);
+        break;
+    }
+    case MTR_OBJ_NATIVE_FN: {
+        struct mtr_native_fn* fn = (struct mtr_native_fn*) object;
+        free(fn);
+        break;
+    }
+    }
 }
 
 static void native_fn_call(struct mtr_object* function, struct mtr_engine* engine, u8 argc) {

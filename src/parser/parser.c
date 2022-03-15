@@ -238,6 +238,7 @@ static struct mtr_expr* grouping(struct mtr_parser* parser, struct mtr_token tok
 static struct mtr_expr* primary(struct mtr_parser* parser, struct mtr_token primary) {
     struct mtr_primary* node = ALLOCATE_EXPR(MTR_EXPR_PRIMARY, mtr_primary);
     node->symbol.token = primary;
+    node->symbol.type = invalid_type;
     return (struct mtr_expr*) node;
 }
 
@@ -272,7 +273,6 @@ static struct mtr_expr* call(struct mtr_parser* parser, struct mtr_token paren, 
         return NULL;
     }
     memcpy(node->argv, exprs, sizeof(struct mtr_expr*) * argc);
-
     return (struct mtr_expr*) node;
 }
 
@@ -503,6 +503,7 @@ static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
 
     struct mtr_type return_type;
     return_type.type = MTR_DATA_VOID;
+    return_type.obj = NULL;
     if (CHECK(MTR_TOKEN_ARROW)) {
         advance(parser);
         return_type = parse_type(parser);
@@ -678,7 +679,6 @@ void mtr_free_stmt(struct mtr_stmt* s) {
             if (f->body) {
                 delete_block(f->body);
             }
-            mtr_delete_type(f->symbol.type);
             f->argv = NULL;
             f->argc = 0;
             f->body = NULL;
@@ -727,7 +727,10 @@ void mtr_free_stmt(struct mtr_stmt* s) {
         }
 
         case MTR_STMT_CALL: {
-            IMPLEMENT
+            struct mtr_call_stmt* c = (struct mtr_call_stmt*) s;
+            mtr_free_expr(c->call);
+            c->call = NULL;
+            free(c);
             break;
         }
     }
@@ -736,6 +739,7 @@ void mtr_free_stmt(struct mtr_stmt* s) {
 static void free_binary(struct mtr_binary* node) {
     mtr_free_expr(node->left);
     mtr_free_expr(node->right);
+    mtr_delete_type(node->operator.type);
     node->left = NULL;
     node->right = NULL;
     free(node);
@@ -748,11 +752,13 @@ static void free_grouping(struct mtr_grouping* node) {
 }
 
 static void free_primary(struct mtr_primary* node) {
+    mtr_delete_type(node->symbol.type);
     free(node);
 }
 
 static void free_unary(struct mtr_unary* node) {
     mtr_free_expr(node->right);
+    mtr_delete_type(node->operator.type);
     node->right = NULL;
     free(node);
 }
@@ -768,10 +774,10 @@ static void free_call(struct mtr_call* node) {
         }
         free(node->argv);
     }
-    // mtr_free_expr(node->callable);
+    mtr_free_expr(node->callable);
     node->argv = NULL;
     node->argc = 0;
-    // node->callable = NULL;
+    node->callable = NULL;
     free(node);
 }
 

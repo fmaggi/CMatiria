@@ -6,6 +6,9 @@
 #include "core/utils.h"
 #include "runtime/object.h"
 
+#include "debug/dump.h"
+#include "validator/scope.h"
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -20,7 +23,7 @@ struct mtr_package* mtr_new_package(const char* const source, struct mtr_ast* as
     for (size_t i = 0; i < block->size; ++i) {
         struct mtr_function_decl* f = (struct mtr_function_decl*) block->statements[i];
         MTR_ASSERT(f->stmt.type == MTR_STMT_FN || f->stmt.type == MTR_STMT_NATIVE_FN, "Stmt should be function declaration.");
-        f->symbol.index = i;
+        MTR_ASSERT(f->symbol.index == i, "Something went wrong!");
         mtr_scope_add(&package->globals, f->symbol);
         package->functions[i] = NULL;
     }
