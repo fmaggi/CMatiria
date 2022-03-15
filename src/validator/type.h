@@ -36,8 +36,6 @@ bool mtr_type_match(struct mtr_type lhs, struct mtr_type rhs);
 
 struct mtr_type mtr_get_underlying_type(struct mtr_type type);
 
-struct mtr_type mtr_copy_type(struct mtr_type type);
-
 struct mtr_array_type {
     struct mtr_type type;
 };

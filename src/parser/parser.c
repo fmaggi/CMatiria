@@ -669,13 +669,14 @@ void mtr_free_stmt(struct mtr_stmt* s) {
         case MTR_STMT_NATIVE_FN:
         case MTR_STMT_FN: {
             struct mtr_function_decl* f = (struct mtr_function_decl*) s;
+            mtr_delete_type(f->symbol.type);
             if (f->argc > 0) {
                 for (u8 i = 0; i < f->argc; ++i) {
                     struct mtr_variable* v = f->argv + i;
                     mtr_delete_type(v->symbol.type);
                 }
-                free(f->argv);
             }
+            free(f->argv);
             if (f->body) {
                 delete_block(f->body);
             }
@@ -752,7 +753,7 @@ static void free_grouping(struct mtr_grouping* node) {
 }
 
 static void free_primary(struct mtr_primary* node) {
-    mtr_delete_type(node->symbol.type);
+    // primary symbol type is freed by its declaration
     free(node);
 }
 
@@ -772,8 +773,8 @@ static void free_call(struct mtr_call* node) {
         for (u8 i = 0; i < node->argc; ++i) {
             mtr_free_expr(node->argv[i]);
         }
-        free(node->argv);
     }
+    free(node->argv);
     mtr_free_expr(node->callable);
     node->argv = NULL;
     node->argc = 0;

@@ -96,34 +96,6 @@ struct mtr_type mtr_get_underlying_type(struct mtr_type type) {
     }
 }
 
-struct mtr_type mtr_copy_type(struct mtr_type type) {
-    struct mtr_type ret;
-    ret.type = type.type;
-    if (type.obj) {
-        switch (type.type) {
-        case MTR_DATA_ARRAY: {
-            struct mtr_array_type* a = type.obj;
-            ret.obj = mtr_new_array_type(a->type);
-            break;
-        }
-        case MTR_DATA_MAP: {
-            struct mtr_map_type* m = type.obj;
-            ret.obj = mtr_new_map_type(m->key, m->value);
-            break;
-        }
-        case MTR_DATA_FN: {
-            struct mtr_function_type* t = type.obj;
-            ret.obj = mtr_new_function_type(t->return_, t->argc, t->argv);
-            break;
-        }
-        default:
-            MTR_ASSERT(false, "Invalid type.");
-            break;
-        }
-    }
-    return ret;
-}
-
 struct mtr_array_type* mtr_new_array_type(struct mtr_type type) {
     struct mtr_array_type* a = malloc(sizeof(*a));
     a->type = type;
@@ -142,7 +114,10 @@ struct mtr_function_type* mtr_new_function_type(struct mtr_type return_, u8 argc
     struct mtr_function_type* f = malloc(sizeof(*f));
     f->return_ = return_;
     f->argc = argc;
-    f->argv = malloc(sizeof(struct mtr_type) * argc);
-    memcpy(f->argv, argv, sizeof(struct mtr_type) * argc);
+    f->argv = NULL;
+    if (argc > 0) {
+        f->argv = malloc(sizeof(struct mtr_type) * argc);
+        memcpy(f->argv, argv, sizeof(struct mtr_type) * argc);
+    }
     return f;
 }
