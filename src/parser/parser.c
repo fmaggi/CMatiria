@@ -472,11 +472,15 @@ static struct mtr_stmt* statement(struct mtr_parser* parser) {
 
 static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
     struct mtr_function_decl* node = ALLOCATE_STMT(MTR_STMT_FN, mtr_function_decl);
+    parser->current_function = node;
 
     advance(parser);
 
     node->symbol.token = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
     consume(parser, MTR_TOKEN_PAREN_L, "Expected '('.");
+
+    node->argc = 0;
+    node->argv = NULL;
 
     u32 argc = 0;
     struct mtr_variable vars[255];
@@ -509,16 +513,9 @@ static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
         parser_error(parser, "Exceded maximum number of arguments (255)");
     }
 
-    node->argc = argc;
-    node->argv = NULL;
-
-    if (argc > 0) {
-        node->argv = malloc(sizeof(struct mtr_variable) * argc);
-        if (NULL == node->argv)
-            MTR_LOG_ERROR("Bad allocation.");
-        else
-            memcpy(node->argv, vars, sizeof(struct mtr_variable) * argc);
-    }
+    // because we are here we now that argc > 0
+    node->argv = malloc(sizeof(struct mtr_variable) * argc);
+    memcpy(node->argv, vars, sizeof(struct mtr_variable) * argc);
 
 type_check:; // this is some weird shit with labels. prob a clang bug
 
@@ -531,8 +528,6 @@ type_check:; // this is some weird shit with labels. prob a clang bug
     }
 
     node->symbol.type = mtr_new_function_type(return_type, argc, types);
-
-    parser->current_function = node;
 
     node->body = NULL;
     if (CHECK(MTR_TOKEN_ELLIPSIS)) {
@@ -692,13 +687,13 @@ void mtr_free_stmt(struct mtr_stmt* s) {
         case MTR_STMT_FN: {
             struct mtr_function_decl* f = (struct mtr_function_decl*) s;
             mtr_delete_type(f->symbol.type);
-            // if (f->argc > 0) {
-            //     for (u8 i = 0; i < f->argc; ++i) {
-            //         struct mtr_variable* v = f->argv + i;
-            //         mtr_delete_type(v->symbol.type);
-            //     }
-            // }
-            // free(f->argv);
+            if (f->argc > 0) {
+                for (u8 i = 0; i < f->argc; ++i) {
+                    struct mtr_variable* v = f->argv + i;
+                    mtr_delete_type(v->symbol.type);
+                }
+            }
+            free(f->argv);
             if (f->body) {
                 delete_block(f->body);
             }
