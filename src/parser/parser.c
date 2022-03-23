@@ -204,13 +204,9 @@ static struct mtr_expr* parse_precedence(struct mtr_parser* parser, enum precede
         node = prefix(parser, token);
     }
 
-
-    while (precedece <= rules[parser->token.type].precedence) {
-        infix_fn infix = rules[parser->token.type].infix;
-        if (NULL == infix) {
-            break;
-        }
+    while (precedece <= rules[parser->token.type].precedence && rules[parser->token.type].infix) {
         struct mtr_token token = advance(parser);
+        infix_fn infix = rules[token.type].infix;
         node = infix(parser, token, node);
     }
 
@@ -631,26 +627,15 @@ void mtr_delete_ast(struct mtr_ast* ast) {
 
 static void init_block(struct mtr_block* block) {
     void* temp = malloc(sizeof(struct mtr_stmt*) * 8);
-    if (NULL == temp) {
-        MTR_LOG_ERROR("Bad allocation.");
-        block->statements = NULL;
-        block->size = 0;
-        block->capacity = 0;
-    } else {
-        block->capacity = 8;
-        block->size = 0;
-        block->statements = temp;
-    }
+    block->capacity = 8;
+    block->size = 0;
+    block->statements = temp;
 }
 
 static void write_block(struct mtr_block* block, struct mtr_stmt* statement) {
     if (block->size == block->capacity) {
         size_t new_cap = block->capacity * 2;
         block->statements = realloc(block->statements, new_cap * sizeof(struct mtr_stmt*));
-        if (NULL == block->statements) {
-            block->capacity = 0;
-            return;
-        }
         block->capacity = new_cap;
     }
     block->statements[block->size++] = statement;
@@ -678,7 +663,9 @@ void mtr_free_stmt(struct mtr_stmt* s) {
             break;
         case MTR_STMT_ASSIGNMENT: {
             struct mtr_assignment* a = (struct mtr_assignment*) s;
+            mtr_free_expr(a->right);
             mtr_free_expr(a->expression);
+            a->right = NULL;
             a->expression = NULL;
             free(a);
             break;
@@ -716,8 +703,8 @@ void mtr_free_stmt(struct mtr_stmt* s) {
         }
         case MTR_STMT_WHILE: {
             struct mtr_while* w = (struct mtr_while*) s;
-            mtr_free_stmt(w->body);
             mtr_free_expr(w->condition);
+            mtr_free_stmt(w->body);
             w->body = NULL;
             w->condition = NULL;
             free(w);

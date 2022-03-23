@@ -139,9 +139,11 @@ static void dump_if(struct mtr_if* stmt, u32 offset) {
     dump_expr(stmt->condition, 0);
     MTR_PRINT_DEBUG("\n");
     dump_stmt(stmt->then, offset + 1);
-    MTR_PRINT_DEBUG("else: \n");
-    dump_stmt(stmt->otherwise, offset + 1);
-    MTR_PRINT_DEBUG("\n");
+    if (stmt->otherwise) {
+        MTR_PRINT_DEBUG("else: \n");
+        dump_stmt(stmt->otherwise, offset + 1);
+        MTR_PRINT_DEBUG("\n");
+    }
 }
 
 static void dump_while(struct mtr_while* stmt, u32 offset) {
