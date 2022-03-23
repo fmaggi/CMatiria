@@ -192,23 +192,26 @@ static const struct parser_rule rules[] = {
 #undef NO_OP
 
 static struct mtr_expr* parse_precedence(struct mtr_parser* parser, enum precedence precedece) {
-    struct mtr_token token = advance(parser);
-    prefix_fn prefix = rules[token.type].prefix;
-    if (NULL == prefix) {
-        parser_error(parser, "Expected expression.");
-        return NULL;
+    struct mtr_expr* node = NULL;
+
+    {
+        struct mtr_token token = advance(parser);
+        prefix_fn prefix = rules[token.type].prefix;
+        if (NULL == prefix) {
+            parser_error(parser, "Expected expression.");
+            return NULL;
+        }
+        node = prefix(parser, token);
     }
 
-    struct mtr_expr* node = prefix(parser, token);
 
     while (precedece <= rules[parser->token.type].precedence) {
         infix_fn infix = rules[parser->token.type].infix;
         if (NULL == infix) {
-            parser_error(parser, "Invalid expression :(.");
             break;
         }
-        struct mtr_token t = advance(parser);
-        node = infix(parser, t, node);
+        struct mtr_token token = advance(parser);
+        node = infix(parser, token, node);
     }
 
     return node;
@@ -689,13 +692,13 @@ void mtr_free_stmt(struct mtr_stmt* s) {
         case MTR_STMT_FN: {
             struct mtr_function_decl* f = (struct mtr_function_decl*) s;
             mtr_delete_type(f->symbol.type);
-            if (f->argc > 0) {
-                for (u8 i = 0; i < f->argc; ++i) {
-                    struct mtr_variable* v = f->argv + i;
-                    mtr_delete_type(v->symbol.type);
-                }
-            }
-            free(f->argv);
+            // if (f->argc > 0) {
+            //     for (u8 i = 0; i < f->argc; ++i) {
+            //         struct mtr_variable* v = f->argv + i;
+            //         mtr_delete_type(v->symbol.type);
+            //     }
+            // }
+            // free(f->argv);
             if (f->body) {
                 delete_block(f->body);
             }
