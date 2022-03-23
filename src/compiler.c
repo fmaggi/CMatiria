@@ -141,13 +141,11 @@ static void write_literal(struct mtr_chunk* chunk, struct mtr_literal* expr) {
 
 static void write_array_literal(struct mtr_chunk* chunk, struct mtr_array_literal* array) {
     for (u8 i = 0; i < array->count; ++i) {
+        // We need to write them from last to first to keep the array order
+        // Doing the for loop that way results in unsigned int wrapping around\, so it doesnt work
         u8 actual_index = array->count - i - 1;
         write_expr(chunk, array->expressions[actual_index]);
     }
-
-    mtr_write_chunk(chunk, MTR_OP_INT);
-    u64 c = (u64) array->count;
-    write_u64(chunk, c);
 }
 
 static void write_and(struct mtr_chunk* chunk, struct mtr_binary* expr) {
@@ -316,18 +314,33 @@ static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr) {
 static void write(struct mtr_chunk* chunk, struct mtr_stmt* stmt);
 
 static void write_variable(struct mtr_chunk* chunk, struct mtr_variable* var) {
-
-    if (NULL == var->value) {
-        mtr_write_chunk(chunk, MTR_OP_NIL);
-    } else {
-        write_expr(chunk, var->value);
+    switch (var->symbol.type.type) {
+    case MTR_DATA_ARRAY: {
+        struct mtr_array_literal* a = (struct mtr_array_literal*) var->value;
+        if (a) {
+            write_array_literal(chunk, a);
+            mtr_write_chunk(chunk, MTR_OP_NEW_ARRAY);
+            mtr_write_chunk(chunk, a->count);
+        } else {
+            mtr_write_chunk(chunk, MTR_OP_NEW_ARRAY);
+        }
+        return;
     }
 
-    switch (var->symbol.type.type) {
-    case MTR_DATA_ARRAY: mtr_write_chunk(chunk, MTR_OP_NEW_ARRAY); return;
-    case MTR_DATA_MAP: mtr_write_chunk(chunk, MTR_OP_NEW_MAP); return;
-    default:
-        break;
+    case MTR_DATA_MAP: {
+        mtr_write_chunk(chunk, MTR_OP_NEW_MAP);
+        return;
+    }
+
+    default: {
+        if (NULL == var->value) {
+            mtr_write_chunk(chunk, MTR_OP_NIL);
+        } else {
+            write_expr(chunk, var->value);
+        }
+        return;
+    }
+
     }
 }
 

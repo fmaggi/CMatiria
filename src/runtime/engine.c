@@ -96,16 +96,16 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
 
             case MTR_OP_NEW_ARRAY: {
                 struct mtr_array* array = mtr_new_array();
-                struct mtr_object* o = (struct mtr_object*) array;
-                const mtr_value v = MTR_OBJ_VAL(o);
 
-                const mtr_value count = pop(engine);
+                const u8 count = READ(u8);
 
-                for (i64 i = 0; i < count.integer; ++i) {
+                for (i64 i = 0; i < count; ++i) {
                     const mtr_value elem = pop(engine);
                     mtr_array_append(array, elem);
                 }
 
+                struct mtr_object* o = (struct mtr_object*) array;
+                const mtr_value v = MTR_OBJ_VAL(o);
                 push(engine, v);
                 break;
             }
