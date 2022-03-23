@@ -1,8 +1,8 @@
 #ifndef MTR_SYMBOL_H
 #define MTR_SYMBOL_H
 
+#include "type.h"
 #include "scanner/token.h"
-#include "validator/type.h"
 #include "core/types.h"
 
 struct mtr_symbol {

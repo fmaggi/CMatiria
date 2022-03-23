@@ -96,21 +96,29 @@ struct mtr_type mtr_get_underlying_type(struct mtr_type type) {
     }
 }
 
-struct mtr_array_type* mtr_new_array_type(struct mtr_type type) {
+struct mtr_type mtr_new_array_type(struct mtr_type type) {
     struct mtr_array_type* a = malloc(sizeof(*a));
     a->type = type;
-    return a;
+
+    struct mtr_type t;
+    t.type = MTR_DATA_ARRAY;
+    t.obj = a;
+    return t;
 }
 
 
-struct mtr_map_type* mtr_new_map_type(struct mtr_type key, struct mtr_type value) {
+struct mtr_type mtr_new_map_type(struct mtr_type key, struct mtr_type value) {
     struct mtr_map_type* m = malloc(sizeof(*m));
     m->key = key;
     m->value = value;
-    return m;
+
+    struct mtr_type t;
+    t.type = MTR_DATA_MAP;
+    t.obj = m;
+    return t;
 }
 
-struct mtr_function_type* mtr_new_function_type(struct mtr_type return_, u8 argc, struct mtr_type* argv) {
+struct mtr_type mtr_new_function_type(struct mtr_type return_, u8 argc, struct mtr_type* argv) {
     struct mtr_function_type* f = malloc(sizeof(*f));
     f->return_ = return_;
     f->argc = argc;
@@ -119,5 +127,9 @@ struct mtr_function_type* mtr_new_function_type(struct mtr_type return_, u8 argc
         f->argv = malloc(sizeof(struct mtr_type) * argc);
         memcpy(f->argv, argv, sizeof(struct mtr_type) * argc);
     }
-    return f;
+
+    struct mtr_type t;
+    t.type = MTR_DATA_FN;
+    t.obj = f;
+    return t;
 }

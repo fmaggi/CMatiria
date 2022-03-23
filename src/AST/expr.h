@@ -8,6 +8,7 @@ enum mtr_expr_type {
     MTR_EXPR_BINARY,
     MTR_EXPR_PRIMARY,
     MTR_EXPR_LITERAL,
+    MTR_EXPR_ARRAY_LITERAL,
     MTR_EXPR_GROUPING,
     MTR_EXPR_UNARY,
     MTR_EXPR_CALL,
@@ -39,6 +40,12 @@ struct mtr_primary {
 struct mtr_literal {
     struct mtr_expr expr_;
     struct mtr_token literal;
+};
+
+struct mtr_array_literal {
+    struct mtr_expr expr_;
+    struct mtr_expr** expressions;
+    u8 count;
 };
 
 struct mtr_grouping {

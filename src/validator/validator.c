@@ -1,9 +1,10 @@
 #include "validator.h"
 
+#include "scope.h"
+
 #include "AST/expr.h"
 #include "AST/stmt.h"
-#include "type.h"
-#include "scope.h"
+#include "AST/type.h"
 
 #include "core/report.h"
 #include "core/log.h"
@@ -214,6 +215,25 @@ static struct mtr_type analyze_literal(struct mtr_literal* literal, struct mtr_s
     return t;
 }
 
+static struct mtr_type analyze_array_literal(struct mtr_array_literal* array, struct mtr_scope* scope, const char* const source) {
+    struct mtr_expr* first = array->expressions[0];
+    struct mtr_type array_type = analyze_expr(first, scope, source);
+
+    for (u8 i = 1; i < array->count; ++i) {
+        struct mtr_expr* e = array->expressions[i];
+        struct mtr_type t = analyze_expr(e, scope, source);
+        if (!mtr_type_match(array_type, t)) {
+            expr_error(e, "Array literal must contain expressions of the same type", source);
+            return invalid_type;
+        }
+    }
+
+    struct mtr_type type;
+    type = mtr_new_array_type(array_type);
+
+    return type;
+}
+
 static struct mtr_type analyze_call(struct mtr_call* call, struct mtr_scope* scope, const char* const source) {
     struct mtr_type type = analyze_expr(call->callable, scope, source);
     if (type.type != MTR_DATA_FN) {
@@ -293,6 +313,7 @@ static struct mtr_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* sco
     case MTR_EXPR_UNARY:    return analyze_unary(((struct mtr_unary*) expr), scope, source);
     case MTR_EXPR_PRIMARY:  return analyze_primary((struct mtr_primary*) expr, scope, source);
     case MTR_EXPR_LITERAL:  return analyze_literal((struct mtr_literal*) expr, scope, source);
+    case MTR_EXPR_ARRAY_LITERAL: return analyze_array_literal((struct mtr_array_literal*) expr, scope, source);
     case MTR_EXPR_CALL:     return analyze_call((struct mtr_call*) expr, scope, source);
     case MTR_EXPR_SUBSCRIPT: return analyze_subscript((struct mtr_subscript*) expr, scope, source);
     case MTR_EXPR_CAST:     IMPLEMENT return invalid_type;

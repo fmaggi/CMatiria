@@ -98,6 +98,14 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
                 struct mtr_array* array = mtr_new_array();
                 struct mtr_object* o = (struct mtr_object*) array;
                 const mtr_value v = MTR_OBJ_VAL(o);
+
+                const mtr_value count = pop(engine);
+
+                for (i64 i = 0; i < count.integer; ++i) {
+                    const mtr_value elem = pop(engine);
+                    mtr_array_append(array, elem);
+                }
+
                 push(engine, v);
                 break;
             }
@@ -187,6 +195,8 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
                     const size_t index = AS(size_t, i);
                     if (index >= array->size) {
                         IMPLEMENT // runtime error;
+                        MTR_LOG_ERROR("Indexing array of size %zu with index %zu", array->size, index);
+                        exit(-1);
                         break;
                     }
                     push(engine, array->elements[index]);
@@ -200,6 +210,7 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
                 }
                 default:
                     IMPLEMENT // runtime error
+                    exit(-1);
                     break;
                 }
                 break;
@@ -216,6 +227,8 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
                     const size_t index = AS(size_t, i);
                     if (index >= array->size) {
                         IMPLEMENT // runtime error;
+                        MTR_LOG_ERROR("Indexing array of size %zu with index %zu", array->size, index);
+                        exit(-1);
                         break;
                     }
                     array->elements[index] = val;
@@ -228,6 +241,7 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
                 }
                 default:
                     IMPLEMENT // runtime error
+                    exit(-1);
                     break;
                 }
                 break;

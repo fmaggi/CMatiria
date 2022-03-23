@@ -29,5 +29,5 @@ int main(int argc, char* argv[])
     mtr_delete_package(package);
     free(source);
 
-    return result;
+    return 0;
 }

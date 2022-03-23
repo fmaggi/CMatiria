@@ -1,6 +1,7 @@
+#include "AST/expr.h"
 #include "AST/stmt.h"
+#include "AST/type.h"
 #include "scanner/token.h"
-#include "validator/type.h"
 #ifndef NDEBUG
 
 #include "dump.h"
@@ -66,6 +67,12 @@ static void dump_expr(struct mtr_expr* expr, u32 offset) {
         MTR_PRINT_DEBUG("%.*s", (u32) l->literal.length, l->literal.start);
         break;
     }
+
+    case MTR_EXPR_ARRAY_LITERAL:{
+        IMPLEMENT
+        return;
+    }
+
     case MTR_EXPR_CAST:
         IMPLEMENT
         break;

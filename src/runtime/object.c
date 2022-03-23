@@ -37,6 +37,8 @@ void mtr_delete_object(struct mtr_object* object) {
     }
 }
 
+// Function
+
 static void native_fn_call(struct mtr_object* function, struct mtr_engine* engine, u8 argc) {
     struct mtr_native_fn* n = (struct mtr_native_fn*) function;
     mtr_value val = n->function(argc, engine->stack_top - argc);
@@ -64,6 +66,10 @@ struct mtr_function* mtr_new_function(struct mtr_chunk chunk) {
     fn->chunk = chunk;
     return fn;
 }
+
+// Function End
+
+// Array
 
 struct mtr_array* mtr_new_array(void) {
     struct mtr_array* a = malloc(sizeof(*a));
@@ -96,6 +102,10 @@ mtr_value mtr_array_pop(struct mtr_array* array) {
     return array->elements[--array->size];
 }
 
+// Array end
+
+// Map
+
 #define LOAD_FACTOR 0.75
 
 struct map_entry {
@@ -123,6 +133,11 @@ void mtr_delete_map(struct mtr_map* map) {
     map->size = 0;
     free(map);
 }
+
+/**
+*  TODO: (fran)
+*  Maps are very wrong. Need to fix them;
+*/
 
 // got it from http://web.archive.org/web/20071223173210/http:/www.concentric.net/~Ttwang/tech/inthash.htm
 static u32 hashi64(i64 key) {
@@ -211,3 +226,5 @@ mtr_value mtr_map_remove(struct mtr_map* map, mtr_value key) {
     entry->is_tombstone = true;
     return entry->value;
 }
+
+// Map end

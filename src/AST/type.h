@@ -40,14 +40,14 @@ struct mtr_array_type {
     struct mtr_type type;
 };
 
-struct mtr_array_type* mtr_new_array_type(struct mtr_type type);
+struct mtr_type mtr_new_array_type(struct mtr_type type);
 
 struct mtr_map_type {
     struct mtr_type key;
     struct mtr_type value;
 };
 
-struct mtr_map_type* mtr_new_map_type(struct mtr_type key, struct mtr_type value);
+struct mtr_type mtr_new_map_type(struct mtr_type key, struct mtr_type value);
 
 struct mtr_function_type {
     struct mtr_type return_;
@@ -55,6 +55,6 @@ struct mtr_function_type {
     u8 argc;
 };
 
-struct mtr_function_type* mtr_new_function_type(struct mtr_type return_, u8 argc, struct mtr_type* argv);
+struct mtr_type mtr_new_function_type(struct mtr_type return_, u8 argc, struct mtr_type* argv);
 
 #endif

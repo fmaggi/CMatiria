@@ -1,0 +1,17 @@
+fn main() {
+    Int i := 0;
+    Int count := 10;
+
+    Int fib1 := 0;
+    Int fib2 := 1;
+
+    while i < count {
+        print(fib1);
+        Int swap := fib1 + fib2;
+        fib1 := fib2;
+        fib2 := swap;
+        i := i + 1;
+    }
+}
+
+fn print(Int x) ...

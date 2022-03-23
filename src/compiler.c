@@ -2,11 +2,14 @@
 
 #include "AST/expr.h"
 #include "AST/stmt.h"
-#include "runtime/object.h"
+
 #include "scanner/scanner.h"
+
 #include "parser/parser.h"
-#include "validator/type.h"
+
 #include "validator/validator.h"
+
+#include "runtime/object.h"
 
 #include "bytecode.h"
 #include "package.h"
@@ -134,6 +137,17 @@ static void write_literal(struct mtr_chunk* chunk, struct mtr_literal* expr) {
         MTR_LOG_WARN("Invalid type");
         break;
     }
+}
+
+static void write_array_literal(struct mtr_chunk* chunk, struct mtr_array_literal* array) {
+    for (u8 i = 0; i < array->count; ++i) {
+        u8 actual_index = array->count - i - 1;
+        write_expr(chunk, array->expressions[actual_index]);
+    }
+
+    mtr_write_chunk(chunk, MTR_OP_INT);
+    u64 c = (u64) array->count;
+    write_u64(chunk, c);
 }
 
 static void write_and(struct mtr_chunk* chunk, struct mtr_binary* expr) {
@@ -290,6 +304,7 @@ static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr) {
     case MTR_EXPR_BINARY:  write_binary(chunk, (struct mtr_binary*) expr); return;
     case MTR_EXPR_PRIMARY: write_primary(chunk, (struct mtr_primary*) expr); return;
     case MTR_EXPR_LITERAL: write_literal(chunk, (struct mtr_literal*) expr); return;
+    case MTR_EXPR_ARRAY_LITERAL: write_array_literal(chunk, (struct mtr_array_literal*) expr); return;
     case MTR_EXPR_UNARY:   write_unary(chunk, (struct mtr_unary*) expr); return;
     case MTR_EXPR_GROUPING: write_expr(chunk, ((struct mtr_grouping*) expr)->expression); return;
     case MTR_EXPR_CALL: write_call(chunk, (struct mtr_call*) expr); return;
@@ -301,17 +316,18 @@ static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr) {
 static void write(struct mtr_chunk* chunk, struct mtr_stmt* stmt);
 
 static void write_variable(struct mtr_chunk* chunk, struct mtr_variable* var) {
+
+    if (NULL == var->value) {
+        mtr_write_chunk(chunk, MTR_OP_NIL);
+    } else {
+        write_expr(chunk, var->value);
+    }
+
     switch (var->symbol.type.type) {
     case MTR_DATA_ARRAY: mtr_write_chunk(chunk, MTR_OP_NEW_ARRAY); return;
     case MTR_DATA_MAP: mtr_write_chunk(chunk, MTR_OP_NEW_MAP); return;
     default:
         break;
-    }
-
-    if (var->value) {
-        write_expr(chunk, var->value);
-    } else {
-        mtr_write_chunk(chunk, MTR_OP_NIL);
     }
 }
 

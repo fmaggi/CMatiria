@@ -2,8 +2,9 @@
 
 #include "AST/expr.h"
 #include "AST/stmt.h"
-#include "core/types.h"
+#include "AST/type.h"
 
+#include "core/types.h"
 #include "core/report.h"
 #include "core/log.h"
 
@@ -13,7 +14,6 @@
 
 #include "debug/dump.h"
 #include "scanner/token.h"
-#include "validator/type.h"
 
 #define ALLOCATE_EXPR(type, expr) allocate_expr(type, sizeof(struct expr))
 #define ALLOCATE_STMT(type, stmt) allocate_stmt(type, sizeof(struct stmt))
@@ -132,6 +132,7 @@ static struct mtr_expr* binary(struct mtr_parser* parser, struct mtr_token op, s
 static struct mtr_expr* grouping(struct mtr_parser* parser, struct mtr_token token);
 static struct mtr_expr* primary(struct mtr_parser* parser, struct mtr_token primary);
 static struct mtr_expr* literal(struct mtr_parser* parser, struct mtr_token literal);
+static struct mtr_expr* array_literal(struct mtr_parser* parser, struct mtr_token paren);
 static struct mtr_expr* call(struct mtr_parser* parser, struct mtr_token paren, struct mtr_expr* name);
 static struct mtr_expr* subscript(struct mtr_parser* parser, struct mtr_token square, struct mtr_expr* object);
 
@@ -149,7 +150,7 @@ static const struct parser_rule rules[] = {
     [MTR_TOKEN_DOT] = { .prefix = NULL, .infix = NULL, .precedence = NONE },
     [MTR_TOKEN_PAREN_L] = { .prefix = grouping, .infix = call, .precedence = CALL },
     [MTR_TOKEN_PAREN_R] = { NO_OP },
-    [MTR_TOKEN_SQR_L] = { .prefix = NULL, .infix = subscript, .precedence = SUB },
+    [MTR_TOKEN_SQR_L] = { .prefix = array_literal, .infix = subscript, .precedence = SUB },
     [MTR_TOKEN_SQR_R] = { NO_OP },
     [MTR_TOKEN_CURLY_L] = { NO_OP },
     [MTR_TOKEN_CURLY_R] = { NO_OP },
@@ -204,8 +205,8 @@ static struct mtr_expr* parse_precedence(struct mtr_parser* parser, enum precede
         struct mtr_token t = advance(parser);
         infix_fn infix = rules[t.type].infix;
         if (NULL == infix) {
-            parser_error(parser, "Expected operator or '{'.");
-            return node;
+            parser_error(parser, "Invalid expression :(.");
+            exit(-1); // this is a hack until I can thiunk of a way to parse conditions properly
         }
         node = infix(parser, t, node);
     }
@@ -248,31 +249,57 @@ static struct mtr_expr* literal(struct mtr_parser* parser, struct mtr_token lite
     return (struct mtr_expr*) node;
 }
 
+static struct mtr_expr* array_literal(struct mtr_parser* parser, struct mtr_token paren) {
+    struct mtr_array_literal* node = ALLOCATE_EXPR(MTR_EXPR_ARRAY_LITERAL, mtr_array_literal);
+
+    u8 count = 0;
+    struct mtr_expr* exprs[255];
+    bool cont = true;
+    while (count < 255 && cont) {
+        exprs[count++] = expression(parser);
+        if (CHECK(MTR_TOKEN_SQR_R)) {
+            advance(parser);
+            break;
+        }
+
+        cont = consume(parser, MTR_TOKEN_COMMA, "Expected ','.").type == MTR_TOKEN_COMMA; // this is ugly as fuck
+    }
+
+    node->count = count;
+    node->expressions = malloc(sizeof(struct mtr_expr*) * count);
+    memcpy(node->expressions, exprs, sizeof(struct mtr_expr*) * count);
+
+    return (struct mtr_expr*) node;
+}
+
 static struct mtr_expr* call(struct mtr_parser* parser, struct mtr_token paren, struct mtr_expr* name) {
     struct mtr_call* node = ALLOCATE_EXPR(MTR_EXPR_CALL, mtr_call);
     node->callable = name;
+    node->argc = 0;
+    node->argv = NULL;
+
+    if (CHECK(MTR_TOKEN_PAREN_R)) {
+        // skip args because function has no params
+        advance(parser);
+        return (struct mtr_expr*) node;
+    }
 
     u8 argc = 0;
     struct mtr_expr* exprs[255];
     bool cont = true;
-    while (argc < 255 && !CHECK(MTR_TOKEN_PAREN_R) && cont) {
+    while (argc < 255 && cont) {
         exprs[argc++] = expression(parser);
-        if (CHECK(MTR_TOKEN_PAREN_R))
+        if (CHECK(MTR_TOKEN_PAREN_R)) {
+            advance(parser);
             break;
+        }
         cont = consume(parser, MTR_TOKEN_COMMA, "Expected ','.").type == MTR_TOKEN_COMMA;
     }
 
-    // I think this is useless. Either that or error reporting is broken.
-    consume(parser, MTR_TOKEN_PAREN_R, "Expected ')'.");
-
     node->argc = argc;
     node->argv = malloc(sizeof(struct mtr_expr*) * argc);
-    if (NULL == node->argv) {
-        MTR_LOG_ERROR("Bad allocation.");
-        free(node);
-        return NULL;
-    }
     memcpy(node->argv, exprs, sizeof(struct mtr_expr*) * argc);
+
     return (struct mtr_expr*) node;
 }
 
@@ -294,38 +321,15 @@ static struct mtr_type parse_type(struct mtr_parser* parser);
 
 static struct mtr_type array_or_map(struct mtr_parser* parser) {
     struct mtr_type ret_type = invalid_type;
-    ret_type.type = MTR_DATA_ARRAY;
 
-    struct mtr_type type1 = invalid_type;
-
-    switch (parser->token.type) {
-    case MTR_TOKEN_INT:
-    case MTR_TOKEN_FLOAT:
-    case MTR_TOKEN_BOOL:
-    case MTR_TOKEN_IDENTIFIER: {
-        type1 = mtr_get_data_type(advance(parser));
-        break;
-    }
-
-    case MTR_TOKEN_SQR_L: {
-        advance(parser);
-        type1 = array_or_map(parser);
-        consume(parser, MTR_TOKEN_SQR_R, "Expected ']'.");
-        break;
-    }
-
-    default:
-        parser_error(parser, "Expected a type expression.");
-        break;
-    }
+    struct mtr_type type1 = parse_type(parser);
 
     if (CHECK(MTR_TOKEN_COMMA)) {
         advance(parser);
         struct mtr_type type2 = parse_type(parser);
-        ret_type.type = MTR_DATA_MAP;
-        ret_type.obj = mtr_new_map_type(type1, type2);
+        ret_type = mtr_new_map_type(type1, type2);
     } else {
-        ret_type.obj = mtr_new_array_type(type1);
+        ret_type = mtr_new_array_type(type1);
     }
 
     return ret_type;
@@ -335,6 +339,7 @@ static struct mtr_type parse_type(struct mtr_parser* parser) {
     struct mtr_type type = invalid_type;
 
     switch (parser->token.type) {
+
     case MTR_TOKEN_INT:
     case MTR_TOKEN_FLOAT:
     case MTR_TOKEN_BOOL: {
@@ -350,9 +355,11 @@ static struct mtr_type parse_type(struct mtr_parser* parser) {
         break;
     }
 
-    default:
+    default: {
         parser_error(parser, "Expected a type expression.");
         break;
+    }
+
     }
 
     return type;
@@ -409,13 +416,14 @@ static struct mtr_stmt* if_stmt(struct mtr_parser* parser) {
 
     advance(parser);
     node->condition = expression(parser);
+    consume(parser, MTR_TOKEN_COLON, "Expected ':'.");
 
-    node->then = block(parser);
+    node->then = declaration(parser);
     node->otherwise = NULL;
 
     if (CHECK(MTR_TOKEN_ELSE)) {
         advance(parser);
-        node->otherwise = block(parser);
+        node->otherwise = declaration(parser);
     }
 
     return (struct mtr_stmt*) node;
@@ -426,7 +434,8 @@ static struct mtr_stmt* while_stmt(struct mtr_parser* parser) {
 
     advance(parser);
     node->condition = expression(parser);
-    node->body = block(parser);
+    consume(parser, MTR_TOKEN_COLON, "Expected ':'.");
+    node->body = declaration(parser);
 
     return (struct mtr_stmt*) node;
 }
@@ -469,8 +478,14 @@ static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
     u32 argc = 0;
     struct mtr_variable vars[255];
     struct mtr_type types[255];
+
+    if (CHECK(MTR_TOKEN_PAREN_R)) {
+        advance(parser);
+        goto type_check;
+    }
+
     bool cont = true;
-    while (argc < 255 && !CHECK(MTR_TOKEN_PAREN_R) && cont) {
+    while (argc < 255 && cont) {
         struct mtr_variable* var = vars + argc;
         struct mtr_type* type = types + argc;
         ++argc;
@@ -479,16 +494,17 @@ static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
         var->symbol.token = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
         var->value = NULL;
 
-        if (CHECK(MTR_TOKEN_PAREN_R))
+        if (CHECK(MTR_TOKEN_PAREN_R)) {
+            advance(parser);
             break;
+        }
 
         cont = consume(parser, MTR_TOKEN_COMMA, "Expected ','.").type == MTR_TOKEN_COMMA;
     }
 
-    if (argc > 255)
+    if (argc > 255) {
         parser_error(parser, "Exceded maximum number of arguments (255)");
-
-    consume(parser, MTR_TOKEN_PAREN_R, "Expected ')'."); // need to check again in case we broke out of the loop because of arg count
+    }
 
     node->argc = argc;
     node->argv = NULL;
@@ -501,6 +517,8 @@ static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
             memcpy(node->argv, vars, sizeof(struct mtr_variable) * argc);
     }
 
+type_check:; // this is some weird shit with labels. prob a clang bug
+
     struct mtr_type return_type;
     return_type.type = MTR_DATA_VOID;
     return_type.obj = NULL;
@@ -508,8 +526,8 @@ static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
         advance(parser);
         return_type = parse_type(parser);
     }
-    node->symbol.type.type = MTR_DATA_FN;
-    node->symbol.type.obj = mtr_new_function_type(return_type, argc, types);
+
+    node->symbol.type = mtr_new_function_type(return_type, argc, types);
 
     parser->current_function = node;
 
@@ -519,6 +537,7 @@ static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
         advance(parser);
         return (struct mtr_stmt*) node;
     }
+
     node->body = (struct mtr_block*) block(parser);
 
     return (struct mtr_stmt*) node;
@@ -768,6 +787,15 @@ static void free_literal(struct mtr_literal* node) {
     free(node);
 }
 
+static void free_array_lit(struct mtr_array_literal* node) {
+    for (u8 i = 0; i < node->count; ++i) {
+        mtr_free_expr(node->expressions[i]);
+    }
+    free(node->expressions);
+    node->expressions = NULL;
+    free(node);
+}
+
 static void free_call(struct mtr_call* node) {
     if (node->argc > 0) {
         for (u8 i = 0; i < node->argc; ++i) {
@@ -805,6 +833,7 @@ void mtr_free_expr(struct mtr_expr* node) {
     case MTR_EXPR_PRIMARY:  free_primary((struct mtr_primary*) node); return;
     case MTR_EXPR_UNARY:    free_unary((struct mtr_unary*) node); return;
     case MTR_EXPR_LITERAL:  free_literal((struct mtr_literal*) node); return;
+    case MTR_EXPR_ARRAY_LITERAL: free_array_lit((struct mtr_array_literal*) node); return;
     case MTR_EXPR_CALL:     free_call((struct mtr_call*) node); return;
     case MTR_EXPR_CAST:     free_cast((struct mtr_cast*) node); return;
     case MTR_EXPR_SUBSCRIPT: free_sub((struct mtr_subscript*) node); return;

@@ -49,6 +49,10 @@ struct mtr_variable {
     struct mtr_expr* value;
 };
 
+// I dont know whether to use a token or a var to store args.
+// Using a var stores a pointer to an expression for default arguments
+// but it means I store types twice.
+// I store args type in the function type so that it is available when type-checking a call
 struct mtr_function_decl {
     struct mtr_stmt stmt;
     struct mtr_block* body;

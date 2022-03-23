@@ -1,7 +1,6 @@
 #ifndef MTR_OBJECT_H
 #define MTR_OBJECT_H
 
-#include "validator/type.h"
 #include "value.h"
 #include "bytecode.h"
 
