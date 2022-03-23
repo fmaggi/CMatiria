@@ -202,12 +202,12 @@ static struct mtr_expr* parse_precedence(struct mtr_parser* parser, enum precede
     struct mtr_expr* node = prefix(parser, token);
 
     while (precedece <= rules[parser->token.type].precedence) {
-        struct mtr_token t = advance(parser);
-        infix_fn infix = rules[t.type].infix;
+        infix_fn infix = rules[parser->token.type].infix;
         if (NULL == infix) {
             parser_error(parser, "Invalid expression :(.");
-            exit(-1); // this is a hack until I can thiunk of a way to parse conditions properly
+            break;
         }
+        struct mtr_token t = advance(parser);
         node = infix(parser, t, node);
     }
 
