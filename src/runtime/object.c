@@ -1,11 +1,13 @@
 #include "object.h"
 
-#include "AST/expr.h"
 #include "bytecode.h"
 #include "engine.h"
+#include "value.h"
+
+#include "AST/expr.h"
 
 #include "core/log.h"
-#include "runtime/value.h"
+#include "core/utils.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -155,29 +157,42 @@ void mtr_delete_map(struct mtr_map* map) {
     free(map);
 }
 
-/**
-*  TODO: (fran)
-*  Maps are very wrong. Need to fix them;
-*/
+static u32 hash_val(mtr_value key) {
+    if (key.type == MTR_VAL_OBJ) {
+        struct mtr_object* obj = key.object;
+        if (obj->type != MTR_OBJ_STRING) { // this should be unlikely if not impossible because of the type check done before
+            MTR_LOG_ERROR("Object is not hashable.");
+            exit(-1);
+        }
+        struct mtr_string* s = (struct mtr_string*) obj;
+        return hash(s->s, s->length);
+    }
+    return hashi64(key.integer);
+}
 
-// got it from http://web.archive.org/web/20071223173210/http:/www.concentric.net/~Ttwang/tech/inthash.htm
-static u32 hashi64(i64 key) {
-    key = (~key) + (key << 18);
-    key = key ^ (key >> 31);
-    key = key * 21;
-    key = key ^ (key >> 11);
-    key = key + (key << 6);
-    key = key ^ (key >> 22);
-    return (u32) key;
+static bool compare_keys(mtr_value entry_key, mtr_value key) {
+    if (entry_key.type == MTR_VAL_OBJ && key.type == MTR_VAL_OBJ) {
+        struct mtr_object* entry_obj = entry_key.object;
+        struct mtr_object* obj = key.object;
+        if (entry_obj->type != MTR_OBJ_STRING || obj->type != MTR_OBJ_STRING) { // this should be unlikely if not impossible because of the type check done before
+            MTR_LOG_ERROR("Object is not hashable.");
+            exit(-1);
+        }
+        struct mtr_string* entry_s = (struct mtr_string*) entry_obj;
+        struct mtr_string* s = (struct mtr_string*) obj;
+        return entry_s->length == s->length && memcmp(entry_s->s, s->s, s->length) == 0;;
+    }
+    return entry_key.integer == key.integer;
 }
 
 static struct map_entry* find_entry(struct map_entry* entries, mtr_value key, size_t cap, bool return_tombstone) {
-    u32 hash_ = hashi64(key.integer);
+    u32 hash_ = hash_val(key);
     u32 index = hash_ & (cap - 1);
 
     struct map_entry* entry = entries + index;
     while (entry->is_used && !(return_tombstone && entry->is_tombstone)) {
-        if (entry->key.integer == key.integer) {
+        bool same = compare_keys(entry->key, key);
+        if (same) {
             break;
         }
 

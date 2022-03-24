@@ -2,6 +2,7 @@
 
 #include "bytecode.h"
 #include "core/log.h"
+#include "runtime/value.h"
 
 u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {
     MTR_PRINT("%04d ", offset);
@@ -172,7 +173,11 @@ void mtr_disassemble(struct mtr_chunk chunk, const char* name) {
 void mtr_dump_stack(mtr_value* stack, mtr_value* top) {
     MTR_PRINT_DEBUG("[");
     while(stack < top) {
-        MTR_PRINT_DEBUG("%li,", stack->integer);
+        switch (stack->type) {
+        case MTR_VAL_INT: MTR_PRINT_DEBUG("%li,", stack->integer); break;
+        case MTR_VAL_FLOAT: MTR_PRINT_DEBUG("%f,", stack->floating); break;
+        case MTR_VAL_OBJ: MTR_PRINT_DEBUG("%p,", (void*)stack->object); break;
+        }
         stack++;
     }
     MTR_LOG("]");

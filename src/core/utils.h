@@ -12,4 +12,16 @@ static inline u32 hash(const char* key, size_t length) {
     return hash;
 }
 
+// got it from http://web.archive.org/web/20071223173210/http:/www.concentric.net/~Ttwang/tech/inthash.htm
+static inline u32 hashi64(i64 key) {
+    key = (~key) + (key << 18);
+    key = key ^ (key >> 31);
+    key = key * 21;
+    key = key ^ (key >> 11);
+    key = key + (key << 6);
+    key = key ^ (key >> 22);
+    return (u32) key;
+}
+
+
 #endif

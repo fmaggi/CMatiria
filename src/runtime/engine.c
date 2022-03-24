@@ -57,8 +57,8 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
     u8* end = chunk.bytecode + chunk.size;
     while (ip < end) {
 
-        mtr_dump_stack(engine->stack, engine->stack_top);
-        mtr_disassemble_instruction(ip, ip - chunk.bytecode);
+        // mtr_dump_stack(engine->stack, engine->stack_top);
+        // mtr_disassemble_instruction(ip, ip - chunk.bytecode);
 
         switch (*ip++)
         {
@@ -90,12 +90,10 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
 
             case MTR_OP_STRING_LITERAL: {
                 const char* string = READ(const char*);
-                // MTR_LOG_TRACE("%p", (void*)string);
                 u32 length = READ(u32);
-                i64 s = AS(i64, string);
-                i64 l = AS(i64, length);
-                push(engine, MTR_INT_VAL(s));
-                push(engine, MTR_INT_VAL(l));
+                struct mtr_string* s = mtr_new_string(string, length);
+                struct mtr_object* o = (struct mtr_object*) s;
+                push(engine, MTR_OBJ_VAL(o));
                 break;
             }
 
@@ -106,20 +104,14 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
             }
 
             case MTR_OP_NEW_STRING: {
-                u32 length = 0;
-                const char* string = NULL;
-                mtr_value l = pop(engine);
-                length = AS(u32, l.integer);
-                if (length > 0) {
-                    mtr_value s = pop(engine);
-                    string = AS(const char*, s.integer);
-                    // MTR_LOG_TRACE("%p", (void*)string);
+                mtr_value string = pop(engine);
+                if (NULL == string.object) {
+                    struct mtr_string* string_object = mtr_new_string(NULL, 0);
+                    struct mtr_object* o = (struct mtr_object*) string_object;
+                    push(engine, MTR_OBJ_VAL(o));
+                } else {
+                    push(engine, string);
                 }
-
-                struct mtr_string* m_string = mtr_new_string(string, length);
-                struct mtr_object* o = (struct mtr_object*) m_string;
-
-                push(engine, MTR_OBJ_VAL(o));
                 break;
             }
 
@@ -140,6 +132,7 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
             }
 
             case MTR_OP_NEW_MAP: {
+                pop(engine);
                 struct mtr_map* map = mtr_new_map();
                 struct mtr_object* o = (struct mtr_object*) map;
                 const mtr_value v = MTR_OBJ_VAL(o);
@@ -224,7 +217,7 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
                     const size_t index = AS(size_t, i);
                     if (index >= string->length) {
                         IMPLEMENT // runtime error;
-                        MTR_LOG_ERROR("Indexing array of size %zu with index %zu", string->length, index);
+                        MTR_LOG_ERROR("Indexing string of size %zu with index %zu", string->length, index);
                         exit(-1);
                         break;
                     }
@@ -290,8 +283,7 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
                     break;
                 }
                 default:
-                    IMPLEMENT // runtime error
-                    exit(-1);
+                    MTR_ASSERT(false, "Invalid object type");
                     break;
                 }
                 break;

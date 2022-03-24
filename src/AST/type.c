@@ -58,6 +58,13 @@ static void delete_object_type(mtr_object_type* obj, enum mtr_data_type type) {
         free(a);
         return;
     }
+    case MTR_DATA_MAP: {
+        struct mtr_map_type* m = (struct mtr_map_type*) obj;
+        mtr_delete_type(m->key);
+        mtr_delete_type(m->value);
+        free(m);
+        return;
+    }
     case MTR_DATA_FN: {
         struct mtr_function_type* f = (struct mtr_function_type*) obj;
         mtr_delete_type(f->return_);
