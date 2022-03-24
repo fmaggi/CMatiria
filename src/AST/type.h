@@ -17,6 +17,7 @@ enum mtr_data_type {
     MTR_DATA_BOOL,
     MTR_DATA_INT,
     MTR_DATA_FLOAT,
+    MTR_DATA_STRING,
 };
 
 typedef void mtr_object_type;

@@ -8,9 +8,16 @@
 #include "runtime/value.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 void mtr_delete_object(struct mtr_object* object) {
     switch (object->type) {
+    case MTR_OBJ_STRING: {
+        struct mtr_string* s = (struct mtr_string*) object;
+        free(s->s);
+        free(s);
+        break;
+    }
     case MTR_OBJ_ARRAY: {
         struct mtr_array* a = (struct mtr_array*) object;
         free(a->elements);
@@ -103,6 +110,20 @@ mtr_value mtr_array_pop(struct mtr_array* array) {
 }
 
 // Array end
+
+// String
+
+struct mtr_string* mtr_new_string(const char* string, size_t length) {
+    struct mtr_string* s = malloc(sizeof(*s));
+    s->obj.type = MTR_OBJ_STRING;
+
+    s->s = malloc(sizeof(char) * length);
+    memcpy(s->s, string, sizeof(char) * length);
+    s->length = length;
+    return s;
+}
+
+// String end
 
 // Map
 

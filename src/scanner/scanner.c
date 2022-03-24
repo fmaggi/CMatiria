@@ -1,4 +1,5 @@
 #include "scanner.h"
+#include "scanner/token.h"
 
 #include <string.h>
 
@@ -18,7 +19,7 @@ struct keyword_entry {
 };
 
 #define FIRST_KEYWORD MTR_TOKEN_LET
-#define LAST_KEYWORD  MTR_TOKEN_BOOL
+#define LAST_KEYWORD  MTR_TOKEN_STRING
 #define KEYWORD_COUNT LAST_KEYWORD - FIRST_KEYWORD + 1
 
 static const struct keyword_entry keywords[KEYWORD_COUNT] = {
@@ -35,6 +36,7 @@ static const struct keyword_entry keywords[KEYWORD_COUNT] = {
     { .type = MTR_TOKEN_INT,    .str = "Int",    .str_len = strlen("Int")    },
     { .type = MTR_TOKEN_FLOAT,  .str = "Float",  .str_len = strlen("Float")  },
     { .type = MTR_TOKEN_BOOL,   .str = "Bool",   .str_len = strlen("Bool")   },
+    { .type = MTR_TOKEN_STRING, .str = "String", .str_len = strlen("String") }
 };
 
 const struct mtr_token invalid_token = {

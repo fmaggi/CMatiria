@@ -2,6 +2,7 @@
 
 #include "core/log.h"
 #include "debug/dump.h"
+#include "scanner/token.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -10,6 +11,43 @@ const struct mtr_type invalid_type = {
     .type = MTR_DATA_INVALID,
     .obj = NULL
 };
+
+struct mtr_type mtr_get_data_type(struct mtr_token type) {
+    struct mtr_type t = invalid_type;
+    switch (type.type)
+    {
+    case MTR_TOKEN_INT_LITERAL:
+    case MTR_TOKEN_INT:
+        t.type = MTR_DATA_INT;
+        break;
+
+    case MTR_TOKEN_FLOAT_LITERAL:
+    case MTR_TOKEN_FLOAT:
+        t.type = MTR_DATA_FLOAT;
+        break;
+
+    case MTR_TOKEN_BOOL:
+    case MTR_TOKEN_TRUE:
+    case MTR_TOKEN_FALSE:
+        t.type = MTR_DATA_BOOL;
+        break;
+
+    case MTR_TOKEN_STRING_LITERAL:
+    case MTR_TOKEN_STRING: {
+        t.type = MTR_DATA_STRING;
+        break;
+    }
+
+    case MTR_TOKEN_IDENTIFIER:
+        t.type = MTR_DATA_USER_DEFINED;
+        break;
+
+    default:
+        MTR_LOG_DEBUG("Invalid data type  %s", mtr_token_type_to_str(type.type));
+        break;
+    }
+    return t;
+}
 
 static void delete_object_type(mtr_object_type* obj, enum mtr_data_type type) {
     switch (type) {

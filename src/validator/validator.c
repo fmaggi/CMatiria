@@ -95,42 +95,12 @@ static struct mtr_type get_operator_type(struct mtr_token op, struct mtr_type lh
     return t;
 }
 
-struct mtr_type mtr_get_data_type(struct mtr_token type) {
-    struct mtr_type t = invalid_type;
-    switch (type.type)
-    {
-    case MTR_TOKEN_INT_LITERAL:
-    case MTR_TOKEN_INT:
-        t.type = MTR_DATA_INT;
-        break;
-
-    case MTR_TOKEN_FLOAT_LITERAL:
-    case MTR_TOKEN_FLOAT:
-        t.type = MTR_DATA_FLOAT;
-        break;
-
-    case MTR_TOKEN_BOOL:
-    case MTR_TOKEN_TRUE:
-    case MTR_TOKEN_FALSE:
-        t.type =  MTR_DATA_BOOL;
-        break;
-
-    case MTR_TOKEN_IDENTIFIER:
-        t.type = MTR_DATA_USER_DEFINED;
-        break;
-
-    default:
-        MTR_LOG_DEBUG("Invalid data type  %s", mtr_token_type_to_str(type.type));
-        break;
-    }
-    return t;
-}
-
 static struct mtr_cast* try_promoting(struct mtr_expr* expr, struct mtr_type type, struct mtr_type to) {
     switch (type.type) {
 
     case MTR_DATA_INVALID:
     case MTR_DATA_USER_DEFINED:
+    case MTR_DATA_STRING:
     case MTR_DATA_ARRAY:
     case MTR_DATA_MAP:
     case MTR_DATA_FN:

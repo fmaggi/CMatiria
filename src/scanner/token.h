@@ -37,6 +37,7 @@ enum mtr_token_type {
     MTR_TOKEN_INT,
     MTR_TOKEN_FLOAT,
     MTR_TOKEN_BOOL,
+    MTR_TOKEN_STRING,
 
     MTR_TOKEN_IDENTIFIER,
 

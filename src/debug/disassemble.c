@@ -34,9 +34,19 @@ u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {
         break;
     }
 
+    case MTR_OP_STRING_LITERAL: {
+        MTR_LOG("STR");
+        break;
+    }
+
     case MTR_OP_NIL:
         MTR_LOG("NIL");
         break;
+
+    case MTR_OP_NEW_STRING: {
+        MTR_LOG("sNEW");
+        break;
+    }
 
     case MTR_OP_NEW_ARRAY: {
         MTR_LOG("aNEW");
@@ -143,6 +153,8 @@ u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {
         MTR_LOG("fCAST");
         break;
     }
+    default:
+        MTR_ASSERT(false, "Invalid op code");
     }
     return instruction;
 #undef READ

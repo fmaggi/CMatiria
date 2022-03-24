@@ -3,10 +3,12 @@
 #include "AST/expr.h"
 #include "AST/stmt.h"
 
+#include "AST/type.h"
 #include "scanner/scanner.h"
 
 #include "parser/parser.h"
 
+#include "scanner/token.h"
 #include "validator/validator.h"
 
 #include "runtime/object.h"
@@ -66,12 +68,12 @@ static void write_u64(struct mtr_chunk* chunk, u64 value) {
     mtr_write_chunk(chunk, (u8) (value >> 56));
 }
 
-// static void write_u32(struct mtr_chunk* chunk, u32 value) {
-//     mtr_write_chunk(chunk, (u8) (value >> 0));
-//     mtr_write_chunk(chunk, (u8) (value >> 8));
-//     mtr_write_chunk(chunk, (u8) (value >> 16));
-//     mtr_write_chunk(chunk, (u8) (value >> 24));
-// }
+static void write_u32(struct mtr_chunk* chunk, u32 value) {
+    mtr_write_chunk(chunk, (u8) (value >> 0));
+    mtr_write_chunk(chunk, (u8) (value >> 8));
+    mtr_write_chunk(chunk, (u8) (value >> 16));
+    mtr_write_chunk(chunk, (u8) (value >> 24));
+}
 
 static void write_u16(struct mtr_chunk* chunk, u16 value) {
     mtr_write_chunk(chunk, (u8) (value >> 0));
@@ -124,6 +126,14 @@ static void write_literal(struct mtr_chunk* chunk, struct mtr_literal* expr) {
         break;
     }
 
+    case MTR_TOKEN_STRING_LITERAL: {
+        mtr_write_chunk(chunk, MTR_OP_STRING_LITERAL);
+        const char* string_start = expr->literal.start+1; // skip opening "
+        write_u64(chunk, AS(u64, string_start));
+        write_u32(chunk, expr->literal.length - 2); // skip closing "
+        break;
+    }
+
     case MTR_TOKEN_TRUE: {
         mtr_write_chunk(chunk, MTR_OP_TRUE);
         break;
@@ -146,6 +156,9 @@ static void write_array_literal(struct mtr_chunk* chunk, struct mtr_array_litera
         u8 actual_index = array->count - i - 1;
         write_expr(chunk, array->expressions[actual_index]);
     }
+
+    mtr_write_chunk(chunk, MTR_OP_INT);
+    write_u64(chunk, array->count);
 }
 
 static void write_and(struct mtr_chunk* chunk, struct mtr_binary* expr) {
@@ -314,17 +327,22 @@ static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr) {
 static void write(struct mtr_chunk* chunk, struct mtr_stmt* stmt);
 
 static void write_variable(struct mtr_chunk* chunk, struct mtr_variable* var) {
+
+    if (NULL == var->value) {
+        mtr_write_chunk(chunk, MTR_OP_NIL);
+    } else {
+        write_expr(chunk, var->value);
+    }
+
     switch (var->symbol.type.type) {
+    case MTR_DATA_STRING: {
+        mtr_write_chunk(chunk, MTR_OP_NEW_STRING);
+        break;
+    }
+
     case MTR_DATA_ARRAY: {
-        struct mtr_array_literal* a = (struct mtr_array_literal*) var->value;
-        if (a) {
-            write_array_literal(chunk, a);
-            mtr_write_chunk(chunk, MTR_OP_NEW_ARRAY);
-            mtr_write_chunk(chunk, a->count);
-        } else {
-            mtr_write_chunk(chunk, MTR_OP_NEW_ARRAY);
-        }
-        return;
+        mtr_write_chunk(chunk, MTR_OP_NEW_ARRAY);
+        break;
     }
 
     case MTR_DATA_MAP: {
@@ -332,15 +350,8 @@ static void write_variable(struct mtr_chunk* chunk, struct mtr_variable* var) {
         return;
     }
 
-    default: {
-        if (NULL == var->value) {
-            mtr_write_chunk(chunk, MTR_OP_NIL);
-        } else {
-            write_expr(chunk, var->value);
-        }
-        return;
-    }
-
+    default:
+        break;
     }
 }
 

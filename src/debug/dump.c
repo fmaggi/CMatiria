@@ -283,6 +283,7 @@ const char* mtr_token_type_to_str(enum mtr_token_type type) {
     case MTR_TOKEN_INT:           return "Int";
     case MTR_TOKEN_FLOAT:         return "Float";
     case MTR_TOKEN_BOOL:          return "Bool";
+    case MTR_TOKEN_STRING:        return "String";
     case MTR_TOKEN_IDENTIFIER:    return "IDENTIFIER";
     case MTR_TOKEN_COMMENT:       return "comment";
     case MTR_TOKEN_EOF:           return "EOF";
@@ -299,6 +300,7 @@ const char* mtr_data_type_to_str(struct mtr_type type) {
     case MTR_DATA_FLOAT:   return "Float";
     case MTR_DATA_INT:     return "Int";
     case MTR_DATA_INVALID: return "Invalid";
+    case MTR_DATA_STRING:  return "String";
     case MTR_DATA_ARRAY: return "Array";
     case MTR_DATA_MAP: return "Map";
     case MTR_DATA_FN: return "Function";

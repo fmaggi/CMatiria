@@ -57,8 +57,8 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
     u8* end = chunk.bytecode + chunk.size;
     while (ip < end) {
 
-        // mtr_dump_stack(engine->stack, engine->stack_top);
-        // mtr_disassemble_instruction(ip, ip - chunk.bytecode);
+        mtr_dump_stack(engine->stack, engine->stack_top);
+        mtr_disassemble_instruction(ip, ip - chunk.bytecode);
 
         switch (*ip++)
         {
@@ -88,16 +88,45 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
                 break;
             }
 
+            case MTR_OP_STRING_LITERAL: {
+                const char* string = READ(const char*);
+                // MTR_LOG_TRACE("%p", (void*)string);
+                u32 length = READ(u32);
+                i64 s = AS(i64, string);
+                i64 l = AS(i64, length);
+                push(engine, MTR_INT_VAL(s));
+                push(engine, MTR_INT_VAL(l));
+                break;
+            }
+
             case MTR_OP_NIL: {
                 const mtr_value c = MTR_NIL;
                 push(engine, c);
                 break;
             }
 
+            case MTR_OP_NEW_STRING: {
+                u32 length = 0;
+                const char* string = NULL;
+                mtr_value l = pop(engine);
+                length = AS(u32, l.integer);
+                if (length > 0) {
+                    mtr_value s = pop(engine);
+                    string = AS(const char*, s.integer);
+                    // MTR_LOG_TRACE("%p", (void*)string);
+                }
+
+                struct mtr_string* m_string = mtr_new_string(string, length);
+                struct mtr_object* o = (struct mtr_object*) m_string;
+
+                push(engine, MTR_OBJ_VAL(o));
+                break;
+            }
+
             case MTR_OP_NEW_ARRAY: {
                 struct mtr_array* array = mtr_new_array();
 
-                const u8 count = READ(u8);
+                i64 count = pop(engine).integer;
 
                 for (i64 i = 0; i < count; ++i) {
                     const mtr_value elem = pop(engine);
@@ -189,6 +218,22 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
                 const mtr_value key = pop(engine);
                 const struct mtr_object* object = MTR_AS_OBJ(pop(engine));
                 switch (object->type) {
+                case MTR_OBJ_STRING: {
+                    const struct mtr_string* string = (const struct mtr_string*) object;
+                    const i64 i = MTR_AS_INT(key);
+                    const size_t index = AS(size_t, i);
+                    if (index >= string->length) {
+                        IMPLEMENT // runtime error;
+                        MTR_LOG_ERROR("Indexing array of size %zu with index %zu", string->length, index);
+                        exit(-1);
+                        break;
+                    }
+                    // need to think whether to malloc a whole new string for a single char or not.
+                    // I dont like the idea. I could have a reference to it
+                    MTR_LOG_ERROR("String indexing not yet implemented");
+                    exit(-1);
+                    break;
+                }
                 case MTR_OBJ_ARRAY: {
                     const struct mtr_array* array = (const struct mtr_array*) object;
                     const i64 i = MTR_AS_INT(key);
@@ -221,6 +266,11 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
                 const struct mtr_object* object = MTR_AS_OBJ(pop(engine));
                 mtr_value val = pop(engine);
                 switch (object->type) {
+                case MTR_OBJ_STRING: {
+                    MTR_LOG_ERROR("<String> object does not support item assignment.");
+                    exit(-1);
+                    break;
+                }
                 case MTR_OBJ_ARRAY: {
                     const struct mtr_array* array = (const struct mtr_array*) object;
                     const i64 i = MTR_AS_INT(key);

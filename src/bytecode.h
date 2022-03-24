@@ -10,8 +10,11 @@ enum mtr_op_code {
     MTR_OP_FALSE,
     MTR_OP_TRUE,
 
+    MTR_OP_STRING_LITERAL,
+
     MTR_OP_NIL,
 
+    MTR_OP_NEW_STRING,
     MTR_OP_NEW_ARRAY,
     MTR_OP_NEW_MAP,
 

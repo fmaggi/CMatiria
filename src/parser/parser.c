@@ -341,7 +341,8 @@ static struct mtr_type parse_type(struct mtr_parser* parser) {
 
     case MTR_TOKEN_INT:
     case MTR_TOKEN_FLOAT:
-    case MTR_TOKEN_BOOL: {
+    case MTR_TOKEN_BOOL:
+    case MTR_TOKEN_STRING: {
         struct mtr_token token = advance(parser);
         type = mtr_get_data_type(token);
         break;
@@ -576,6 +577,7 @@ static struct mtr_stmt* declaration(struct mtr_parser* parser) {
     case MTR_TOKEN_INT:
     case MTR_TOKEN_FLOAT:
     case MTR_TOKEN_BOOL:
+    case MTR_TOKEN_STRING:
     case MTR_TOKEN_SQR_L:
         return variable(parser);
     case MTR_TOKEN_LET:
