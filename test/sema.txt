@@ -1,7 +1,0 @@
-fn main(i32 x) -> i32 {
-    i32 y = 2 + 5;
-
-    while (2 < 3) {
-        bool x = false;
-    }
-}

@@ -21,7 +21,7 @@ typedef struct {
 
 #define MTR_INT_VAL(value)   (mtr_value){ .integer = value, .type = MTR_VAL_INT }
 #define MTR_FLOAT_VAL(value) (mtr_value){ .floating = value, .type = MTR_VAL_FLOAT }
-#define MTR_OBJ_VAL(value)   (mtr_value){ .object = value, .type = MTR_VAL_OBJ }
+#define MTR_OBJ_VAL(value)   (mtr_value){ .object = (struct mtr_object*) value, .type = MTR_VAL_OBJ }
 
 #define MTR_AS_INT(value)   value.integer
 #define MTR_AS_FLOAT(value) value.floating

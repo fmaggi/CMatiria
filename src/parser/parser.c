@@ -133,6 +133,7 @@ static struct mtr_expr* grouping(struct mtr_parser* parser, struct mtr_token tok
 static struct mtr_expr* primary(struct mtr_parser* parser, struct mtr_token primary);
 static struct mtr_expr* literal(struct mtr_parser* parser, struct mtr_token literal);
 static struct mtr_expr* array_literal(struct mtr_parser* parser, struct mtr_token paren);
+static struct mtr_expr* map_literal(struct mtr_parser* parser, struct mtr_token paren);
 static struct mtr_expr* call(struct mtr_parser* parser, struct mtr_token paren, struct mtr_expr* name);
 static struct mtr_expr* subscript(struct mtr_parser* parser, struct mtr_token square, struct mtr_expr* object);
 
@@ -152,7 +153,7 @@ static const struct parser_rule rules[] = {
     [MTR_TOKEN_PAREN_R] = { NO_OP },
     [MTR_TOKEN_SQR_L] = { .prefix = array_literal, .infix = subscript, .precedence = SUB },
     [MTR_TOKEN_SQR_R] = { NO_OP },
-    [MTR_TOKEN_CURLY_L] = { NO_OP },
+    [MTR_TOKEN_CURLY_L] = { .prefix = map_literal, .infix = NULL, .precedence = NONE },
     [MTR_TOKEN_CURLY_R] = { NO_OP },
     [MTR_TOKEN_BANG] = { .prefix = unary, .infix = NULL, .precedence = UNARY },
     [MTR_TOKEN_ASSIGN] = { NO_OP },
@@ -267,6 +268,32 @@ static struct mtr_expr* array_literal(struct mtr_parser* parser, struct mtr_toke
     node->count = count;
     node->expressions = malloc(sizeof(struct mtr_expr*) * count);
     memcpy(node->expressions, exprs, sizeof(struct mtr_expr*) * count);
+
+    return (struct mtr_expr*) node;
+}
+
+static struct mtr_expr* map_literal(struct mtr_parser* parser, struct mtr_token paren) {
+    struct mtr_map_literal* node = ALLOCATE_EXPR(MTR_EXPR_MAP_LITERAL, mtr_map_literal);
+
+    u8 count = 0;
+    struct mtr_map_entry entries[255];
+    bool cont = true;
+    while (count < 255 && cont) {
+        entries[count].key = expression(parser);
+        consume(parser, MTR_TOKEN_COLON, "Expected ':'.");
+        entries[count++].value = expression(parser);
+
+        if (CHECK(MTR_TOKEN_CURLY_R)) {
+            advance(parser);
+            break;
+        }
+
+        cont = consume(parser, MTR_TOKEN_COMMA, "Expected ','.").type == MTR_TOKEN_COMMA; // this is ugly as fuck
+    }
+
+    node->count = count;
+    node->entries = malloc(sizeof(struct mtr_map_entry) * count);
+    memcpy(node->entries, entries, sizeof(struct mtr_map_entry) * count);
 
     return (struct mtr_expr*) node;
 }
@@ -783,6 +810,16 @@ static void free_array_lit(struct mtr_array_literal* node) {
     free(node);
 }
 
+static void free_map_lit(struct mtr_map_literal* node) {
+    for (u8 i = 0; i < node->count; ++i) {
+        mtr_free_expr(node->entries[i].key);
+        mtr_free_expr(node->entries[i].value);
+    }
+    free(node->entries);
+    node->entries = NULL;
+    free(node);
+}
+
 static void free_call(struct mtr_call* node) {
     if (node->argc > 0) {
         for (u8 i = 0; i < node->argc; ++i) {
@@ -821,6 +858,7 @@ void mtr_free_expr(struct mtr_expr* node) {
     case MTR_EXPR_UNARY:    free_unary((struct mtr_unary*) node); return;
     case MTR_EXPR_LITERAL:  free_literal((struct mtr_literal*) node); return;
     case MTR_EXPR_ARRAY_LITERAL: free_array_lit((struct mtr_array_literal*) node); return;
+    case MTR_EXPR_MAP_LITERAL: free_map_lit((struct mtr_map_literal*) node); return;
     case MTR_EXPR_CALL:     free_call((struct mtr_call*) node); return;
     case MTR_EXPR_CAST:     free_cast((struct mtr_cast*) node); return;
     case MTR_EXPR_SUBSCRIPT: free_sub((struct mtr_subscript*) node); return;

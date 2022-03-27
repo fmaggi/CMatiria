@@ -198,9 +198,26 @@ static struct mtr_type analyze_array_literal(struct mtr_array_literal* array, st
         }
     }
 
-    struct mtr_type type;
-    type = mtr_new_array_type(array_type);
+    struct mtr_type type = mtr_new_array_type(array_type);
+    return type;
+}
 
+static struct mtr_type analyze_map_literal(struct mtr_map_literal* map, struct mtr_scope* scope, const char* const source) {
+    struct mtr_map_entry first = map->entries[0];
+    struct mtr_type key_type = analyze_expr(first.key, scope, source);
+    struct mtr_type val_type = analyze_expr(first.value, scope, source);
+
+    for (u8 i = 1; i < map->count; ++i) {
+        struct mtr_map_entry e = map->entries[i];
+        struct mtr_type k_t = analyze_expr(e.key, scope, source);
+        struct mtr_type v_t = analyze_expr(e.value, scope, source);
+        if (!mtr_type_match(key_type, k_t) || !mtr_type_match(val_type, v_t)) {
+            expr_error(e.key, "Map literal must contain expressions of the same type", source);
+            return invalid_type;
+        }
+    }
+
+    struct mtr_type type = mtr_new_map_type(key_type, val_type);
     return type;
 }
 
@@ -284,6 +301,7 @@ static struct mtr_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* sco
     case MTR_EXPR_PRIMARY:  return analyze_primary((struct mtr_primary*) expr, scope, source);
     case MTR_EXPR_LITERAL:  return analyze_literal((struct mtr_literal*) expr, scope, source);
     case MTR_EXPR_ARRAY_LITERAL: return analyze_array_literal((struct mtr_array_literal*) expr, scope, source);
+    case MTR_EXPR_MAP_LITERAL: return analyze_map_literal((struct mtr_map_literal*) expr, scope, source);
     case MTR_EXPR_CALL:     return analyze_call((struct mtr_call*) expr, scope, source);
     case MTR_EXPR_SUBSCRIPT: return analyze_subscript((struct mtr_subscript*) expr, scope, source);
     case MTR_EXPR_CAST:     IMPLEMENT return invalid_type;

@@ -1,8 +1,6 @@
 fn main() {
-    [String, Int] map;
-    String a := "Hello";
-    map["Hello"] := 3;
-    print(map[a]);
+    let x := { "Hello": 3 };
+    print(x["Hello"]);
 }
 
 fn print(Int x) ...

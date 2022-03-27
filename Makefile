@@ -35,7 +35,7 @@ clean:
 	@rm $(OBJS) $(MATIRIA)
 
 vscode_setup: $(JSON)
-	@sed -e '1s/^/[\n/' -e '$$s/,$$/\n]/' src/*.j.json > build/compile_commands.json
+	@sed -e '1s/^/[\n/' -e '$$s/,$$/\n]/' $(JSON:%.j=%.j.json) > build/compile_commands.json
 	@rm $(JSON:%.j=%.j.json)
 
 

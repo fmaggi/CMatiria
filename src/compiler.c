@@ -157,8 +157,20 @@ static void write_array_literal(struct mtr_chunk* chunk, struct mtr_array_litera
         write_expr(chunk, array->expressions[actual_index]);
     }
 
-    mtr_write_chunk(chunk, MTR_OP_INT);
-    write_u64(chunk, array->count);
+    mtr_write_chunk(chunk, MTR_OP_ARRAY_LITERAL);
+    mtr_write_chunk(chunk, array->count);
+}
+
+static void write_map_literal(struct mtr_chunk* chunk, struct mtr_map_literal* map) {
+    for (u8 i = 0; i < map->count; ++i) {
+        u8 actual_index = map->count - i - 1;
+        struct mtr_map_entry e = map->entries[actual_index];
+        write_expr(chunk, e.key);
+        write_expr(chunk, e.value);
+    }
+
+    mtr_write_chunk(chunk, MTR_OP_MAP_LITERAL);
+    mtr_write_chunk(chunk, map->count);
 }
 
 static void write_and(struct mtr_chunk* chunk, struct mtr_binary* expr) {
@@ -316,6 +328,7 @@ static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr) {
     case MTR_EXPR_PRIMARY: write_primary(chunk, (struct mtr_primary*) expr); return;
     case MTR_EXPR_LITERAL: write_literal(chunk, (struct mtr_literal*) expr); return;
     case MTR_EXPR_ARRAY_LITERAL: write_array_literal(chunk, (struct mtr_array_literal*) expr); return;
+    case MTR_EXPR_MAP_LITERAL: write_map_literal(chunk, (struct mtr_map_literal*) expr); return;
     case MTR_EXPR_UNARY:   write_unary(chunk, (struct mtr_unary*) expr); return;
     case MTR_EXPR_GROUPING: write_expr(chunk, ((struct mtr_grouping*) expr)->expression); return;
     case MTR_EXPR_CALL: write_call(chunk, (struct mtr_call*) expr); return;

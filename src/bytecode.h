@@ -11,6 +11,8 @@ enum mtr_op_code {
     MTR_OP_TRUE,
 
     MTR_OP_STRING_LITERAL,
+    MTR_OP_ARRAY_LITERAL,
+    MTR_OP_MAP_LITERAL,
 
     MTR_OP_NIL,
 

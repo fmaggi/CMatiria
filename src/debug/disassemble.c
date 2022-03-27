@@ -2,6 +2,7 @@
 
 #include "bytecode.h"
 #include "core/log.h"
+#include "runtime/object.h"
 #include "runtime/value.h"
 
 u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {
@@ -36,7 +37,15 @@ u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {
     }
 
     case MTR_OP_STRING_LITERAL: {
-        MTR_LOG("STR");
+        const char* s = READ(const char*);
+        u32 l = READ(u32);
+        MTR_LOG("STR %.*s", l, s);
+        break;
+    }
+
+    case MTR_OP_ARRAY_LITERAL: {
+        u8 count = READ(u8);
+        MTR_LOG("ARR (%u)", count);
         break;
     }
 
@@ -144,9 +153,8 @@ u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {
     }
 
     case MTR_OP_CALL: {
-        u16 index = READ(u16);
         u8 argc = READ(u8);
-        MTR_LOG("CALL at %u (%u)", index, argc);
+        MTR_LOG("CALL (%u)", argc);
         break;
     }
 
@@ -176,7 +184,7 @@ void mtr_dump_stack(mtr_value* stack, mtr_value* top) {
         switch (stack->type) {
         case MTR_VAL_INT: MTR_PRINT_DEBUG("%li,", stack->integer); break;
         case MTR_VAL_FLOAT: MTR_PRINT_DEBUG("%f,", stack->floating); break;
-        case MTR_VAL_OBJ: MTR_PRINT_DEBUG("%p,", (void*)stack->object); break;
+        case MTR_VAL_OBJ: MTR_PRINT_DEBUG("%s,", mtr_obj_type_to_str(stack->object)); break;
         }
         stack++;
     }
@@ -192,5 +200,15 @@ void mtr_dump_chunk(struct mtr_chunk* chunk) {
             MTR_LOG("%04u %02x", offset, *ip++);
         }
         MTR_LOG("\n");
+    }
+}
+
+const char* mtr_obj_type_to_str(struct mtr_object* obj) {
+    switch (obj->type) {
+    case MTR_OBJ_NATIVE_FN: return "<native fn>";
+    case MTR_OBJ_FUNCTION:  return "<fn>";
+    case MTR_OBJ_ARRAY:     return "<array>";
+    case MTR_OBJ_MAP:       return "<map>";
+    case MTR_OBJ_STRING:    return "<string>";
     }
 }

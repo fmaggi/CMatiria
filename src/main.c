@@ -24,6 +24,7 @@ int main(int argc, char* argv[])
     struct mtr_engine engine;
 
     i32 result = mtr_execute(&engine, package);
+    (void) result;
     MTR_LOG_DEBUG("return %i", result);
 
     mtr_delete_package(package);

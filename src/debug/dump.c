@@ -73,6 +73,11 @@ static void dump_expr(struct mtr_expr* expr, u32 offset) {
         return;
     }
 
+    case MTR_EXPR_MAP_LITERAL: {
+        IMPLEMENT
+        return;
+    }
+
     case MTR_EXPR_CAST:
         IMPLEMENT
         break;

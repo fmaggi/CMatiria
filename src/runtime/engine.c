@@ -8,14 +8,6 @@
 #include "debug/disassemble.h"
 #include "value.h"
 
-void dump_value(mtr_value value, enum mtr_data_type type) {
-    if (type == MTR_DATA_FLOAT) {
-        MTR_LOG_DEBUG("%.3f", value.floating);
-    } else {
-        MTR_LOG_DEBUG("%li", value.integer);
-    }
-}
-
 static mtr_value peek(struct mtr_engine* engine, size_t distance) {
     return *(engine->stack_top - distance - 1);
 }
@@ -92,8 +84,36 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
                 const char* string = READ(const char*);
                 u32 length = READ(u32);
                 struct mtr_string* s = mtr_new_string(string, length);
-                struct mtr_object* o = (struct mtr_object*) s;
-                push(engine, MTR_OBJ_VAL(o));
+                push(engine, MTR_OBJ_VAL(s));
+                break;
+            }
+
+            case MTR_OP_ARRAY_LITERAL: {
+                struct mtr_array* array = mtr_new_array();
+
+                u8 count = READ(u8);
+
+                for (u8 i = 0; i < count; ++i) {
+                    const mtr_value elem = pop(engine);
+                    mtr_array_append(array, elem);
+                }
+
+                push(engine, MTR_OBJ_VAL(array));
+                break;
+            }
+
+            case MTR_OP_MAP_LITERAL: {
+                struct mtr_map* map = mtr_new_map();
+
+                u8 count = READ(u8);
+
+                for (u8 i = 0; i < count; ++i) {
+                    const mtr_value value = pop(engine);
+                    const mtr_value key = pop(engine);
+                    mtr_map_insert(map, key, value);
+                }
+
+                push(engine, MTR_OBJ_VAL(map));
                 break;
             }
 
@@ -104,39 +124,32 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
             }
 
             case MTR_OP_NEW_STRING: {
-                mtr_value string = pop(engine);
+                mtr_value string = peek(engine, 0);
                 if (NULL == string.object) {
+                    pop(engine); // pop null value;
                     struct mtr_string* string_object = mtr_new_string(NULL, 0);
-                    struct mtr_object* o = (struct mtr_object*) string_object;
-                    push(engine, MTR_OBJ_VAL(o));
-                } else {
-                    push(engine, string);
+                    push(engine, MTR_OBJ_VAL(string_object));
                 }
                 break;
             }
 
             case MTR_OP_NEW_ARRAY: {
-                struct mtr_array* array = mtr_new_array();
-
-                i64 count = pop(engine).integer;
-
-                for (i64 i = 0; i < count; ++i) {
-                    const mtr_value elem = pop(engine);
-                    mtr_array_append(array, elem);
+                mtr_value array = peek(engine, 0);
+                if (NULL == array.object) {
+                    pop(engine); // pop null value;
+                    struct mtr_array* array_object = mtr_new_array();
+                    push(engine, MTR_OBJ_VAL(array_object));
                 }
-
-                struct mtr_object* o = (struct mtr_object*) array;
-                const mtr_value v = MTR_OBJ_VAL(o);
-                push(engine, v);
                 break;
             }
 
             case MTR_OP_NEW_MAP: {
-                pop(engine);
-                struct mtr_map* map = mtr_new_map();
-                struct mtr_object* o = (struct mtr_object*) map;
-                const mtr_value v = MTR_OBJ_VAL(o);
-                push(engine, v);
+                mtr_value map = peek(engine, 0);
+                if (NULL == map.object) {
+                    pop(engine); // pop null value;
+                    struct mtr_map* map = mtr_new_map();
+                    push(engine, MTR_OBJ_VAL(map));
+                }
                 break;
             }
 
@@ -233,7 +246,7 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
                     const size_t index = AS(size_t, i);
                     if (index >= array->size) {
                         IMPLEMENT // runtime error;
-                        MTR_LOG_ERROR("Indexing array of size %zu with index %zu", array->size, index);
+                        MTR_LOG_ERROR("Out of bounds: Indexing array of size %zu with index %zu", array->size, index);
                         exit(-1);
                         break;
                     }
@@ -270,7 +283,7 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
                     const size_t index = AS(size_t, i);
                     if (index >= array->size) {
                         IMPLEMENT // runtime error;
-                        MTR_LOG_ERROR("Indexing array of size %zu with index %zu", array->size, index);
+                        MTR_LOG_ERROR("Out of bounds: Indexing array of size %zu with index %zu", array->size, index);
                         exit(-1);
                         break;
                     }
@@ -366,6 +379,9 @@ i32 mtr_execute(struct mtr_engine* engine, struct mtr_package* package) {
     }
 
     struct mtr_function* f = (struct mtr_function*) o;
+
+    // mtr_disassemble(f->chunk, "main");
+
     mtr_call(engine, f->chunk, package->count);
 
     // mtr_dump_stack(engine->stack, engine->stack_top);
