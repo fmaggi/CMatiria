@@ -275,6 +275,7 @@ const char* mtr_token_type_to_str(enum mtr_token_type type) {
     case MTR_TOKEN_AND:           return "&&";
     case MTR_TOKEN_OR:            return "||";
     case MTR_TOKEN_ELLIPSIS:      return "...";
+    case MTR_TOKEN_ANY:           return "Any";
     case MTR_TOKEN_LET:           return "let";
     case MTR_TOKEN_TYPE:          return "type";
     case MTR_TOKEN_IF:            return "if";
@@ -300,6 +301,7 @@ const char* mtr_token_type_to_str(enum mtr_token_type type) {
 const char* mtr_data_type_to_str(struct mtr_type type) {
     switch (type.type)
     {
+    case MTR_DATA_ANY: return "Any";
     case MTR_DATA_VOID: return "void";
     case MTR_DATA_BOOL:    return "Bool";
     case MTR_DATA_FLOAT:   return "Float";

@@ -97,7 +97,7 @@ static struct mtr_type get_operator_type(struct mtr_token op, struct mtr_type lh
 
 static struct mtr_cast* try_promoting(struct mtr_expr* expr, struct mtr_type type, struct mtr_type to) {
     switch (type.type) {
-
+    case MTR_DATA_ANY:
     case MTR_DATA_INVALID:
     case MTR_DATA_USER_DEFINED:
     case MTR_DATA_STRING:
@@ -235,7 +235,8 @@ static struct mtr_type analyze_call(struct mtr_call* call, struct mtr_scope* sco
             struct mtr_type ta = analyze_expr(a, scope, source);
 
             struct mtr_type tp = f->argv[i];
-            if (!mtr_type_match(ta, tp)) {
+            bool match = mtr_type_match(ta, tp);
+            if (!match) {
                 expr_error(a, "Wrong type of argument.", source);
                 return invalid_type;
             }
@@ -334,6 +335,12 @@ static bool load_var(struct mtr_variable* stmt, struct mtr_scope* scope, const c
 
     stmt->symbol.index = scope->current++;
     mtr_scope_add(scope, stmt->symbol);
+
+    if (stmt->symbol.type.type == MTR_DATA_ANY) {
+        mtr_report_error(stmt->symbol.token, "'Any' expressions are only allowed as parameters to native functions.", source);
+        return false;
+    }
+
     return true;
 }
 
@@ -410,7 +417,7 @@ static bool analyze_variable(struct mtr_variable* decl, struct mtr_scope* parent
     if (decl->value) {
         const struct mtr_type type = analyze_expr(decl->value, parent, source);
         if (decl->symbol.type.type == MTR_DATA_INVALID) { // this means it was a 'let' var decl
-            decl->symbol.type = type;
+            decl->symbol.type = mtr_copy_type(type);
         } else if (!mtr_type_match(decl->symbol.type, type)) {
             // try and mathc the types. Cast if needed
             struct mtr_cast* cast = try_promoting(decl->value, type, decl->symbol.type);
@@ -478,7 +485,7 @@ static bool analyze_return(struct mtr_return* stmt, struct mtr_scope* parent, co
 
 static bool analyze_call_stmt(struct mtr_call_stmt* call, struct mtr_scope* scope, const char* const source) {
     struct mtr_type type = analyze_expr(call->call, scope, source);
-    return !mtr_type_match(type, invalid_type);
+    return type.type != MTR_DATA_INVALID;
 }
 
 static bool analyze(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* const source) {

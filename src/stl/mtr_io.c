@@ -7,12 +7,30 @@
 #include "runtime/value.h"
 #include <stdio.h>
 
+#include "debug/disassemble.h"
+
 #include "core/types.h"
 
 mtr_value mtr_print(u8 argc, mtr_value* argv) {
-    for (u8 i = 0; i < argc; ++i) {
-        mtr_value value = argv[i];
-        printf("%li\n", value.integer);
+    mtr_value value = *argv;
+    switch (value.type) {
+    case MTR_VAL_INT: {
+        MTR_LOG("%li", value.integer);
+        break;
+    }
+    case MTR_VAL_FLOAT: {
+        MTR_LOG("%f", value.floating);
+        break;
+    }
+    case MTR_VAL_OBJ: {
+        if (value.object->type != MTR_OBJ_STRING) {
+            MTR_LOG_ERROR("Object of type %s is not printable.", mtr_obj_type_to_str(value.object));
+            exit(-1);
+        }
+        struct mtr_string* s = (struct mtr_string*) value.object;
+        MTR_LOG("%.*s", (u32)s->length, s->s);
+        break;
+    }
     }
     return MTR_NIL;
 }

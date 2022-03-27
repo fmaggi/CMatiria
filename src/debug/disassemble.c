@@ -49,6 +49,12 @@ u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {
         break;
     }
 
+    case MTR_OP_MAP_LITERAL: {
+        u8 count = READ(u8);
+        MTR_LOG("MAP (%u)", count);
+        break;
+    }
+
     case MTR_OP_NIL:
         MTR_LOG("NIL");
         break;

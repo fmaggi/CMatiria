@@ -8,6 +8,8 @@
 #include "debug/disassemble.h"
 #include "value.h"
 
+#include "core/macros.h"
+
 static mtr_value peek(struct mtr_engine* engine, size_t distance) {
     return *(engine->stack_top - distance - 1);
 }
@@ -41,7 +43,6 @@ static void push(struct mtr_engine* engine, mtr_value value) {
     } while (false)
 
 #define READ(type) *((type*)ip); ip += sizeof(type)
-#define AS(type, value) *((type*)&value)
 
 void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) {
     mtr_value* frame = engine->stack_top - argc;
@@ -227,7 +228,7 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
                 case MTR_OBJ_STRING: {
                     const struct mtr_string* string = (const struct mtr_string*) object;
                     const i64 i = MTR_AS_INT(key);
-                    const size_t index = AS(size_t, i);
+                    const size_t index = mtr_reinterpret_cast(size_t, i);
                     if (index >= string->length) {
                         IMPLEMENT // runtime error;
                         MTR_LOG_ERROR("Indexing string of size %zu with index %zu", string->length, index);
@@ -243,7 +244,7 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
                 case MTR_OBJ_ARRAY: {
                     const struct mtr_array* array = (const struct mtr_array*) object;
                     const i64 i = MTR_AS_INT(key);
-                    const size_t index = AS(size_t, i);
+                    const size_t index = mtr_reinterpret_cast(size_t, i);
                     if (index >= array->size) {
                         IMPLEMENT // runtime error;
                         MTR_LOG_ERROR("Out of bounds: Indexing array of size %zu with index %zu", array->size, index);
@@ -280,7 +281,7 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
                 case MTR_OBJ_ARRAY: {
                     const struct mtr_array* array = (const struct mtr_array*) object;
                     const i64 i = MTR_AS_INT(key);
-                    const size_t index = AS(size_t, i);
+                    const size_t index = mtr_reinterpret_cast(size_t, i);
                     if (index >= array->size) {
                         IMPLEMENT // runtime error;
                         MTR_LOG_ERROR("Out of bounds: Indexing array of size %zu with index %zu", array->size, index);

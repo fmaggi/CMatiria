@@ -12,6 +12,7 @@ enum mtr_data_type {
     MTR_DATA_MAP,
     MTR_DATA_FN,
 
+    MTR_DATA_ANY,
     MTR_DATA_VOID,
 
     MTR_DATA_BOOL,
@@ -31,6 +32,7 @@ struct mtr_type mtr_get_data_type(struct mtr_token token);
 
 extern const struct mtr_type invalid_type;
 
+struct mtr_type mtr_copy_type(struct mtr_type type);
 void mtr_delete_type(struct mtr_type type);
 
 bool mtr_type_match(struct mtr_type lhs, struct mtr_type rhs);

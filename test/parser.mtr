@@ -1,6 +1,8 @@
 fn main() {
     let x := { "Hello": 3 };
-    print(x["Hello"]);
+    print("Hello");
+    Float y := 3.59;
+    print(y);
 }
 
-fn print(Int x) ...
+fn print(Any x) ...

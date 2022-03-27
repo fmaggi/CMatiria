@@ -18,6 +18,7 @@
 
 #include "core/file.h"
 #include "core/log.h"
+#include "core/macros.h"
 
 #include "debug/disassemble.h"
 #include "debug/dump.h"
@@ -45,14 +46,13 @@ static f64 evaluate_float(struct mtr_token token) {
 
     c++;
 
-    u32 i = 1;
+    u64 i = 10;
     while (c != token.start + token.length) {
-        f64 x = (f64)(*c - '0') / (f64)(i * 10);
+        f64 x = (f64)(*c - '0') / i;
         s += x;
         c++;
-        i++;
+        i *= 10;
     }
-
     return s;
 }
 
@@ -80,8 +80,6 @@ static void write_u16(struct mtr_chunk* chunk, u16 value) {
     mtr_write_chunk(chunk, (u8) (value >> 8));
 }
 
-#define AS(type, value) *((type*)&value)
-
 // returns the location of where to jump relative to the chunk
 static u16 write_jump(struct mtr_chunk* chunk, u8 instruction) {
     mtr_write_chunk(chunk, instruction);
@@ -99,7 +97,7 @@ static void patch_jump(struct mtr_chunk* chunk, i16 offset) {
 static void write_loop(struct mtr_chunk* chunk, u16 offset) {
     mtr_write_chunk(chunk, MTR_OP_JMP);
     i16 where = offset - chunk->size - 3;
-    write_u16(chunk, AS(u16, where));
+    write_u16(chunk, mtr_reinterpret_cast(u16, where));
 }
 
 static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr);
@@ -122,14 +120,14 @@ static void write_literal(struct mtr_chunk* chunk, struct mtr_literal* expr) {
     case MTR_TOKEN_FLOAT_LITERAL: {
         mtr_write_chunk(chunk, MTR_OP_FLOAT);
         f64 value = evaluate_float(expr->literal);
-        write_u64(chunk, AS(u64, value));
+        write_u64(chunk, mtr_reinterpret_cast(u64, value));
         break;
     }
 
     case MTR_TOKEN_STRING_LITERAL: {
         mtr_write_chunk(chunk, MTR_OP_STRING_LITERAL);
         const char* string_start = expr->literal.start+1; // skip opening "
-        write_u64(chunk, AS(u64, string_start));
+        write_u64(chunk, mtr_reinterpret_cast(u64, string_start));
         write_u32(chunk, expr->literal.length - 2); // skip closing "
         break;
     }
@@ -484,8 +482,6 @@ static void write_bytecode(struct mtr_stmt* stmt, struct mtr_package* package) {
         break;
     }
 }
-
-#undef AS
 
 struct mtr_package* mtr_compile(const char* source) {
     struct mtr_package* package = NULL;

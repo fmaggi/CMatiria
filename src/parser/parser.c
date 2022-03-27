@@ -366,6 +366,7 @@ static struct mtr_type parse_type(struct mtr_parser* parser) {
 
     switch (parser->token.type) {
 
+    case MTR_TOKEN_ANY:
     case MTR_TOKEN_INT:
     case MTR_TOKEN_FLOAT:
     case MTR_TOKEN_BOOL:
@@ -609,6 +610,10 @@ static struct mtr_stmt* declaration(struct mtr_parser* parser) {
         return variable(parser);
     case MTR_TOKEN_LET:
         return let_variable(parser);
+    case MTR_TOKEN_ANY: {
+        parser_error(parser, "'Any' expressions are only allowed as parameters to native functions.");
+        exit(-1);
+    }
     default:
         return statement(parser);
     }
