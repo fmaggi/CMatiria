@@ -1,7 +1,8 @@
 fn main() {
     MyType x;
+    y := x;
+    print(y);
 }
-
 fn print(Any x) ...
 
 type MyType := {

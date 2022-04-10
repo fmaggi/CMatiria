@@ -14,7 +14,8 @@ enum mtr_expr_type {
     MTR_EXPR_UNARY,
     MTR_EXPR_CALL,
     MTR_EXPR_CAST,
-    MTR_EXPR_SUBSCRIPT
+    MTR_EXPR_SUBSCRIPT,
+    MTR_EXPR_ACCESS
 };
 
 struct mtr_expr {
@@ -83,6 +84,12 @@ struct mtr_subscript {
     struct mtr_expr expr_;
     struct mtr_expr* object;
     struct mtr_expr* index;
+};
+
+struct mtr_access {
+    struct mtr_expr expr_;
+    struct mtr_expr* object;
+    struct mtr_expr* accessed;
 };
 
 void mtr_free_expr(struct mtr_expr* node);

@@ -1,5 +1,6 @@
 #include "validator.h"
 
+#include "AST/symbol.h"
 #include "scope.h"
 
 #include "AST/expr.h"
@@ -293,6 +294,22 @@ static struct mtr_type analyze_unary(struct mtr_unary* expr, struct mtr_scope* s
     return  expr->operator.type;
 }
 
+static struct mtr_type analyze_access(struct mtr_access* expr, struct mtr_scope* scope, const char* const source) {
+    const struct mtr_type right_t = analyze_expr(expr->object, scope, source);
+    if (right_t.type != MTR_DATA_STRUCT) {
+        expr_error(expr->object, "Expression is not accessible", source);
+        return invalid_type;
+    }
+    if (expr->accessed->type != MTR_EXPR_PRIMARY) {
+        expr_error(expr->accessed, "Expressions cannot be used as access expression", source);
+        return invalid_type;
+    }
+
+    // const struct mtr_type left_t = analyze_expr(expr->accessed, scope, source);
+    IMPLEMENT
+    return invalid_type;
+}
+
 static struct mtr_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* scope, const char* const source) {
     switch (expr->type)
     {
@@ -305,6 +322,7 @@ static struct mtr_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* sco
     case MTR_EXPR_MAP_LITERAL: return analyze_map_literal((struct mtr_map_literal*) expr, scope, source);
     case MTR_EXPR_CALL:     return analyze_call((struct mtr_call*) expr, scope, source);
     case MTR_EXPR_SUBSCRIPT: return analyze_subscript((struct mtr_subscript*) expr, scope, source);
+    case MTR_EXPR_ACCESS: return analyze_access((struct mtr_access*) expr, scope, source);
     case MTR_EXPR_CAST:     IMPLEMENT return invalid_type;
     }
     MTR_ASSERT(false, "Invalid stmt type.");
@@ -401,30 +419,6 @@ static struct mtr_stmt* analyze_fn(struct mtr_function_decl* stmt, struct mtr_sc
     return sanitize_stmt(stmt, all_ok);
 }
 
-static struct mtr_stmt* analyze_assignment(struct mtr_assignment* stmt, struct mtr_scope* parent, const char* const source) {
-    const struct mtr_type right_t = analyze_expr(stmt->right, parent, source);
-    if (!right_t.assignable) {
-        expr_error(stmt->right, "Expression is not assignable.", source);
-        return sanitize_stmt(stmt, false);
-    }
-
-    const struct mtr_type expr_t = analyze_expr(stmt->expression, parent, source);
-
-    bool expr_ok = mtr_type_match(right_t, expr_t);
-    if (!expr_ok) {
-        // try and mathc the types. Cast if needed
-        struct mtr_expr* cast = try_promoting(stmt->expression, expr_t, right_t);
-        if (NULL != cast) {
-            stmt->expression = cast;
-            expr_ok = true;
-        } else {
-            expr_error(stmt->right, "Invalid assignement to variable of different type", source);
-        }
-    }
-
-    return sanitize_stmt(stmt, expr_ok);
-}
-
 static struct mtr_stmt* analyze_variable(struct mtr_variable* decl, struct mtr_scope* parent, const char* const source) {
     bool expr = true;
 
@@ -467,6 +461,46 @@ static struct mtr_stmt* analyze_variable(struct mtr_variable* decl, struct mtr_s
     decl->symbol.type.assignable = true;
     bool loaded = load_var(decl, parent, source);
     return sanitize_stmt(decl, expr && loaded);
+}
+
+static struct mtr_stmt* analyze_assignment(struct mtr_assignment* stmt, struct mtr_scope* parent, const char* const source) {
+    if (stmt->right->type == MTR_EXPR_PRIMARY) {
+        struct mtr_primary* p = (struct mtr_primary*) stmt->right;
+        struct mtr_symbol* s = mtr_scope_find(parent, p->symbol.token);
+        if (NULL == s) {
+            struct mtr_variable* v = malloc(sizeof(struct mtr_variable));
+            v->stmt.type = MTR_STMT_VAR;
+            v->symbol.token = p->symbol.token;
+            v->symbol.type = invalid_type;
+            v->value = stmt->expression;
+
+            mtr_free_expr((struct mtr_expr*) p);
+            free(stmt);
+            return analyze_variable(v, parent, source);
+        }
+    }
+
+    const struct mtr_type right_t = analyze_expr(stmt->right, parent, source);
+    if (!right_t.assignable) {
+        expr_error(stmt->right, "Expression is not assignable.", source);
+        return sanitize_stmt(stmt, false);
+    }
+
+    const struct mtr_type expr_t = analyze_expr(stmt->expression, parent, source);
+
+    bool expr_ok = mtr_type_match(right_t, expr_t);
+    if (!expr_ok) {
+        // try and mathc the types. Cast if needed
+        struct mtr_expr* cast = try_promoting(stmt->expression, expr_t, right_t);
+        if (NULL != cast) {
+            stmt->expression = cast;
+            expr_ok = true;
+        } else {
+            expr_error(stmt->right, "Invalid assignement to variable of different type", source);
+        }
+    }
+
+    return sanitize_stmt(stmt, expr_ok);
 }
 
 static struct mtr_stmt* analyze_if(struct mtr_if* stmt, struct mtr_scope* parent, const char* const source) {

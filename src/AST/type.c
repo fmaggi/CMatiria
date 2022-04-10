@@ -67,6 +67,10 @@ struct mtr_type mtr_copy_type(struct mtr_type type) {
         struct mtr_function_type* f = (struct mtr_function_type*) type.obj;
         return mtr_new_function_type(f->return_, f->argc, f->argv);
     }
+    case MTR_DATA_STRUCT: {
+        struct mtr_struct_type* s = (struct mtr_struct_type*) type.obj;
+        return mtr_new_struct_type(s->name);
+    }
     default:
         return type; // no need to copy anything;
     }

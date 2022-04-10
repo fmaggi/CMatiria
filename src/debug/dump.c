@@ -91,6 +91,11 @@ static void dump_expr(struct mtr_expr* expr, u32 offset) {
         MTR_PRINT_DEBUG(")");
         break;
     }
+
+    case MTR_EXPR_ACCESS: {
+        IMPLEMENT
+        break;
+    }
     }
 }
 
@@ -283,7 +288,6 @@ const char* mtr_token_type_to_str(enum mtr_token_type type) {
     case MTR_TOKEN_OR:            return "||";
     case MTR_TOKEN_ELLIPSIS:      return "...";
     case MTR_TOKEN_ANY:           return "Any";
-    case MTR_TOKEN_LET:           return "let";
     case MTR_TOKEN_TYPE:          return "type";
     case MTR_TOKEN_IF:            return "if";
     case MTR_TOKEN_ELSE:          return "else";

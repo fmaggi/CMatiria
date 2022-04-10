@@ -319,6 +319,10 @@ static void write_subscript(struct mtr_chunk* chunk, struct mtr_subscript* expr)
     mtr_write_chunk(chunk, MTR_OP_GET_O);
 }
 
+static void write_access(struct mtr_chunk* chunk, struct mtr_access* access) {
+    IMPLEMENT
+}
+
 static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr) {
     switch (expr->type)
     {
@@ -332,6 +336,7 @@ static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr) {
     case MTR_EXPR_CALL: write_call(chunk, (struct mtr_call*) expr); return;
     case MTR_EXPR_CAST: write_cast(chunk, (struct mtr_cast*) expr); return;
     case MTR_EXPR_SUBSCRIPT: write_subscript(chunk, (struct mtr_subscript*) expr); return;
+    case MTR_EXPR_ACCESS: write_access(chunk, (struct mtr_access*) expr); return;
     }
 }
 
@@ -424,6 +429,10 @@ static void write_assignment(struct mtr_chunk* chunk, struct mtr_assignment* stm
         write_expr(chunk, s->object);
         write_expr(chunk, s->index);
         mtr_write_chunk(chunk, MTR_OP_SET_O);
+        return;
+    }
+    case MTR_EXPR_ACCESS: {
+        IMPLEMENT
         return;
     }
 

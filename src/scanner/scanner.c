@@ -25,7 +25,6 @@ struct keyword_entry {
 // once I have all of the keywords dialed in I will remove this
 static const struct keyword_entry keywords[KEYWORD_COUNT] = {
     { .type = MTR_TOKEN_ANY,    .str = "Any",    .str_len = strlen("Any")    },
-    { .type = MTR_TOKEN_LET,    .str = "let",    .str_len = strlen("let")    },
     { .type = MTR_TOKEN_TYPE,   .str = "type",   .str_len = strlen("type")   },
     { .type = MTR_TOKEN_IF,     .str = "if",     .str_len = strlen("if")     },
     { .type = MTR_TOKEN_ELSE,   .str = "else",   .str_len = strlen("else")   },

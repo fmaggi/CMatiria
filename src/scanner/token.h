@@ -28,7 +28,6 @@ enum mtr_token_type {
 
     MTR_TOKEN_ANY,
 
-    MTR_TOKEN_LET,
     MTR_TOKEN_TYPE,
     MTR_TOKEN_IF, MTR_TOKEN_ELSE,
     MTR_TOKEN_TRUE, MTR_TOKEN_FALSE,
