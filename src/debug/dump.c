@@ -123,7 +123,7 @@ static void dump_fn(struct mtr_function_decl* decl, u32 offset) {
     MTR_PRINT_DEBUG(") -> %s", mtr_data_type_to_str(t->return_));
     if (decl->body) {
         MTR_PRINT_DEBUG("{\n");
-        dump_block(decl->body, offset + 1);
+        dump_stmt(decl->body, offset + 1);
         MTR_PRINT_DEBUG("}\n");
     } else {
         MTR_PRINT_DEBUG(" ...\n");
@@ -194,6 +194,13 @@ static void dump_stmt(struct mtr_stmt* stmt, u32 offset) {
     case MTR_STMT_ASSIGNMENT: dump_assignment((struct mtr_assignment*) stmt, offset); return;
     case MTR_STMT_RETURN: dump_return((struct mtr_return*) stmt, offset); return;
     case MTR_STMT_CALL: dump_expr(((struct mtr_call_stmt*) stmt)->call, offset); return;
+    case MTR_STMT_STRUCT:
+    case MTR_STMT_UNION:
+        IMPLEMENT
+        return;
+    default:
+        IMPLEMENT
+        return;
     }
 }
 
@@ -216,7 +223,6 @@ static void dump_object_type(mtr_object_type* obj, enum mtr_data_type type, u32 
         struct mtr_array_type* a = (struct mtr_array_type*) obj;
         dump_type(a->type, offset+1);
     }
-    case MTR_DATA_USER_DEFINED: return;
     case MTR_DATA_FN: return;
     default:
         break;
@@ -263,6 +269,7 @@ const char* mtr_token_type_to_str(enum mtr_token_type type) {
     case MTR_TOKEN_ASSIGN:        return ":=";
     case MTR_TOKEN_GREATER:       return ">";
     case MTR_TOKEN_LESS:          return "<";
+    case MTR_TOKEN_PIPE:          return "|";
     case MTR_TOKEN_ARROW:         return "->";
     case MTR_TOKEN_BANG_EQUAL:    return "!=";
     case MTR_TOKEN_EQUAL:         return "=";
@@ -311,7 +318,8 @@ const char* mtr_data_type_to_str(struct mtr_type type) {
     case MTR_DATA_ARRAY: return "Array";
     case MTR_DATA_MAP: return "Map";
     case MTR_DATA_FN: return "Function";
-    case MTR_DATA_USER_DEFINED: break;
+    case MTR_DATA_UNION: return "Union";
+    case MTR_DATA_STRUCT: return "Struct";
     }
 
     static char buf[256];

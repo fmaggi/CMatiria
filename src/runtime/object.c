@@ -14,6 +14,12 @@
 
 void mtr_delete_object(struct mtr_object* object) {
     switch (object->type) {
+    case MTR_OBJ_STRUCT: {
+        struct mtr_struct* s = (struct mtr_struct*) object;
+        free(s->members);
+        free(s);
+        break;
+    }
     case MTR_OBJ_STRING: {
         struct mtr_string* s = (struct mtr_string*) object;
         free(s->s);
@@ -46,32 +52,29 @@ void mtr_delete_object(struct mtr_object* object) {
     }
 }
 
+// Struct
+
+struct mtr_struct* mtr_new_struct(u8 count) {
+    struct mtr_struct* s = malloc(sizeof(*s));
+    s->obj.type = MTR_OBJ_STRUCT;
+    s->members = malloc(sizeof(mtr_value) * count);
+    return s;
+}
+
+// Struct end
+
 // Function
-
-static void native_fn_call(struct mtr_object* function, struct mtr_engine* engine, u8 argc) {
-    struct mtr_native_fn* n = (struct mtr_native_fn*) function;
-    mtr_value val = n->function(argc, engine->stack_top - argc);
-    engine->stack_top -= argc;
-    mtr_push(engine, val);
-}
-
-static void function_call(struct mtr_object* function, struct mtr_engine* engine, u8 argc) {
-    struct mtr_function* f = (struct mtr_function*) function;
-    mtr_call(engine, f->chunk, argc);
-}
 
 struct mtr_native_fn* mtr_new_native_function(mtr_native native) {
     struct mtr_native_fn* fn = malloc(sizeof(*fn));
-    fn->method.call = native_fn_call;
-    fn->method.obj.type = MTR_OBJ_NATIVE_FN;
+    fn->obj.type = MTR_OBJ_NATIVE_FN;
     fn->function = native;
     return fn;
 }
 
 struct mtr_function* mtr_new_function(struct mtr_chunk chunk) {
     struct mtr_function* fn = malloc(sizeof(*fn));
-    fn->method.call = function_call;
-    fn->method.obj.type = MTR_OBJ_FUNCTION;
+    fn->obj.type = MTR_OBJ_FUNCTION;
     fn->chunk = chunk;
     return fn;
 }
@@ -160,7 +163,7 @@ void mtr_delete_map(struct mtr_map* map) {
 static u32 hash_val(mtr_value key) {
     if (key.type == MTR_VAL_OBJ) {
         struct mtr_object* obj = key.object;
-        if (obj->type != MTR_OBJ_STRING) { // this should be unlikely if not impossible because of the type check done before
+        if (obj->type != MTR_OBJ_STRING) {
             MTR_LOG_ERROR("Object is not hashable.");
             exit(-1);
         }
@@ -174,7 +177,7 @@ static bool compare_keys(mtr_value entry_key, mtr_value key) {
     if (entry_key.type == MTR_VAL_OBJ && key.type == MTR_VAL_OBJ) {
         struct mtr_object* entry_obj = entry_key.object;
         struct mtr_object* obj = key.object;
-        if (entry_obj->type != MTR_OBJ_STRING || obj->type != MTR_OBJ_STRING) { // this should be unlikely if not impossible because of the type check done before
+        if (entry_obj->type != MTR_OBJ_STRING || obj->type != MTR_OBJ_STRING) {
             MTR_LOG_ERROR("Object is not hashable.");
             exit(-1);
         }

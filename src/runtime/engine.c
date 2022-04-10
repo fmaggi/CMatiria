@@ -14,24 +14,35 @@ static mtr_value peek(struct mtr_engine* engine, size_t distance) {
     return *(engine->stack_top - distance - 1);
 }
 
-mtr_value mtr_pop(struct mtr_engine* engine) {
+static mtr_value pop(struct mtr_engine* engine) {
     return *(--engine->stack_top);
 }
 
-void mtr_push(struct mtr_engine* engine, mtr_value value) {
+static void push(struct mtr_engine* engine, mtr_value value) {
+#ifndef NDEBUG
     if (engine->stack_top == engine->stack + MTR_MAX_STACK) {
         MTR_LOG_ERROR("Stack overflow.");
         exit(-1);
     }
+#endif
     *(engine->stack_top++) = value;
 }
 
-static mtr_value pop(struct mtr_engine* engine) {
-    return mtr_pop(engine);
-}
+static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc);
 
-static void push(struct mtr_engine* engine, mtr_value value) {
-    mtr_push(engine, value);
+static void invoke(struct mtr_engine* engine, struct mtr_object* object, u8 argc) {
+    if (object->type == MTR_OBJ_FUNCTION) {
+        struct mtr_function* f = (struct mtr_function*) object;
+        call(engine, f->chunk, argc);
+        return;
+    } else if (object->type == MTR_OBJ_NATIVE_FN) {
+        struct mtr_native_fn* n = (struct mtr_native_fn*) object;
+        mtr_value val = n->function(argc, engine->stack_top - argc);
+        engine->stack_top -= argc;
+        push(engine, val);
+        return;
+    }
+    MTR_ASSERT(false, "Object is not invokable");
 }
 
 #define BINARY_OP(op, type)                                            \
@@ -44,7 +55,7 @@ static void push(struct mtr_engine* engine, mtr_value value) {
 
 #define READ(type) *((type*)ip); ip += sizeof(type)
 
-void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) {
+static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) {
     mtr_value* frame = engine->stack_top - argc;
     register u8* ip = chunk.bytecode;
     u8* end = chunk.bytecode + chunk.size;
@@ -118,13 +129,24 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
                 break;
             }
 
+            case MTR_OP_CONSTRUCTOR: {
+                u8 count = READ(u8);
+                struct mtr_struct* s = mtr_new_struct(count);
+                for (u8 i = 0; i < count; ++i) {
+                    u8 actual_index = count - i - 1;
+                    s->members[actual_index] = pop(engine);
+                }
+                push(engine, MTR_OBJ_VAL(s));
+                break;
+            }
+
             case MTR_OP_NIL: {
                 const mtr_value c = MTR_NIL;
                 push(engine, c);
                 break;
             }
 
-            case MTR_OP_NEW_STRING: {
+            case MTR_OP_STRING: {
                 mtr_value string = peek(engine, 0);
                 if (NULL == string.object) {
                     pop(engine); // pop null value;
@@ -134,7 +156,7 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
                 break;
             }
 
-            case MTR_OP_NEW_ARRAY: {
+            case MTR_OP_ARRAY: {
                 mtr_value array = peek(engine, 0);
                 if (NULL == array.object) {
                     pop(engine); // pop null value;
@@ -144,7 +166,7 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
                 break;
             }
 
-            case MTR_OP_NEW_MAP: {
+            case MTR_OP_MAP: {
                 mtr_value map = peek(engine, 0);
                 if (NULL == map.object) {
                     pop(engine); // pop null value;
@@ -333,8 +355,7 @@ void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) 
             case MTR_OP_CALL: {
                 const u8 argc = READ(u8);
                 struct mtr_object* obj = MTR_AS_OBJ(pop(engine));
-                struct mtr_invokable* i = (struct mtr_invokable*) obj;
-                i->call(obj, engine, argc);
+                invoke(engine, obj, argc);
                 break;
             }
 
@@ -381,9 +402,7 @@ i32 mtr_execute(struct mtr_engine* engine, struct mtr_package* package) {
 
     struct mtr_function* f = (struct mtr_function*) o;
 
-    // mtr_disassemble(f->chunk, "main");
-
-    mtr_call(engine, f->chunk, package->count);
+    call(engine, f->chunk, package->count);
 
     // mtr_dump_stack(engine->stack, engine->stack_top);
     return 0;

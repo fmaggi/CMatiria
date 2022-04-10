@@ -41,11 +41,6 @@ struct mtr_type mtr_get_data_type(struct mtr_token type) {
         break;
     }
 
-    case MTR_TOKEN_IDENTIFIER: {
-        t.type = MTR_DATA_USER_DEFINED;
-        break;
-    }
-
     case MTR_TOKEN_ANY: {
         t.type = MTR_DATA_ANY;
         break;
@@ -60,7 +55,6 @@ struct mtr_type mtr_get_data_type(struct mtr_token type) {
 
 struct mtr_type mtr_copy_type(struct mtr_type type) {
     switch (type.type) {
-    case MTR_DATA_USER_DEFINED: MTR_ASSERT(false, "user types not implemented yet.");
     case MTR_DATA_ARRAY: {
         struct mtr_array_type* a = (struct mtr_array_type*) type.obj;
         return mtr_new_array_type(a->type);
@@ -74,14 +68,13 @@ struct mtr_type mtr_copy_type(struct mtr_type type) {
         return mtr_new_function_type(f->return_, f->argc, f->argv);
     }
     default:
-        return type; // no need to copy anythin;
+        return type; // no need to copy anything;
     }
 
 }
 
 static void delete_object_type(mtr_object_type* obj, enum mtr_data_type type) {
     switch (type) {
-    case MTR_DATA_USER_DEFINED: return;
     case MTR_DATA_ARRAY: {
         struct mtr_array_type* a = (struct mtr_array_type*) obj;
         mtr_delete_type(a->type);
@@ -105,6 +98,19 @@ static void delete_object_type(mtr_object_type* obj, enum mtr_data_type type) {
         free(f);
         return;
     }
+    case MTR_DATA_STRUCT: {
+        struct mtr_struct_type* s = (struct mtr_struct_type*) obj;
+        free(s);
+        return;
+    }
+    case MTR_DATA_UNION: {
+        struct mtr_union_type* u = (struct mtr_union_type*) obj;
+        for (u8 i = 0; i < u->argc; ++i ) {
+            mtr_delete_type(u->types[i]);
+        }
+        free(u->types);
+        free(u);
+    }
     default:
         break;
     }
@@ -120,7 +126,6 @@ void mtr_delete_type(struct mtr_type type) {
 static bool object_type_match(mtr_object_type* lhs, mtr_object_type* rhs, enum mtr_data_type type) {
     switch (type) {
     case MTR_DATA_INVALID: return false;
-    case MTR_DATA_USER_DEFINED: return false;
     case MTR_DATA_ARRAY: {
         struct mtr_array_type* l = (struct mtr_array_type*) lhs;
         struct mtr_array_type* r = (struct mtr_array_type*) rhs;
@@ -136,6 +141,16 @@ static bool object_type_match(mtr_object_type* lhs, mtr_object_type* rhs, enum m
         struct mtr_function_type* r = (struct mtr_function_type*) rhs;
         return mtr_type_match(l->return_, r->return_);
     }
+    case MTR_DATA_UNION: {
+        struct mtr_union_type* l = (struct mtr_union_type*) lhs;
+        struct mtr_union_type* r = (struct mtr_union_type*) rhs;
+        return l->name.length == r->name.length && memcmp(l->name.start, r->name.start, l->name.length);
+    }
+    case MTR_DATA_STRUCT: {
+        struct mtr_struct_type* l = (struct mtr_struct_type*) lhs;
+        struct mtr_struct_type* r = (struct mtr_struct_type*) rhs;
+        return l->name.length == r->name.length && memcmp(l->name.start, r->name.start, l->name.length);
+    }
     default:
         break;
     }
@@ -145,9 +160,10 @@ static bool object_type_match(mtr_object_type* lhs, mtr_object_type* rhs, enum m
 
 bool mtr_type_match(struct mtr_type lhs, struct mtr_type rhs) {
     bool any = lhs.type == MTR_DATA_ANY || rhs.type == MTR_DATA_ANY;
+    bool trivial_type = lhs.obj == NULL;
     bool match = (lhs.type == rhs.type)
             && (
-                (lhs.type >= MTR_DATA_BOOL) || object_type_match(lhs.obj, rhs.obj, lhs.type)
+                trivial_type || object_type_match(lhs.obj, rhs.obj, lhs.type)
             // relying on short circuiting to decide whether to call object_type_match or not
             );
     return any || match;
@@ -180,6 +196,7 @@ struct mtr_type mtr_new_array_type(struct mtr_type type) {
     struct mtr_type t;
     t.type = MTR_DATA_ARRAY;
     t.obj = a;
+    t.assignable = true;
     return t;
 }
 
@@ -192,6 +209,7 @@ struct mtr_type mtr_new_map_type(struct mtr_type key, struct mtr_type value) {
     struct mtr_type t;
     t.type = MTR_DATA_MAP;
     t.obj = m;
+    t.assignable = true;
     return t;
 }
 
@@ -208,5 +226,36 @@ struct mtr_type mtr_new_function_type(struct mtr_type return_, u8 argc, struct m
     struct mtr_type t;
     t.type = MTR_DATA_FN;
     t.obj = f;
+    t.assignable = false;
+    return t;
+}
+
+struct mtr_type mtr_new_union_type(struct mtr_token token, struct mtr_type* types, u8 argc) {
+    struct mtr_type t;
+    t.type = MTR_DATA_UNION;
+    t.assignable = false;
+    t.obj = NULL;
+    if (argc > 255 || argc < 0) {
+        goto ret;
+    }
+
+    struct mtr_union_type* u = malloc(sizeof(*u));
+    u->types = malloc(sizeof(struct mtr_type) * argc);
+    memcpy(u->types, types, sizeof(struct mtr_type) * argc);
+    u->argc = argc;
+    u->name = token;
+
+    t.obj = u;
+ret:
+    return t;
+}
+
+struct mtr_type mtr_new_struct_type(struct mtr_token token) {
+    struct mtr_type t;
+    struct mtr_struct_type* s = malloc(sizeof(*s));
+    s->name = token;
+    t.type = MTR_DATA_STRUCT;
+    t.assignable = false;
+    t.obj = s;
     return t;
 }

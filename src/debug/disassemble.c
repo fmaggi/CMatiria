@@ -55,21 +55,27 @@ u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {
         break;
     }
 
+    case MTR_OP_CONSTRUCTOR: {
+        u8 count = READ(u8);
+        MTR_LOG("CON (%u)", count);
+        break;
+    }
+
     case MTR_OP_NIL:
         MTR_LOG("NIL");
         break;
 
-    case MTR_OP_NEW_STRING: {
+    case MTR_OP_STRING: {
         MTR_LOG("sNEW");
         break;
     }
 
-    case MTR_OP_NEW_ARRAY: {
+    case MTR_OP_ARRAY: {
         MTR_LOG("aNEW");
         break;
     }
 
-    case MTR_OP_NEW_MAP: {
+    case MTR_OP_MAP: {
         MTR_LOG("mNEW");
         break;
     }
@@ -211,6 +217,7 @@ void mtr_dump_chunk(struct mtr_chunk* chunk) {
 
 const char* mtr_obj_type_to_str(struct mtr_object* obj) {
     switch (obj->type) {
+    case MTR_OBJ_STRUCT:    return "<struct>";
     case MTR_OBJ_NATIVE_FN: return "<native fn>";
     case MTR_OBJ_FUNCTION:  return "<fn>";
     case MTR_OBJ_ARRAY:     return "<array>";

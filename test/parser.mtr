@@ -1,8 +1,9 @@
 fn main() {
-    let x := { "Hello": 3 };
-    print("Hello");
-    Float y := 3.59;
-    print(y);
+    MyType x;
 }
 
 fn print(Any x) ...
+
+type MyType := {
+    Int x := 63;
+}

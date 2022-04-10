@@ -17,9 +17,4 @@ struct mtr_engine {
 
 i32 mtr_execute(struct mtr_engine* engine, struct mtr_package* package);
 
-void mtr_call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc);
-
-void mtr_push(struct mtr_engine* engine, mtr_value value);
-mtr_value mtr_pop(struct mtr_engine* engine);
-
 #endif

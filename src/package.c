@@ -2,6 +2,7 @@
 
 #include "AST/stmt.h"
 
+#include "AST/symbol.h"
 #include "core/log.h"
 #include "core/utils.h"
 #include "runtime/object.h"
@@ -12,6 +13,28 @@
 #include <stdlib.h>
 #include <string.h>
 
+static bool valid_as_global(struct mtr_stmt* s) {
+    return s->type == MTR_STMT_FN
+        || s->type == MTR_STMT_NATIVE_FN
+        || s->type == MTR_STMT_STRUCT;
+}
+
+static struct mtr_symbol get_symbol(struct mtr_stmt* s) {
+    switch (s->type) {
+    case MTR_STMT_STRUCT: {
+        struct mtr_struct_decl* sd = (struct mtr_struct_decl*) s;
+        return sd->symbol;
+    }
+    case MTR_STMT_FN:
+    case MTR_STMT_NATIVE_FN: {
+        struct mtr_function_decl* fd = (struct mtr_function_decl*) s;
+        return fd->symbol;
+    }
+    default:
+        exit(1);
+    }
+}
+
 struct mtr_package* mtr_new_package(const char* const source, struct mtr_ast* ast) {
     struct mtr_package* package = malloc(sizeof(struct mtr_package));
     package->source = source;
@@ -21,10 +44,9 @@ struct mtr_package* mtr_new_package(const char* const source, struct mtr_ast* as
     package->functions = malloc(sizeof(struct mtr_object*) * block->size);
 
     for (size_t i = 0; i < block->size; ++i) {
-        struct mtr_function_decl* f = (struct mtr_function_decl*) block->statements[i];
-        MTR_ASSERT(f->stmt.type == MTR_STMT_FN || f->stmt.type == MTR_STMT_NATIVE_FN, "Stmt should be function declaration.");
-        MTR_ASSERT(f->symbol.index == i, "Something went wrong!");
-        mtr_scope_add(&package->globals, f->symbol);
+        MTR_ASSERT(valid_as_global(block->statements[i]), "Statement is not valid as global statement!");
+        struct mtr_symbol s = get_symbol(block->statements[i]);
+        mtr_scope_add(&package->globals, s);
         package->functions[i] = NULL;
     }
 
@@ -36,6 +58,7 @@ struct mtr_package* mtr_new_package(const char* const source, struct mtr_ast* as
 void mtr_package_insert_function(struct mtr_package* package, struct mtr_object* object, struct mtr_symbol symbol) {
     const struct mtr_symbol* s = mtr_scope_find(&package->globals, symbol.token);
     if (s == NULL) {
+        MTR_LOG_WARN("Name not found!");
         return;
     }
     package->functions[s->index] = object;

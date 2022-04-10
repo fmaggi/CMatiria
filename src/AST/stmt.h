@@ -8,6 +8,8 @@
 
 enum mtr_stmt_type {
     MTR_STMT_ASSIGNMENT,
+    MTR_STMT_STRUCT,
+    MTR_STMT_UNION,
     MTR_STMT_FN,
     MTR_STMT_NATIVE_FN,
     MTR_STMT_RETURN,
@@ -55,10 +57,23 @@ struct mtr_variable {
 // I store args type in the function type so that it is available when type-checking a call
 struct mtr_function_decl {
     struct mtr_stmt stmt;
-    struct mtr_block* body;
+    struct mtr_stmt* body;
     struct mtr_symbol symbol;
     struct mtr_variable* argv;
     u8 argc;
+};
+
+struct mtr_struct_decl {
+    struct mtr_stmt stmt;
+    struct mtr_symbol symbol;
+    struct mtr_variable** members;
+    u8 argc;
+};
+
+// union types are stored in the symbol type
+struct mtr_union_decl {
+    struct mtr_stmt stmt;
+    struct mtr_symbol symbol;
 };
 
 struct mtr_return {

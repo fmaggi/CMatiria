@@ -10,11 +10,8 @@
 #include "core/log.h"
 #include "debug/dump.h"
 
+#include <stdlib.h>
 #include <string.h>
-
-/*
-    TODO: Fix bug where you can assign to functions
-*/
 
 static void expr_error(struct mtr_expr* expr, const char* message, const char* const source) {
     switch (expr->type)
@@ -95,16 +92,16 @@ static struct mtr_type get_operator_type(struct mtr_token op, struct mtr_type lh
     return t;
 }
 
-static struct mtr_cast* try_promoting(struct mtr_expr* expr, struct mtr_type type, struct mtr_type to) {
+static struct mtr_expr* try_promoting(struct mtr_expr* expr, struct mtr_type type, struct mtr_type to) {
     switch (type.type) {
     case MTR_DATA_ANY:
     case MTR_DATA_INVALID:
-    case MTR_DATA_USER_DEFINED:
     case MTR_DATA_STRING:
     case MTR_DATA_ARRAY:
     case MTR_DATA_MAP:
     case MTR_DATA_FN:
     case MTR_DATA_VOID:
+    case MTR_DATA_STRUCT:
         return NULL;
     case MTR_DATA_BOOL:
     case MTR_DATA_INT:
@@ -115,13 +112,16 @@ static struct mtr_cast* try_promoting(struct mtr_expr* expr, struct mtr_type typ
         break;
     }
 
+    case MTR_DATA_UNION:
+        return NULL;
+
     }
 
     struct mtr_cast* cast = malloc(sizeof(*cast));
     cast->expr_.type = MTR_EXPR_CAST;
     cast->to = to;
     cast->right = expr;
-    return cast;
+    return (struct mtr_expr*) cast;
 }
 
 static struct mtr_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* scope, const char* const source);
@@ -135,7 +135,7 @@ static struct mtr_type analyze_binary(struct mtr_binary* expr, struct mtr_scope*
     if (t.type == MTR_DATA_INVALID) {
         mtr_report_error(expr->operator.token, "Invalid operation between objects of different types.", source);
         return invalid_type;
-    } else if (t.type == MTR_DATA_USER_DEFINED) {
+    } else if (t.type == MTR_DATA_STRUCT || t.type == MTR_DATA_UNION) {
         mtr_report_error(expr->operator.token, "Custom types not yet supported.", source);
         return invalid_type;
     }
@@ -145,17 +145,17 @@ static struct mtr_type analyze_binary(struct mtr_binary* expr, struct mtr_scope*
 
         // try and mathc the types. Cast if needed
         if (l.type != t.type) {
-            struct mtr_cast* cast = try_promoting(expr->left, l, t);
+            struct mtr_expr* cast = try_promoting(expr->left, l, t);
             if (NULL != cast) {
-                expr->left = (struct mtr_expr*) cast;
+                expr->left = cast;
             } else {
                 mtr_report_error(expr->operator.token, "Invalid operation between objects of different types.", source);
                 return invalid_type;
             }
         } else if (r.type != t.type) {
-            struct mtr_cast* cast = try_promoting(expr->right, r, t);
+            struct mtr_expr* cast = try_promoting(expr->right, r, t);
             if (NULL != cast) {
-                expr->right = (struct mtr_expr*) cast;
+                expr->right = cast;
             } else {
                 mtr_report_error(expr->operator.token, "Invalid operation between objects of different types.", source);
                 return invalid_type;
@@ -344,9 +344,17 @@ static bool load_var(struct mtr_variable* stmt, struct mtr_scope* scope, const c
     return true;
 }
 
-static bool analyze(struct mtr_stmt* stmt, struct mtr_scope* parent, const char* const source);
+static struct mtr_stmt* analyze(struct mtr_stmt* stmt, struct mtr_scope* parent, const char* const source);
 
-static bool analyze_block(struct mtr_block* block, struct mtr_scope* parent, const char* const source) {
+static struct mtr_stmt* sanitize_stmt(void* stmt, bool condition) {
+    if (!condition) {
+        mtr_free_stmt(stmt);
+        return NULL;
+    }
+    return stmt;
+}
+
+static struct mtr_stmt* analyze_block(struct mtr_block* block, struct mtr_scope* parent, const char* const source) {
     bool all_ok = true;
 
     struct mtr_scope scope = mtr_new_scope(parent);
@@ -354,16 +362,17 @@ static bool analyze_block(struct mtr_block* block, struct mtr_scope* parent, con
 
     for (size_t i = 0; i < block->size; ++i) {
         struct mtr_stmt* s = block->statements[i];
-        bool s_ok = analyze(s, &scope, source);
-        all_ok = s_ok && all_ok;
+        struct mtr_stmt* checked = analyze(s, &scope, source);
+        block->statements[i] = checked;
+        all_ok = checked != NULL && all_ok;
     }
 
     block->var_count = (u16) (scope.current - current);
     mtr_delete_scope(&scope);
-    return all_ok;
+    return sanitize_stmt(block, all_ok);
 }
 
-static bool analyze_fn(struct mtr_function_decl* stmt, struct mtr_scope* parent, const char* const source) {
+static struct mtr_stmt* analyze_fn(struct mtr_function_decl* stmt, struct mtr_scope* parent, const char* const source) {
     bool all_ok = true;
 
     struct mtr_scope scope = mtr_new_scope(parent);
@@ -373,26 +382,30 @@ static bool analyze_fn(struct mtr_function_decl* stmt, struct mtr_scope* parent,
         all_ok = load_var(arg, &scope, source) && all_ok;
     }
 
-    all_ok = analyze_block(stmt->body, &scope, source) && all_ok;
+    struct mtr_stmt* checked = analyze(stmt->body, &scope, source);
+    stmt->body = checked;
+
+    all_ok = checked != NULL && all_ok;
     mtr_delete_scope(&scope);
 
     struct mtr_function_type* type = stmt->symbol.type.obj;
     if (type->return_.type != MTR_DATA_VOID) {
-        struct mtr_stmt* last = stmt->body->statements[stmt->body->size-1];
+        struct mtr_block* body = (struct mtr_block*) stmt->body;
+        struct mtr_stmt* last = body->statements[body->size-1];
         if (last->type != MTR_STMT_RETURN) {
             mtr_report_error(stmt->symbol.token, "Non void function doesn't return anything.", source);
             return false;
         }
     }
 
-    return all_ok;
+    return sanitize_stmt(stmt, all_ok);
 }
 
-static bool analyze_assignment(struct mtr_assignment* stmt, struct mtr_scope* parent, const char* const source) {
+static struct mtr_stmt* analyze_assignment(struct mtr_assignment* stmt, struct mtr_scope* parent, const char* const source) {
     const struct mtr_type right_t = analyze_expr(stmt->right, parent, source);
-    if (right_t.type == MTR_DATA_FN) {
-        expr_error(stmt->expression, "Expression is not assignable.", source);
-        return false;
+    if (!right_t.assignable) {
+        expr_error(stmt->right, "Expression is not assignable.", source);
+        return sanitize_stmt(stmt, false);
     }
 
     const struct mtr_type expr_t = analyze_expr(stmt->expression, parent, source);
@@ -400,29 +413,30 @@ static bool analyze_assignment(struct mtr_assignment* stmt, struct mtr_scope* pa
     bool expr_ok = mtr_type_match(right_t, expr_t);
     if (!expr_ok) {
         // try and mathc the types. Cast if needed
-        struct mtr_cast* cast = try_promoting(stmt->expression, expr_t, right_t);
+        struct mtr_expr* cast = try_promoting(stmt->expression, expr_t, right_t);
         if (NULL != cast) {
-            stmt->expression = (struct mtr_expr*) cast;
+            stmt->expression = cast;
             expr_ok = true;
         } else {
             expr_error(stmt->right, "Invalid assignement to variable of different type", source);
         }
     }
 
-    return expr_ok;
+    return sanitize_stmt(stmt, expr_ok);
 }
 
-static bool analyze_variable(struct mtr_variable* decl, struct mtr_scope* parent, const char* const source) {
+static struct mtr_stmt* analyze_variable(struct mtr_variable* decl, struct mtr_scope* parent, const char* const source) {
     bool expr = true;
+
     if (decl->value) {
         const struct mtr_type type = analyze_expr(decl->value, parent, source);
         if (decl->symbol.type.type == MTR_DATA_INVALID) { // this means it was a 'let' var decl
             decl->symbol.type = mtr_copy_type(type);
         } else if (!mtr_type_match(decl->symbol.type, type)) {
             // try and mathc the types. Cast if needed
-            struct mtr_cast* cast = try_promoting(decl->value, type, decl->symbol.type);
+            struct mtr_expr* cast = try_promoting(decl->value, type, decl->symbol.type);
             if (NULL != cast) {
-                decl->value = (struct mtr_expr*) cast;
+                decl->value = cast;
             } else {
                 mtr_report_error(decl->symbol.token, "Invalid assignement to variable of different type", source);
                 expr = false;
@@ -430,46 +444,76 @@ static bool analyze_variable(struct mtr_variable* decl, struct mtr_scope* parent
         }
     }
 
+    if (decl->symbol.type.type == MTR_DATA_STRUCT) {
+        struct mtr_struct_type* type = decl->symbol.type.obj;
+        struct mtr_symbol* name = mtr_scope_find(parent, type->name);
+        if (NULL == name) {
+            mtr_report_error(decl->symbol.token, "Unknown type", source);
+            expr = false;
+        }
+        if (!decl->value) {
+            struct mtr_primary* primary = malloc(sizeof(struct mtr_primary));
+            primary->expr_.type = MTR_EXPR_PRIMARY;
+            primary->symbol = *name;
+
+            struct mtr_call* constructor = malloc(sizeof(struct mtr_call));
+            constructor->expr_.type = MTR_EXPR_CALL;
+            constructor->callable = (struct mtr_expr*) primary;
+            decl->value = (struct mtr_expr*) constructor;
+        }
+    }
+
+
+    decl->symbol.type.assignable = true;
     bool loaded = load_var(decl, parent, source);
-    return loaded && expr;
+    return sanitize_stmt(decl, expr && loaded);
 }
 
-static bool analyze_if(struct mtr_if* stmt, struct mtr_scope* parent, const char* const source) {
+static struct mtr_stmt* analyze_if(struct mtr_if* stmt, struct mtr_scope* parent, const char* const source) {
     struct mtr_type expr_type = analyze_expr(stmt->condition, parent, source);
     bool condition_ok = expr_type.type == MTR_DATA_FLOAT || expr_type.type == MTR_DATA_INT || expr_type.type == MTR_DATA_BOOL;
     if (!condition_ok) {
         expr_error(stmt->condition, "Expression doesn't return Bool.", source);
     }
 
-    bool then_ok = analyze(stmt->then, parent, source);
+    bool then_ok = true;
+    {
+        struct mtr_stmt* then_checked = analyze(stmt->then, parent, source);
+        stmt->then = then_checked;
+        then_ok = then_checked != NULL;
+    }
 
     bool e_ok = true;
     if (stmt->otherwise) {
-        e_ok = analyze(stmt->otherwise, parent, source);
+        struct mtr_stmt* e_checked = analyze(stmt->otherwise, parent, source);
+        stmt->then = e_checked;
+        e_ok = e_checked != NULL;
     }
 
-    return condition_ok && then_ok && e_ok;
+    return sanitize_stmt(stmt, condition_ok && then_ok && e_ok);
 }
 
-static bool analyze_while(struct mtr_while* stmt, struct mtr_scope* parent, const char* const source) {
+static struct mtr_stmt* analyze_while(struct mtr_while* stmt, struct mtr_scope* parent, const char* const source) {
     struct mtr_type expr_type = analyze_expr(stmt->condition, parent, source);
     bool condition_ok = expr_type.type == MTR_DATA_FLOAT || expr_type.type == MTR_DATA_INT || expr_type.type == MTR_DATA_BOOL;
     if (!condition_ok) {
         expr_error(stmt->condition, "Expression doesn't return Bool.", source);
     }
 
-    bool body_ok = analyze(stmt->body, parent, source);
+    struct mtr_stmt* body_checked = analyze(stmt->body, parent, source);
+    stmt->body = body_checked;
+    bool body_ok = body_checked != NULL;
 
-    return condition_ok && body_ok;
+    return sanitize_stmt(stmt, condition_ok && body_ok);
 }
 
-static bool analyze_return(struct mtr_return* stmt, struct mtr_scope* parent, const char* const source) {
+static struct mtr_stmt* analyze_return(struct mtr_return* stmt, struct mtr_scope* parent, const char* const source) {
     if (stmt->from->symbol.type.type == MTR_DATA_VOID) {
         if (NULL == stmt->expr) {
-            return true;
+            return (struct mtr_stmt*) stmt;
         } else {
             expr_error(stmt->expr, "Void function returns a value.", source);
-            return false;
+            return sanitize_stmt(stmt, false);
         }
     }
 
@@ -479,16 +523,36 @@ static bool analyze_return(struct mtr_return* stmt, struct mtr_scope* parent, co
     if (!ok) {
         expr_error(stmt->expr, "Incompatible return type.", source);
         mtr_report_message(stmt->from->symbol.token, "As declared here.", source);
+        return sanitize_stmt(stmt, false);
     }
-    return ok;
+    return (struct mtr_stmt*) stmt;
 }
 
-static bool analyze_call_stmt(struct mtr_call_stmt* call, struct mtr_scope* scope, const char* const source) {
+static struct mtr_stmt* analyze_call_stmt(struct mtr_call_stmt* call, struct mtr_scope* scope, const char* const source) {
     struct mtr_type type = analyze_expr(call->call, scope, source);
-    return type.type != MTR_DATA_INVALID;
+    return sanitize_stmt(call, type.type != MTR_DATA_INVALID);
 }
 
-static bool analyze(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* const source) {
+static struct mtr_stmt* analyze_union(struct mtr_union_decl* u, struct mtr_scope* scope, const char* const source) {
+    return (struct mtr_stmt*) u;
+}
+
+static struct mtr_stmt* analyze_struct(struct mtr_struct_decl* s, struct mtr_scope* parent, const char* const source) {
+    bool all_ok = true;
+
+    struct mtr_scope scope = mtr_new_scope(parent);
+
+    for (size_t i = 0; i < s->argc; ++i) {
+        struct mtr_variable* var = s->members[i];
+        struct mtr_variable* checked = (struct mtr_variable*) analyze_variable(var, &scope, source);
+        s->members[i] = checked;
+        all_ok = checked != NULL && all_ok;
+    }
+
+    return sanitize_stmt(s, all_ok);
+}
+
+static struct mtr_stmt* analyze(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* const source) {
     switch (stmt->type)
     {
     case MTR_STMT_BLOCK:      return analyze_block((struct mtr_block*) stmt, scope, source);
@@ -499,22 +563,53 @@ static bool analyze(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* 
     case MTR_STMT_WHILE:      return analyze_while((struct mtr_while*) stmt, scope, source);
     case MTR_STMT_RETURN:     return analyze_return((struct mtr_return*) stmt, scope, source);
     case MTR_STMT_CALL:       return analyze_call_stmt((struct mtr_call_stmt*) stmt, scope, source);
-    case MTR_STMT_NATIVE_FN:  return true;
+    case MTR_STMT_STRUCT:     return analyze_struct((struct mtr_struct_decl*) stmt, scope, source);
+    case MTR_STMT_UNION:
+    case MTR_STMT_NATIVE_FN:
+        return stmt;
     }
     MTR_ASSERT(false, "Invalid stmt type.");
     return false;
 }
 
-static bool global_analysis(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* const source) {
+static struct mtr_stmt* global_analysis(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* const source) {
     switch (stmt->type)
     {
-    case MTR_STMT_NATIVE_FN: return true;
+    case MTR_STMT_NATIVE_FN: return stmt;
     case MTR_STMT_FN: return analyze_fn((struct mtr_function_decl*) stmt, scope, source);
+    case MTR_STMT_UNION: return analyze_union((struct mtr_union_decl*) stmt, scope, source);
+    case MTR_STMT_STRUCT: return analyze_struct((struct mtr_struct_decl*) stmt, scope, source);
     default:
         break;
     }
     MTR_ASSERT(false, "Invalid stmt type.");
-    return false;
+    return NULL;
+}
+
+static bool load_union(struct mtr_union_decl* u, struct mtr_scope* scope, const char* const source) {
+    const struct mtr_symbol* s = mtr_scope_find(scope, u->symbol.token);
+    if (NULL != s) {
+        mtr_report_error(u->symbol.token, "Redefinition of name.", source);
+        mtr_report_message(s->token, "Previuosly defined here.", source);
+        return false;
+    }
+
+    u->symbol.index = scope->current++;
+    mtr_scope_add(scope, u->symbol);
+    return true;
+}
+
+static bool load_struct(struct mtr_struct_decl* st, struct mtr_scope* scope, const char* const source) {
+    const struct mtr_symbol* s = mtr_scope_find(scope, st->symbol.token);
+    if (NULL != s) {
+        mtr_report_error(st->symbol.token, "Redefinition of name.", source);
+        mtr_report_message(s->token, "Previuosly defined here.", source);
+        return false;
+    }
+
+    st->symbol.index = scope->current++;
+    mtr_scope_add(scope, st->symbol);
+    return true;
 }
 
 static bool load_global(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* const source) {
@@ -523,6 +618,10 @@ static bool load_global(struct mtr_stmt* stmt, struct mtr_scope* scope, const ch
     case MTR_STMT_NATIVE_FN:
     case MTR_STMT_FN:
         return load_fn((struct mtr_function_decl*) stmt, scope, source);
+    case MTR_STMT_UNION:
+        return load_union((struct mtr_union_decl*) stmt, scope, source);
+    case MTR_STMT_STRUCT:
+        return load_struct((struct mtr_struct_decl*) stmt, scope, source);
     default:
         break;
     }
@@ -544,10 +643,11 @@ bool mtr_validate(struct mtr_ast* ast, const char* const source) {
 
     for (size_t i = 0; i < block->size; ++i) {
         struct mtr_stmt* s = block->statements[i];
-        all_ok = global_analysis(s, &global, source) && all_ok;
+        struct mtr_stmt* checked = global_analysis(s, &global, source);
+        block->statements[i] = checked;
+        all_ok =  checked != NULL && all_ok;
     }
 
     mtr_delete_scope(&global);
-
     return all_ok;
 }

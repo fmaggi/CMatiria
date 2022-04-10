@@ -22,6 +22,7 @@ struct keyword_entry {
 #define LAST_KEYWORD  MTR_TOKEN_STRING
 #define KEYWORD_COUNT LAST_KEYWORD - FIRST_KEYWORD + 1
 
+// once I have all of the keywords dialed in I will remove this
 static const struct keyword_entry keywords[KEYWORD_COUNT] = {
     { .type = MTR_TOKEN_ANY,    .str = "Any",    .str_len = strlen("Any")    },
     { .type = MTR_TOKEN_LET,    .str = "let",    .str_len = strlen("let")    },
@@ -154,7 +155,7 @@ struct mtr_token mtr_next_token(struct mtr_scanner* scanner) {
             advance(scanner);
             return make_token(scanner, MTR_TOKEN_OR);
         }
-        return invalid_token;
+        return make_token(scanner, MTR_TOKEN_PIPE);
 
     case '"': return scan_string(scanner);
 

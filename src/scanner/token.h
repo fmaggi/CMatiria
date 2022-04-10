@@ -14,6 +14,7 @@ enum mtr_token_type {
     MTR_TOKEN_ASSIGN,
     MTR_TOKEN_GREATER, MTR_TOKEN_LESS,
     MTR_TOKEN_AND, MTR_TOKEN_OR,
+    MTR_TOKEN_PIPE,
 
     // double char
     MTR_TOKEN_ARROW,

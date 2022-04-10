@@ -7,10 +7,11 @@
 enum mtr_data_type {
     MTR_DATA_INVALID = 0,
 
-    MTR_DATA_USER_DEFINED,
     MTR_DATA_ARRAY,
     MTR_DATA_MAP,
     MTR_DATA_FN,
+    MTR_DATA_UNION,
+    MTR_DATA_STRUCT,
 
     MTR_DATA_ANY,
     MTR_DATA_VOID,
@@ -26,6 +27,7 @@ typedef void mtr_object_type;
 struct mtr_type {
     mtr_object_type* obj;
     enum mtr_data_type type;
+    bool assignable;
 };
 
 struct mtr_type mtr_get_data_type(struct mtr_token token);
@@ -59,5 +61,19 @@ struct mtr_function_type {
 };
 
 struct mtr_type mtr_new_function_type(struct mtr_type return_, u8 argc, struct mtr_type* argv);
+
+struct mtr_union_type {
+    struct mtr_token name;
+    struct mtr_type* types;
+    u8 argc;
+};
+
+struct mtr_type mtr_new_union_type(struct mtr_token token, struct mtr_type* types, u8 argc);
+
+struct mtr_struct_type {
+    struct mtr_token name;
+};
+
+struct mtr_type mtr_new_struct_type(struct mtr_token token);
 
 #endif

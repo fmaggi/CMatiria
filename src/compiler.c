@@ -347,17 +347,22 @@ static void write_variable(struct mtr_chunk* chunk, struct mtr_variable* var) {
 
     switch (var->symbol.type.type) {
     case MTR_DATA_STRING: {
-        mtr_write_chunk(chunk, MTR_OP_NEW_STRING);
+        mtr_write_chunk(chunk, MTR_OP_STRING);
         break;
     }
 
     case MTR_DATA_ARRAY: {
-        mtr_write_chunk(chunk, MTR_OP_NEW_ARRAY);
+        mtr_write_chunk(chunk, MTR_OP_ARRAY);
         break;
     }
 
     case MTR_DATA_MAP: {
-        mtr_write_chunk(chunk, MTR_OP_NEW_MAP);
+        mtr_write_chunk(chunk, MTR_OP_MAP);
+        return;
+    }
+
+    case MTR_DATA_STRUCT: {
+        // It is a no-op. Constructors push the instance directly and assignment as well.
         return;
     }
 
@@ -453,17 +458,28 @@ static void write(struct mtr_chunk* chunk, struct mtr_stmt* stmt) {
     case MTR_STMT_ASSIGNMENT: write_assignment(chunk, (struct mtr_assignment*) stmt); return;
     case MTR_STMT_RETURN: write_return(chunk, (struct mtr_return*) stmt); return;
     case MTR_STMT_CALL: write_call_stmt(chunk, (struct mtr_call_stmt*) stmt); return;
-    case MTR_STMT_NATIVE_FN: return;
-    case MTR_STMT_FN: return;
+
+    case MTR_STMT_UNION:
+    case MTR_STMT_STRUCT:
+    case MTR_STMT_NATIVE_FN:
+    case MTR_STMT_FN:
+        return;
+
     }
 }
 
 static void write_function(struct mtr_chunk* chunk, struct mtr_function_decl* fn) {
-    struct mtr_block* b = fn->body;
-    for (size_t i = 0; i < b->size; ++i) {
-        struct mtr_stmt* s = b->statements[i];
-        write(chunk, s);
+    write(chunk, fn->body);
+}
+
+static void write_struct(struct mtr_chunk* chunk, struct mtr_struct_decl* s) {
+    for (u8 i = 0; i < s->argc; ++i) {
+        struct mtr_variable* v = s->members[i];
+        write_variable(chunk, v);
     }
+    mtr_write_chunk(chunk, MTR_OP_CONSTRUCTOR);
+    mtr_write_chunk(chunk, s->argc);
+    mtr_write_chunk(chunk, MTR_OP_RETURN);
 }
 
 // as every function has its own chunk we could probably paralellize this pretty easily
@@ -476,6 +492,14 @@ static void write_bytecode(struct mtr_stmt* stmt, struct mtr_package* package) {
         write_function(&chunk, fd);
         struct mtr_function* f = mtr_new_function(chunk);
         mtr_package_insert_function(package, (struct mtr_object*) f, fd->symbol);
+        break;
+    }
+    case MTR_STMT_STRUCT: {
+        struct mtr_struct_decl* sd = (struct mtr_struct_decl*) stmt;
+        struct mtr_chunk chunk = mtr_new_chunk();
+        write_struct(&chunk, sd);
+        struct mtr_function* constructor = mtr_new_function(chunk);
+        mtr_package_insert_function(package, (struct mtr_object*) constructor, sd->symbol);
         break;
     }
     default:

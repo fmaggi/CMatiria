@@ -7,6 +7,7 @@
 #include "core/types.h"
 
 enum mtr_object_t {
+    MTR_OBJ_STRUCT,
     MTR_OBJ_FUNCTION,
     MTR_OBJ_NATIVE_FN,
     MTR_OBJ_STRING,
@@ -22,24 +23,24 @@ void mtr_delete_object(struct mtr_object* object);
 
 struct mtr_engine;
 
-typedef void (*mtr_invoke)(struct mtr_object* function, struct mtr_engine* engine, u8 argc);
-
-struct mtr_invokable {
+struct mtr_struct {
     struct mtr_object obj;
-    mtr_invoke call;
+    mtr_value* members;
 };
+
+struct mtr_struct* mtr_new_struct(u8 count);
 
 typedef mtr_value (*mtr_native)(u8 argc, mtr_value* first);
 
 struct mtr_native_fn {
-    struct mtr_invokable method;
+    struct mtr_object obj;
     mtr_native function;
 };
 
 struct mtr_native_fn* mtr_new_native_function(mtr_native native);
 
 struct mtr_function {
-    struct mtr_invokable method;
+    struct mtr_object obj;
     struct mtr_chunk chunk;
 };
 
@@ -67,9 +68,6 @@ struct mtr_string {
 
 struct mtr_string* mtr_new_string(const char* string, size_t length);
 
-// Maps use value.integer as keys whether the key is an actual integer or not.
-// This could be problematic in the case to keys have the same integer representation even though they are different types
-// but meh
 struct mtr_map {
     struct mtr_object obj;
     struct map_entry* entries;
