@@ -14,6 +14,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+static bool is_literal(struct mtr_expr* expr) {
+    return expr->type == MTR_EXPR_ARRAY_LITERAL || expr->type == MTR_EXPR_MAP_LITERAL || expr->type == MTR_EXPR_LITERAL;
+}
+
+// static bool is_function(struct mtr_type t) {
+//     return t.type == MTR_DATA_FN;
+// }
+
 static void expr_error(struct mtr_expr* expr, const char* message, const char* const source) {
     switch (expr->type)
     {
@@ -48,8 +56,9 @@ static void expr_error(struct mtr_expr* expr, const char* message, const char* c
         break;
     }
 
+    case MTR_EXPR_ACCESS:
     case MTR_EXPR_SUBSCRIPT: {
-        struct mtr_subscript* s = (struct mtr_subscript*) expr;
+        struct mtr_access* s = (struct mtr_access*) expr;
         expr_error(s->object, message, source);
         break;
     }
@@ -102,6 +111,8 @@ static struct mtr_expr* try_promoting(struct mtr_expr* expr, struct mtr_type typ
     case MTR_DATA_MAP:
     case MTR_DATA_FN:
     case MTR_DATA_VOID:
+    case MTR_DATA_USER:
+    case MTR_DATA_UNION:
     case MTR_DATA_STRUCT:
         return NULL;
     case MTR_DATA_BOOL:
@@ -112,9 +123,6 @@ static struct mtr_expr* try_promoting(struct mtr_expr* expr, struct mtr_type typ
         }
         break;
     }
-
-    case MTR_DATA_UNION:
-        return NULL;
 
     }
 
@@ -254,15 +262,15 @@ static struct mtr_type analyze_call(struct mtr_call* call, struct mtr_scope* sco
     return f->return_;
 }
 
-static struct mtr_type analyze_subscript(struct mtr_subscript* expr, struct mtr_scope* scope, const char* const source) {
+static struct mtr_type analyze_subscript(struct mtr_access* expr, struct mtr_scope* scope, const char* const source) {
     struct mtr_type type = analyze_expr(expr->object, scope, source);
-    struct mtr_type index_type = analyze_expr(expr->index, scope, source);
+    struct mtr_type index_type = analyze_expr(expr->element, scope, source);
 
     switch (type.type) {
 
     case MTR_DATA_ARRAY: {
         if (index_type.type != MTR_DATA_INT) {
-            expr_error(expr->index, "Index has to be integral expression.", source);
+            expr_error(expr->element, "Index has to be integral expression.", source);
             return invalid_type;
         }
         break;
@@ -271,7 +279,7 @@ static struct mtr_type analyze_subscript(struct mtr_subscript* expr, struct mtr_
     case MTR_DATA_MAP: {
         struct mtr_map_type* m = type.obj;
         if (!mtr_type_match(index_type, m->key)) {
-            expr_error(expr->index, "Index doesn't match key type.", source);
+            expr_error(expr->element, "Index doesn't match key type.", source);
             return invalid_type;
         }
         break;
@@ -297,16 +305,27 @@ static struct mtr_type analyze_unary(struct mtr_unary* expr, struct mtr_scope* s
 static struct mtr_type analyze_access(struct mtr_access* expr, struct mtr_scope* scope, const char* const source) {
     const struct mtr_type right_t = analyze_expr(expr->object, scope, source);
     if (right_t.type != MTR_DATA_STRUCT) {
-        expr_error(expr->object, "Expression is not accessible", source);
-        return invalid_type;
-    }
-    if (expr->accessed->type != MTR_EXPR_PRIMARY) {
-        expr_error(expr->accessed, "Expressions cannot be used as access expression", source);
+        mtr_dump_type(right_t);
+        expr_error(expr->object, "Expression is not accessible.", source);
         return invalid_type;
     }
 
-    // const struct mtr_type left_t = analyze_expr(expr->accessed, scope, source);
-    IMPLEMENT
+    if (expr->element->type != MTR_EXPR_PRIMARY) {
+        expr_error(expr->element, "Expression cannot be used as access expression.", source);
+        return invalid_type;
+    }
+
+    struct mtr_primary* p = (struct mtr_primary*) expr->element;
+    const struct mtr_struct_type* st = right_t.obj;
+    for (u8 i = 0; i < st->argc; ++i) {
+        bool match = st->members[i]->token.length == p->symbol.token.length
+            && memcmp(st->members[i]->token.start, p->symbol.token.start, p->symbol.token.length) == 0;
+        if (match) {
+            p->symbol.index = i;
+            return st->members[i]->type;
+        }
+    }
+
     return invalid_type;
 }
 
@@ -321,7 +340,7 @@ static struct mtr_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* sco
     case MTR_EXPR_ARRAY_LITERAL: return analyze_array_literal((struct mtr_array_literal*) expr, scope, source);
     case MTR_EXPR_MAP_LITERAL: return analyze_map_literal((struct mtr_map_literal*) expr, scope, source);
     case MTR_EXPR_CALL:     return analyze_call((struct mtr_call*) expr, scope, source);
-    case MTR_EXPR_SUBSCRIPT: return analyze_subscript((struct mtr_subscript*) expr, scope, source);
+    case MTR_EXPR_SUBSCRIPT: return analyze_subscript((struct mtr_access*) expr, scope, source);
     case MTR_EXPR_ACCESS: return analyze_access((struct mtr_access*) expr, scope, source);
     case MTR_EXPR_CAST:     IMPLEMENT return invalid_type;
     }
@@ -424,8 +443,8 @@ static struct mtr_stmt* analyze_variable(struct mtr_variable* decl, struct mtr_s
 
     if (decl->value) {
         const struct mtr_type type = analyze_expr(decl->value, parent, source);
-        if (decl->symbol.type.type == MTR_DATA_INVALID) { // this means it was a 'let' var decl
-            decl->symbol.type = mtr_copy_type(type);
+        if (decl->symbol.type.type == MTR_DATA_INVALID) { // this means it was an implicit var decl
+            decl->symbol.type = is_literal(decl->value) ? type : mtr_copy_type(type);
         } else if (!mtr_type_match(decl->symbol.type, type)) {
             // try and mathc the types. Cast if needed
             struct mtr_expr* cast = try_promoting(decl->value, type, decl->symbol.type);
@@ -438,14 +457,23 @@ static struct mtr_stmt* analyze_variable(struct mtr_variable* decl, struct mtr_s
         }
     }
 
-    if (decl->symbol.type.type == MTR_DATA_STRUCT) {
-        struct mtr_struct_type* type = decl->symbol.type.obj;
+    if (decl->symbol.type.type == MTR_DATA_USER) {
+        // Variable declarations with user types default to the mtr_user_type as we
+        // have no way of knowing if it was a struct or a union.
+        struct mtr_user_type* type = decl->symbol.type.obj;
         struct mtr_symbol* name = mtr_scope_find(parent, type->name);
         if (NULL == name) {
-            mtr_report_error(decl->symbol.token, "Unknown type", source);
+            mtr_report_error(decl->symbol.token, "Unknown type.", source);
             expr = false;
         }
+        // When we check if the type does exist we can now define whether the variable is
+        // a struct or a union.
+        decl->symbol.type = mtr_copy_type(name->type);
+        free(type);
+
         if (!decl->value) {
+            // TODO: Handle union constructors
+            // Create an expression for the constructor
             struct mtr_primary* primary = malloc(sizeof(struct mtr_primary));
             primary->expr_.type = MTR_EXPR_PRIMARY;
             primary->symbol = *name;
@@ -582,6 +610,8 @@ static struct mtr_stmt* analyze_struct(struct mtr_struct_decl* s, struct mtr_sco
         s->members[i] = checked;
         all_ok = checked != NULL && all_ok;
     }
+
+    mtr_delete_scope(&scope);
 
     return sanitize_stmt(s, all_ok);
 }

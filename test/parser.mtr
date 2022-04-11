@@ -1,8 +1,10 @@
 fn main() {
     MyType x;
-    y := x;
-    print(y);
+    print(3);
+    x.x := 15;
+    print(x.x);
 }
+
 fn print(Any x) ...
 
 type MyType := {

@@ -282,6 +282,13 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
                     push(engine, val);
                     break;
                 }
+                case MTR_OBJ_STRUCT: {
+                    const struct mtr_struct* s = (struct mtr_struct*) object;
+                    const u8 index = READ(u8);
+                    mtr_value val = s->members[index];
+                    push(engine, val);
+                    break;
+                }
                 default:
                     IMPLEMENT // runtime error
                     exit(-1);
@@ -316,6 +323,12 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
                 case MTR_OBJ_MAP: {
                     struct mtr_map* map = (struct mtr_map*) object;
                     mtr_map_insert(map, key, val);
+                    break;
+                }
+                case MTR_OBJ_STRUCT: {
+                    struct mtr_struct* s = (struct mtr_struct*) object;
+                    const u8 index = READ(u8);
+                    s->members[index] = val;
                     break;
                 }
                 default:

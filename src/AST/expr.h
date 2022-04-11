@@ -80,16 +80,10 @@ struct mtr_call {
     u8 argc;
 };
 
-struct mtr_subscript {
-    struct mtr_expr expr_;
-    struct mtr_expr* object;
-    struct mtr_expr* index;
-};
-
 struct mtr_access {
     struct mtr_expr expr_;
     struct mtr_expr* object;
-    struct mtr_expr* accessed;
+    struct mtr_expr* element;
 };
 
 void mtr_free_expr(struct mtr_expr* node);

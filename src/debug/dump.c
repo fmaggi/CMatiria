@@ -83,9 +83,9 @@ static void dump_expr(struct mtr_expr* expr, u32 offset) {
         break;
 
     case MTR_EXPR_SUBSCRIPT: {
-        struct mtr_subscript* s = (struct mtr_subscript*) expr;
+        struct mtr_access* s = (struct mtr_access*) expr;
         MTR_PRINT_DEBUG("([");
-        dump_expr(s->index, offset);
+        dump_expr(s->element, offset);
         MTR_PRINT_DEBUG("] -> ");
         dump_expr(s->object, 0);
         MTR_PRINT_DEBUG(")");
@@ -229,6 +229,10 @@ static void dump_object_type(mtr_object_type* obj, enum mtr_data_type type, u32 
         dump_type(a->type, offset+1);
     }
     case MTR_DATA_FN: return;
+    case MTR_DATA_STRUCT: {
+        IMPLEMENT
+        return;
+    }
     default:
         break;
     }
@@ -324,6 +328,7 @@ const char* mtr_data_type_to_str(struct mtr_type type) {
     case MTR_DATA_FN: return "Function";
     case MTR_DATA_UNION: return "Union";
     case MTR_DATA_STRUCT: return "Struct";
+    case MTR_DATA_USER: return "User";
     }
 
     static char buf[256];

@@ -14,6 +14,7 @@ const struct mtr_type invalid_type = {
 
 struct mtr_type mtr_get_data_type(struct mtr_token type) {
     struct mtr_type t = invalid_type;
+    t.assignable = true;
     switch (type.type)
     {
     case MTR_TOKEN_INT_LITERAL:
@@ -69,7 +70,7 @@ struct mtr_type mtr_copy_type(struct mtr_type type) {
     }
     case MTR_DATA_STRUCT: {
         struct mtr_struct_type* s = (struct mtr_struct_type*) type.obj;
-        return mtr_new_struct_type(s->name);
+        return mtr_new_struct_type(s->name.name, s->members, s->argc);
     }
     default:
         return type; // no need to copy anything;
@@ -104,6 +105,7 @@ static void delete_object_type(mtr_object_type* obj, enum mtr_data_type type) {
     }
     case MTR_DATA_STRUCT: {
         struct mtr_struct_type* s = (struct mtr_struct_type*) obj;
+        free(s->members);
         free(s);
         return;
     }
@@ -145,14 +147,10 @@ static bool object_type_match(mtr_object_type* lhs, mtr_object_type* rhs, enum m
         struct mtr_function_type* r = (struct mtr_function_type*) rhs;
         return mtr_type_match(l->return_, r->return_);
     }
-    case MTR_DATA_UNION: {
-        struct mtr_union_type* l = (struct mtr_union_type*) lhs;
-        struct mtr_union_type* r = (struct mtr_union_type*) rhs;
-        return l->name.length == r->name.length && memcmp(l->name.start, r->name.start, l->name.length);
-    }
+    case MTR_DATA_UNION:
     case MTR_DATA_STRUCT: {
-        struct mtr_struct_type* l = (struct mtr_struct_type*) lhs;
-        struct mtr_struct_type* r = (struct mtr_struct_type*) rhs;
+        struct mtr_user_type* l = (struct mtr_user_type*) lhs;
+        struct mtr_user_type* r = (struct mtr_user_type*) rhs;
         return l->name.length == r->name.length && memcmp(l->name.start, r->name.start, l->name.length);
     }
     default:
@@ -247,19 +245,36 @@ struct mtr_type mtr_new_union_type(struct mtr_token token, struct mtr_type* type
     u->types = malloc(sizeof(struct mtr_type) * argc);
     memcpy(u->types, types, sizeof(struct mtr_type) * argc);
     u->argc = argc;
-    u->name = token;
+    u->name.name = token;
 
     t.obj = u;
 ret:
     return t;
 }
 
-struct mtr_type mtr_new_struct_type(struct mtr_token token) {
+struct mtr_type mtr_new_struct_type(struct mtr_token token, struct mtr_symbol** symbols, u8 argc) {
     struct mtr_type t;
+
     struct mtr_struct_type* s = malloc(sizeof(*s));
-    s->name = token;
+    s->name.name = token;
+    s->members = malloc(sizeof(struct mtr_symbol*) * argc);
+    memcpy(s->members, symbols, sizeof(struct mtr_symbol*) * argc);
+    s->argc = argc;
+
     t.type = MTR_DATA_STRUCT;
     t.assignable = false;
     t.obj = s;
+    return t;
+}
+
+struct mtr_type mtr_new_user_type(struct mtr_token token) {
+    struct mtr_type t;
+
+    struct mtr_user_type* u = malloc(sizeof(*u));
+    u->name = token;
+
+    t.assignable = true;
+    t.obj = u;
+    t.type = MTR_DATA_USER;
     return t;
 }

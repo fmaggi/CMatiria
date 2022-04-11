@@ -313,14 +313,18 @@ static void write_cast(struct mtr_chunk* chunk, struct mtr_cast* cast) {
     }
 }
 
-static void write_subscript(struct mtr_chunk* chunk, struct mtr_subscript* expr) {
+static void write_subscript(struct mtr_chunk* chunk, struct mtr_access* expr) {
     write_expr(chunk, expr->object);
-    write_expr(chunk, expr->index);
+    write_expr(chunk, expr->element);
     mtr_write_chunk(chunk, MTR_OP_GET_O);
 }
 
-static void write_access(struct mtr_chunk* chunk, struct mtr_access* access) {
-    IMPLEMENT
+static void write_access(struct mtr_chunk* chunk, struct mtr_access* expr) {
+    struct mtr_primary* p = (struct mtr_primary*) expr->element;
+    write_expr(chunk, expr->object);
+    mtr_write_chunk(chunk, MTR_OP_NIL);
+    mtr_write_chunk(chunk, MTR_OP_GET_O);
+    mtr_write_chunk(chunk, p->symbol.index);
 }
 
 static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr) {
@@ -335,8 +339,8 @@ static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr) {
     case MTR_EXPR_GROUPING: write_expr(chunk, ((struct mtr_grouping*) expr)->expression); return;
     case MTR_EXPR_CALL: write_call(chunk, (struct mtr_call*) expr); return;
     case MTR_EXPR_CAST: write_cast(chunk, (struct mtr_cast*) expr); return;
-    case MTR_EXPR_SUBSCRIPT: write_subscript(chunk, (struct mtr_subscript*) expr); return;
     case MTR_EXPR_ACCESS: write_access(chunk, (struct mtr_access*) expr); return;
+    case MTR_EXPR_SUBSCRIPT: write_subscript(chunk, (struct mtr_access*) expr); return;
     }
 }
 
@@ -425,14 +429,19 @@ static void write_assignment(struct mtr_chunk* chunk, struct mtr_assignment* stm
         return;
     }
     case MTR_EXPR_SUBSCRIPT: {
-        struct mtr_subscript* s = (struct mtr_subscript*) stmt->right;
+        struct mtr_access* s = (struct mtr_access*) stmt->right;
         write_expr(chunk, s->object);
-        write_expr(chunk, s->index);
+        write_expr(chunk, s->element);
         mtr_write_chunk(chunk, MTR_OP_SET_O);
         return;
     }
     case MTR_EXPR_ACCESS: {
-        IMPLEMENT
+        struct mtr_access* s = (struct mtr_access*) stmt->right;
+        write_expr(chunk, s->object);
+        mtr_write_chunk(chunk, MTR_OP_NIL);
+        mtr_write_chunk(chunk, MTR_OP_SET_O);
+        struct mtr_primary* p = (struct mtr_primary*) s->element;
+        mtr_write_chunk(chunk, p->symbol.index);
         return;
     }
 

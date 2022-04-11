@@ -125,7 +125,7 @@ enum precedence {
     UNARY,
     CALL,
     SUB,
-    ACCESS = SUB,
+    ACCESS,
     PRIMARY,
     LITERAL = PRIMARY
 };
@@ -343,9 +343,9 @@ static struct mtr_expr* call(struct mtr_parser* parser, struct mtr_token paren, 
 }
 
 static struct mtr_expr* subscript(struct mtr_parser* parser, struct mtr_token square, struct mtr_expr* object) {
-    struct mtr_subscript* node = ALLOCATE_EXPR(MTR_EXPR_SUBSCRIPT, mtr_subscript);
+    struct mtr_access* node = ALLOCATE_EXPR(MTR_EXPR_SUBSCRIPT, mtr_access);
     node->object = object;
-    node->index = expression(parser);
+    node->element = expression(parser);
     consume(parser, MTR_TOKEN_SQR_R, "Expected ']'.");
     return (struct mtr_expr*) node;
 }
@@ -353,7 +353,7 @@ static struct mtr_expr* subscript(struct mtr_parser* parser, struct mtr_token sq
 static struct mtr_expr* access(struct mtr_parser* parser, struct mtr_token dot, struct mtr_expr* object) {
     struct mtr_access* node = ALLOCATE_EXPR(MTR_EXPR_ACCESS, mtr_access);
     node->object = object;
-    node->accessed = expression(parser);
+    node->element = parse_precedence(parser, ACCESS);
     return (struct mtr_expr*) node;
 }
 
@@ -405,7 +405,7 @@ static struct mtr_type parse_var_type(struct mtr_parser* parser) {
 
     case MTR_TOKEN_IDENTIFIER: {
         struct mtr_token token = advance(parser);
-        type = mtr_new_struct_type(token); // treating unions and structs as structs here for now
+        type = mtr_new_user_type(token); // treating unions and structs as structs here for now
         break;
     }
 
@@ -425,6 +425,7 @@ static struct mtr_stmt* expr_stmt(struct mtr_parser* parser) {
     struct mtr_stmt* node = NULL;
     struct mtr_expr* expr = expression(parser);
     switch (expr->type) {
+    case MTR_EXPR_ACCESS:
     case MTR_EXPR_SUBSCRIPT:
     case MTR_EXPR_PRIMARY: {
         struct mtr_assignment* a = ALLOCATE_STMT(MTR_STMT_ASSIGNMENT, mtr_assignment);
@@ -650,12 +651,14 @@ static struct mtr_stmt* struct_type(struct mtr_parser* parser, struct mtr_token 
     struct_->symbol.token = name;
 
     struct mtr_variable* vars[255];
+    struct mtr_symbol* symbols[255];
     u8 argc = 0;
     bool cont = true;
     while (argc < 255 && cont) {
-        struct mtr_variable** type = vars + argc++;
+        struct mtr_variable** type = vars + argc;
+        struct mtr_symbol** symbol = symbols + argc++;
         *type = (struct mtr_variable*) variable(parser);
-
+        *symbol = &(*type)->symbol;
         if (CHECK(MTR_TOKEN_CURLY_R)) {
             advance(parser);
             break;
@@ -676,7 +679,7 @@ static struct mtr_stmt* struct_type(struct mtr_parser* parser, struct mtr_token 
     memcpy(struct_->members, vars, sizeof(struct mtr_variable*) * argc);
     struct_->argc = argc;
 
-    struct_->symbol.type = mtr_new_struct_type(name);
+    struct_->symbol.type = mtr_new_struct_type(name, symbols, argc);
 
     return (struct mtr_stmt*) struct_;
 }
@@ -844,6 +847,8 @@ void mtr_free_stmt(struct mtr_stmt* s) {
             for (u8 i = 0; i < st->argc; ++i) {
                 mtr_free_stmt((struct mtr_stmt*) st->members[i]);
             }
+            mtr_delete_type(st->symbol.type);
+            free(st->members);
             free(st);
             break;
         }
@@ -969,11 +974,11 @@ static void free_cast(struct mtr_cast* node) {
     free(node);
 }
 
-static void free_sub(struct mtr_subscript* node) {
+static void free_sub(struct mtr_access* node) {
     mtr_free_expr(node->object);
-    mtr_free_expr(node->index);
+    mtr_free_expr(node->element);
     node->object = NULL;
-    node->index = NULL;
+    node->element = NULL;
     free(node);
 }
 
@@ -989,7 +994,8 @@ void mtr_free_expr(struct mtr_expr* node) {
     case MTR_EXPR_MAP_LITERAL: free_map_lit((struct mtr_map_literal*) node); return;
     case MTR_EXPR_CALL:     free_call((struct mtr_call*) node); return;
     case MTR_EXPR_CAST:     free_cast((struct mtr_cast*) node); return;
-    case MTR_EXPR_SUBSCRIPT: free_sub((struct mtr_subscript*) node); return;
-    case MTR_EXPR_ACCESS: IMPLEMENT return;
+    case MTR_EXPR_ACCESS:
+    case MTR_EXPR_SUBSCRIPT:
+        free_sub((struct mtr_access*) node); return;
     }
 }
