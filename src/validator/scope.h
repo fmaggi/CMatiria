@@ -20,6 +20,7 @@ struct mtr_scope {
     struct mtr_symbol_table symbols;
     struct mtr_scope* parent;
     size_t current;
+    bool is_global_scope;
 };
 
 struct mtr_scope mtr_new_scope(struct mtr_scope* parent);

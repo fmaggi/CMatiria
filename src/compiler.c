@@ -103,7 +103,8 @@ static void write_loop(struct mtr_chunk* chunk, u16 offset) {
 static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr);
 
 static void write_primary(struct mtr_chunk* chunk, struct mtr_primary* expr) {
-    mtr_write_chunk(chunk, MTR_OP_GET);
+    u8 op = expr->symbol.type.is_global ? MTR_OP_GLOBAL_GET : MTR_OP_GET;
+    mtr_write_chunk(chunk, op);
     write_u16(chunk, (u16)expr->symbol.index);
 }
 
@@ -316,15 +317,14 @@ static void write_cast(struct mtr_chunk* chunk, struct mtr_cast* cast) {
 static void write_subscript(struct mtr_chunk* chunk, struct mtr_access* expr) {
     write_expr(chunk, expr->object);
     write_expr(chunk, expr->element);
-    mtr_write_chunk(chunk, MTR_OP_GET_O);
+    mtr_write_chunk(chunk, MTR_OP_INDEX_GET);
 }
 
 static void write_access(struct mtr_chunk* chunk, struct mtr_access* expr) {
-    struct mtr_primary* p = (struct mtr_primary*) expr->element;
     write_expr(chunk, expr->object);
-    mtr_write_chunk(chunk, MTR_OP_NIL);
-    mtr_write_chunk(chunk, MTR_OP_GET_O);
-    mtr_write_chunk(chunk, p->symbol.index);
+    struct mtr_primary* p = (struct mtr_primary*) expr->element;
+    mtr_write_chunk(chunk, MTR_OP_STRUCT_GET);
+    write_u16(chunk, p->symbol.index);
 }
 
 static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr) {
@@ -432,16 +432,15 @@ static void write_assignment(struct mtr_chunk* chunk, struct mtr_assignment* stm
         struct mtr_access* s = (struct mtr_access*) stmt->right;
         write_expr(chunk, s->object);
         write_expr(chunk, s->element);
-        mtr_write_chunk(chunk, MTR_OP_SET_O);
+        mtr_write_chunk(chunk, MTR_OP_INDEX_SET);
         return;
     }
     case MTR_EXPR_ACCESS: {
         struct mtr_access* s = (struct mtr_access*) stmt->right;
         write_expr(chunk, s->object);
-        mtr_write_chunk(chunk, MTR_OP_NIL);
-        mtr_write_chunk(chunk, MTR_OP_SET_O);
         struct mtr_primary* p = (struct mtr_primary*) s->element;
-        mtr_write_chunk(chunk, p->symbol.index);
+        mtr_write_chunk(chunk, MTR_OP_STRUCT_SET);
+        write_u16(chunk, p->symbol.index);
         return;
     }
 

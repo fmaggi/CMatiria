@@ -8,8 +8,8 @@
 #include "runtime/value.h"
 
 struct mtr_package {
-    struct mtr_scope globals;
-    struct mtr_object** functions;
+    struct mtr_scope global_symbols;
+    struct mtr_object** globals;
     size_t count;
     const char* source;
 };

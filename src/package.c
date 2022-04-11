@@ -38,16 +38,16 @@ static struct mtr_symbol get_symbol(struct mtr_stmt* s) {
 struct mtr_package* mtr_new_package(const char* const source, struct mtr_ast* ast) {
     struct mtr_package* package = malloc(sizeof(struct mtr_package));
     package->source = source;
-    package->globals = mtr_new_scope(NULL);
+    package->global_symbols = mtr_new_scope(NULL);
 
     struct mtr_block* block = (struct mtr_block*) ast->head;
-    package->functions = malloc(sizeof(struct mtr_object*) * block->size);
+    package->globals = malloc(sizeof(struct mtr_object*) * block->size);
 
     for (size_t i = 0; i < block->size; ++i) {
         MTR_ASSERT(valid_as_global(block->statements[i]), "Statement is not valid as global statement!");
         struct mtr_symbol s = get_symbol(block->statements[i]);
-        mtr_scope_add(&package->globals, s);
-        package->functions[i] = NULL;
+        mtr_scope_add(&package->global_symbols, s);
+        package->globals[i] = NULL;
     }
 
     package->count = block->size;
@@ -56,12 +56,12 @@ struct mtr_package* mtr_new_package(const char* const source, struct mtr_ast* as
 }
 
 void mtr_package_insert_function(struct mtr_package* package, struct mtr_object* object, struct mtr_symbol symbol) {
-    const struct mtr_symbol* s = mtr_scope_find(&package->globals, symbol.token);
+    const struct mtr_symbol* s = mtr_scope_find(&package->global_symbols, symbol.token);
     if (s == NULL) {
         MTR_LOG_WARN("Name not found!");
         return;
     }
-    package->functions[s->index] = object;
+    package->globals[s->index] = object;
 }
 
 void mtr_package_insert_function_by_name(struct mtr_package* package, struct mtr_object* object, const char* name) {
@@ -72,11 +72,11 @@ void mtr_package_insert_function_by_name(struct mtr_package* package, struct mtr
 }
 
 struct mtr_object* mtr_package_get_function(struct mtr_package* package, struct mtr_symbol symbol) {
-    const struct mtr_symbol* s = mtr_scope_find(&package->globals, symbol.token);
+    const struct mtr_symbol* s = mtr_scope_find(&package->global_symbols, symbol.token);
     if (s == NULL) {
         return NULL;
     }
-    return package->functions[s->index];
+    return package->globals[s->index];
 }
 
 struct mtr_object* mtr_package_get_function_by_name(struct mtr_package* package, const char* name) {
@@ -87,12 +87,12 @@ struct mtr_object* mtr_package_get_function_by_name(struct mtr_package* package,
 }
 
 void mtr_delete_package(struct mtr_package* package) {
-    for (size_t i = 0; i < package->globals.symbols.size; ++i) {
-        mtr_delete_object(package->functions[i]);
+    for (size_t i = 0; i < package->global_symbols.symbols.size; ++i) {
+        mtr_delete_object(package->globals[i]);
     }
 
-    free(package->functions);
-    package->functions = NULL;
-    mtr_delete_scope(&package->globals);
+    free(package->globals);
+    package->globals = NULL;
+    mtr_delete_scope(&package->global_symbols);
     free(package);
 }

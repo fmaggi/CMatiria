@@ -68,6 +68,10 @@ struct mtr_type mtr_copy_type(struct mtr_type type) {
         struct mtr_function_type* f = (struct mtr_function_type*) type.obj;
         return mtr_new_function_type(f->return_, f->argc, f->argv);
     }
+    case MTR_DATA_USER: {
+        struct mtr_user_type* s = (struct mtr_user_type*) type.obj;
+        return mtr_new_user_type(s->name);
+    }
     case MTR_DATA_STRUCT: {
         struct mtr_struct_type* s = (struct mtr_struct_type*) type.obj;
         return mtr_new_struct_type(s->name.name, s->members, s->argc);
@@ -116,6 +120,12 @@ static void delete_object_type(mtr_object_type* obj, enum mtr_data_type type) {
         }
         free(u->types);
         free(u);
+        return;
+    }
+    case MTR_DATA_USER: {
+        struct mtr_user_type* u = (struct mtr_user_type*) obj;
+        free(u);
+        return;
     }
     default:
         break;
@@ -127,6 +137,11 @@ void mtr_delete_type(struct mtr_type type) {
     if (type.obj) {
         delete_object_type(type.obj, type.type);
     }
+}
+
+static bool are_user_types(enum mtr_data_type lhs, enum mtr_data_type rhs) {
+    return (lhs == MTR_DATA_USER && (rhs == MTR_DATA_STRUCT || rhs == MTR_DATA_UNION))
+        || (rhs == MTR_DATA_USER && (lhs == MTR_DATA_STRUCT || lhs == MTR_DATA_UNION));
 }
 
 static bool object_type_match(mtr_object_type* lhs, mtr_object_type* rhs, enum mtr_data_type type) {
@@ -147,11 +162,12 @@ static bool object_type_match(mtr_object_type* lhs, mtr_object_type* rhs, enum m
         struct mtr_function_type* r = (struct mtr_function_type*) rhs;
         return mtr_type_match(l->return_, r->return_);
     }
+    case MTR_DATA_USER:
     case MTR_DATA_UNION:
     case MTR_DATA_STRUCT: {
         struct mtr_user_type* l = (struct mtr_user_type*) lhs;
         struct mtr_user_type* r = (struct mtr_user_type*) rhs;
-        return l->name.length == r->name.length && memcmp(l->name.start, r->name.start, l->name.length);
+        return l->name.length == r->name.length && memcmp(l->name.start, r->name.start, l->name.length) == 0;
     }
     default:
         break;
@@ -163,7 +179,7 @@ static bool object_type_match(mtr_object_type* lhs, mtr_object_type* rhs, enum m
 bool mtr_type_match(struct mtr_type lhs, struct mtr_type rhs) {
     bool any = lhs.type == MTR_DATA_ANY || rhs.type == MTR_DATA_ANY;
     bool trivial_type = lhs.obj == NULL;
-    bool match = (lhs.type == rhs.type)
+    bool match = ((lhs.type == rhs.type) || are_user_types(lhs.type, rhs.type))
             && (
                 trivial_type || object_type_match(lhs.obj, rhs.obj, lhs.type)
             // relying on short circuiting to decide whether to call object_type_match or not

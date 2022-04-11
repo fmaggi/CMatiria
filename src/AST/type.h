@@ -28,6 +28,7 @@ typedef void mtr_object_type;
 struct mtr_type {
     mtr_object_type* obj;
     enum mtr_data_type type;
+    bool is_global;
     bool assignable;
 };
 

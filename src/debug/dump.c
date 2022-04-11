@@ -229,8 +229,12 @@ static void dump_object_type(mtr_object_type* obj, enum mtr_data_type type, u32 
         dump_type(a->type, offset+1);
     }
     case MTR_DATA_FN: return;
+
+    case MTR_DATA_USER:
+    case MTR_DATA_UNION:
     case MTR_DATA_STRUCT: {
-        IMPLEMENT
+        struct mtr_user_type* u = (struct mtr_user_type*) obj;
+        MTR_LOG("%.*s", u->name.length, u->name.start);
         return;
     }
     default:

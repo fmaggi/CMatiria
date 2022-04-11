@@ -125,19 +125,38 @@ u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {
         MTR_LOG("GET at %u", index);
         break;
     }
+
+    case MTR_OP_GLOBAL_GET: {
+        u16 index = READ(u16);
+        MTR_LOG("gGET at %u", index);
+        break;
+    }
+
     case  MTR_OP_SET: {
         u16 index = READ(u16);
         MTR_LOG("SET at %u", index);
         break;
     }
 
-    case MTR_OP_GET_O: {
+    case MTR_OP_INDEX_GET: {
         MTR_LOG("oGET");
         break;
     }
 
-    case MTR_OP_SET_O: {
+    case MTR_OP_INDEX_SET: {
         MTR_LOG("oSET");
+        break;
+    }
+
+    case MTR_OP_STRUCT_GET: {
+        u16 index = READ(u16);
+        MTR_LOG("sGET at %u", index);
+        break;
+    }
+
+    case MTR_OP_STRUCT_SET: {
+        u16 index = READ(u16);
+        MTR_LOG("sSET at %u", index);
         break;
     }
 

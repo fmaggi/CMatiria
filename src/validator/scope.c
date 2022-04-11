@@ -115,11 +115,12 @@ void mtr_symbol_table_remove(const struct mtr_symbol_table* table, const char* k
 }
 
 struct mtr_scope mtr_new_scope(struct mtr_scope* parent) {
-    struct mtr_scope scope = {
-        .parent = parent,
-        .symbols = mtr_new_symbol_table(),
-        .current = parent ? parent->current : 0
-    };
+    struct mtr_scope scope;
+    scope.parent = parent;
+    scope.is_global_scope = parent == NULL ? true : false;
+    scope.symbols = mtr_new_symbol_table();
+    bool should_be_zero = parent == NULL || parent->is_global_scope;
+    scope.current = should_be_zero ? 0 : parent->current;
     return scope;
 }
 

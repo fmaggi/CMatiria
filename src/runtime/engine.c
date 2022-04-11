@@ -61,7 +61,7 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
     u8* end = chunk.bytecode + chunk.size;
     while (ip < end) {
 
-        // mtr_dump_stack(engine->stack, engine->stack_top);
+        // mtr_dump_stack(frame, engine->stack_top);
         // mtr_disassemble_instruction(ip, ip - chunk.bytecode);
 
         switch (*ip++)
@@ -237,13 +237,20 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
                 break;
             }
 
+            case MTR_OP_GLOBAL_GET: {
+                const u16 index = READ(u16);
+                struct mtr_object* o = engine->package->globals[index];
+                push(engine, MTR_OBJ_VAL(o));
+                break;
+            }
+
             case MTR_OP_SET: {
                 const u16 index = READ(u16);
                 frame[index] = pop(engine);
                 break;
             }
 
-            case MTR_OP_GET_O: {
+            case MTR_OP_INDEX_GET: {
                 const mtr_value key = pop(engine);
                 const struct mtr_object* object = MTR_AS_OBJ(pop(engine));
                 switch (object->type) {
@@ -282,13 +289,6 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
                     push(engine, val);
                     break;
                 }
-                case MTR_OBJ_STRUCT: {
-                    const struct mtr_struct* s = (struct mtr_struct*) object;
-                    const u8 index = READ(u8);
-                    mtr_value val = s->members[index];
-                    push(engine, val);
-                    break;
-                }
                 default:
                     IMPLEMENT // runtime error
                     exit(-1);
@@ -297,7 +297,7 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
                 break;
             }
 
-            case MTR_OP_SET_O: {
+            case MTR_OP_INDEX_SET: {
                 const mtr_value key = pop(engine);
                 const struct mtr_object* object = MTR_AS_OBJ(pop(engine));
                 mtr_value val = pop(engine);
@@ -325,16 +325,27 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
                     mtr_map_insert(map, key, val);
                     break;
                 }
-                case MTR_OBJ_STRUCT: {
-                    struct mtr_struct* s = (struct mtr_struct*) object;
-                    const u8 index = READ(u8);
-                    s->members[index] = val;
-                    break;
-                }
                 default:
                     MTR_ASSERT(false, "Invalid object type");
                     break;
                 }
+                break;
+            }
+
+            case MTR_OP_STRUCT_GET: {
+                const mtr_value v = pop(engine);
+                const struct mtr_struct* s = (const struct mtr_struct*) MTR_AS_OBJ(v);
+                const u8 index = READ(u16);
+                push(engine, s->members[index]);
+                break;
+            }
+
+            case MTR_OP_STRUCT_SET: {
+                mtr_value k = pop(engine);
+                mtr_value val = pop(engine);
+                struct mtr_struct* s = (struct mtr_struct*) MTR_AS_OBJ(k);
+                const u8 index = READ(u16);
+                s->members[index] = val;
                 break;
             }
 
@@ -408,14 +419,9 @@ i32 mtr_execute(struct mtr_engine* engine, struct mtr_package* package) {
         return -1;
     }
 
-    for (size_t i = 0; i < package->count; ++i) {
-        struct mtr_object* o = package->functions[i];
-        push(engine, MTR_OBJ_VAL(o));
-    }
-
     struct mtr_function* f = (struct mtr_function*) o;
 
-    call(engine, f->chunk, package->count);
+    call(engine, f->chunk, 0);
 
     // mtr_dump_stack(engine->stack, engine->stack_top);
     return 0;

@@ -51,8 +51,13 @@ enum mtr_op_code {
     MTR_OP_GET,
     MTR_OP_SET,
 
-    MTR_OP_GET_O,
-    MTR_OP_SET_O,
+    MTR_OP_GLOBAL_GET,
+
+    MTR_OP_INDEX_GET,
+    MTR_OP_INDEX_SET,
+
+    MTR_OP_STRUCT_GET,
+    MTR_OP_STRUCT_SET,
 
     MTR_OP_JMP,
     MTR_OP_JMP_Z,

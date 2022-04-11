@@ -357,7 +357,7 @@ static bool load_fn(struct mtr_function_decl* stmt, struct mtr_scope* scope, con
     }
 
     stmt->symbol.index = scope->current++;
-
+    stmt->symbol.type.is_global = true;
     mtr_scope_add(scope, stmt->symbol);
     return true;
 }
@@ -581,7 +581,8 @@ static struct mtr_stmt* analyze_return(struct mtr_return* stmt, struct mtr_scope
 
     struct mtr_type type = mtr_get_underlying_type(stmt->from->symbol.type);
 
-    bool ok = mtr_type_match(analyze_expr(stmt->expr, parent, source), type);
+    struct mtr_type expr_type = analyze_expr(stmt->expr, parent, source);
+    bool ok = mtr_type_match(expr_type, type);
     if (!ok) {
         expr_error(stmt->expr, "Incompatible return type.", source);
         mtr_report_message(stmt->from->symbol.token, "As declared here.", source);
@@ -659,6 +660,7 @@ static bool load_union(struct mtr_union_decl* u, struct mtr_scope* scope, const 
     }
 
     u->symbol.index = scope->current++;
+    u->symbol.type.is_global = true;
     mtr_scope_add(scope, u->symbol);
     return true;
 }
@@ -672,6 +674,7 @@ static bool load_struct(struct mtr_struct_decl* st, struct mtr_scope* scope, con
     }
 
     st->symbol.index = scope->current++;
+    st->symbol.type.is_global = true;
     mtr_scope_add(scope, st->symbol);
     return true;
 }
