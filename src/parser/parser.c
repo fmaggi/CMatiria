@@ -393,6 +393,7 @@ static struct mtr_type parse_var_type(struct mtr_parser* parser) {
     case MTR_TOKEN_STRING: {
         struct mtr_token token = advance(parser);
         type = mtr_get_data_type(token);
+        type.obj = NULL;
         break;
     }
 
@@ -567,6 +568,7 @@ static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
         struct mtr_type* type = types + argc;
         ++argc;
         *type = parse_var_type(parser);
+        var->stmt.type = MTR_STMT_VAR;
         var->symbol.type = *type;
         var->symbol.token = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
         var->value = NULL;
@@ -584,6 +586,7 @@ static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
     }
 
     // because we are here we now that argc > 0
+    node->argc = argc;
     node->argv = malloc(sizeof(struct mtr_variable) * argc);
     memcpy(node->argv, vars, sizeof(struct mtr_variable) * argc);
 

@@ -1,16 +1,11 @@
 fn main() {
-    x := test();
-    print(x.x);
-}
-
-fn test() -> MyType {
-    MyType x;
-    x.x := 45;
-    return x;
+    print(4);
 }
 
 fn print(Any x) ...
 
-type MyType := {
-    Int x := 63;
+fn what(MyType y) {
+    print(y);
 }
+
+type MyType := [ Int | String | Float | [Int] ]

@@ -68,12 +68,20 @@ struct mtr_string {
 
 struct mtr_string* mtr_new_string(const char* string, size_t length);
 
+
 struct mtr_map {
     struct mtr_object obj;
     struct map_entry* entries;
     size_t size;
     size_t capacity;
 };
+
+struct mtr_map_element {
+    mtr_value key;
+    mtr_value value;
+};
+
+struct mtr_map_element* mtr_get_key_value_pair(struct mtr_map* map, size_t index);
 
 struct mtr_map* mtr_new_map(void);
 void mtr_delete_map(struct mtr_map* map);

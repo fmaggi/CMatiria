@@ -76,6 +76,16 @@ struct mtr_type mtr_copy_type(struct mtr_type type) {
         struct mtr_struct_type* s = (struct mtr_struct_type*) type.obj;
         return mtr_new_struct_type(s->name.name, s->members, s->argc);
     }
+    case MTR_DATA_UNION: {
+        struct mtr_union_type* u = (struct mtr_union_type*) type.obj;
+
+        struct mtr_type types[255];
+        for (u8 i = 0; i < u->argc; ++i) {
+            types[i] = mtr_copy_type(u->types[i]);
+        }
+
+        return mtr_new_union_type(u->name.name, types, u->argc);
+    }
     default:
         return type; // no need to copy anything;
     }
@@ -130,6 +140,7 @@ static void delete_object_type(mtr_object_type* obj, enum mtr_data_type type) {
     default:
         break;
     }
+    abort();
     MTR_ASSERT(false, "Invalid type.");
 }
 

@@ -11,27 +11,70 @@
 
 #include "core/types.h"
 
-mtr_value mtr_print(u8 argc, mtr_value* argv) {
-    mtr_value value = *argv;
+static void print_value(mtr_value value) {
     switch (value.type) {
     case MTR_VAL_INT: {
-        MTR_LOG("%li", value.integer);
+        MTR_PRINT("%li", value.integer);
         break;
     }
     case MTR_VAL_FLOAT: {
-        MTR_LOG("%f", value.floating);
+        MTR_PRINT("%f", value.floating);
         break;
     }
     case MTR_VAL_OBJ: {
-        if (value.object->type != MTR_OBJ_STRING) {
-            MTR_LOG_ERROR("Object of type %s is not printable.", mtr_obj_type_to_str(value.object));
-            exit(-1);
+        switch (value.object->type) {
+        case MTR_OBJ_STRING: {
+            struct mtr_string* s = (struct mtr_string*) value.object;
+            MTR_PRINT("%.*s", (u32)s->length, s->s);
+            break;
         }
-        struct mtr_string* s = (struct mtr_string*) value.object;
-        MTR_LOG("%.*s", (u32)s->length, s->s);
-        break;
+        case MTR_OBJ_ARRAY: {
+            struct mtr_array* a = (struct mtr_array*) value.object;
+            MTR_PRINT("[ ");
+            for (size_t i = 0; i < a->size-1; ++i) {
+                print_value(a->elements[i]);
+                MTR_PRINT(", ");
+            }
+            print_value(a->elements[a->size-1]);
+            MTR_PRINT(" ]");
+            break;
+        }
+        case MTR_OBJ_MAP: {
+            struct mtr_map* m = (struct mtr_map*) value.object;
+            MTR_PRINT("{ ");
+            for (size_t i = 0; i < m->capacity-1; ++i) {
+                struct mtr_map_element* e = mtr_get_key_value_pair(m, i);
+                if (e == NULL) {
+                    continue;
+                }
+                print_value(e->key);
+                MTR_PRINT(": ");
+                print_value(e->value);
+                MTR_PRINT(", ");
+            }
+            struct mtr_map_element* e = mtr_get_key_value_pair(m, m->capacity-1);
+            if (e != NULL) {
+                print_value(e->key);
+                MTR_PRINT(": ");
+                print_value(e->value);
+            }
+            MTR_PRINT("}");
+            break;
+        }
+        case MTR_OBJ_FUNCTION:
+        case MTR_OBJ_NATIVE_FN:
+            MTR_LOG("%s", mtr_obj_type_to_str(value.object));
+        case MTR_OBJ_STRUCT:
+            MTR_LOG("%s is not printable", mtr_obj_type_to_str(value.object));
+        }
     }
     }
+}
+
+mtr_value mtr_print(u8 argc, mtr_value* argv) {
+    mtr_value value = *argv;
+    print_value(value);
+    MTR_PRINT("\n");
     return MTR_NIL;
 }
 

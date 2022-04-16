@@ -25,13 +25,17 @@ static struct mtr_symbol get_symbol(struct mtr_stmt* s) {
         struct mtr_struct_decl* sd = (struct mtr_struct_decl*) s;
         return sd->symbol;
     }
+    case MTR_STMT_UNION: {
+        struct mtr_union_decl* ud = (struct mtr_union_decl*) s;
+        return ud->symbol;
+    }
     case MTR_STMT_FN:
     case MTR_STMT_NATIVE_FN: {
         struct mtr_function_decl* fd = (struct mtr_function_decl*) s;
         return fd->symbol;
     }
     default:
-        exit(1);
+        MTR_ASSERT(false, "Invalid stmt");
     }
 }
 
@@ -44,6 +48,9 @@ struct mtr_package* mtr_new_package(const char* const source, struct mtr_ast* as
     package->globals = malloc(sizeof(struct mtr_object*) * block->size);
 
     for (size_t i = 0; i < block->size; ++i) {
+        if (block->statements[i]->type == MTR_STMT_UNION) {
+            continue;
+        }
         MTR_ASSERT(valid_as_global(block->statements[i]), "Statement is not valid as global statement!");
         struct mtr_symbol s = get_symbol(block->statements[i]);
         mtr_scope_add(&package->global_symbols, s);

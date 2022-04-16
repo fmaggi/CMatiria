@@ -19,14 +19,14 @@ typedef struct {
     };
 } mtr_value;
 
-#define MTR_INT_VAL(value)   (mtr_value){ .integer = value, .type = MTR_VAL_INT }
-#define MTR_FLOAT_VAL(value) (mtr_value){ .floating = value, .type = MTR_VAL_FLOAT }
-#define MTR_OBJ_VAL(value)   (mtr_value){ .object = (struct mtr_object*) value, .type = MTR_VAL_OBJ }
+#define MTR_INT(value)   (mtr_value){ .integer = value, .type = MTR_VAL_INT }
+#define MTR_FLOAT(value) (mtr_value){ .floating = value, .type = MTR_VAL_FLOAT }
+#define MTR_OBJ(value)   (mtr_value){ .object = (struct mtr_object*) value, .type = MTR_VAL_OBJ }
 
 #define MTR_AS_INT(value)   value.integer
 #define MTR_AS_FLOAT(value) value.floating
 #define MTR_AS_OBJ(value)   value.object
 
-#define MTR_NIL MTR_INT_VAL(0)
+#define MTR_NIL MTR_INT(0)
 
 #endif

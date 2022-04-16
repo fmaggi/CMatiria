@@ -141,6 +141,11 @@ struct map_entry {
     bool is_used;
 };
 
+struct mtr_map_element* mtr_get_key_value_pair(struct mtr_map* map, size_t index) {
+    struct map_entry* entry = map->entries + index;
+    return entry->is_used ? (struct mtr_map_element*) entry : NULL;
+}
+
 struct mtr_map* mtr_new_map(void) {
     struct mtr_map* map = malloc(sizeof(*map));
 

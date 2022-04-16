@@ -68,26 +68,26 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
         {
             case MTR_OP_INT: {
                 const i64 value = READ(i64);
-                const mtr_value constant = MTR_INT_VAL(value);
+                const mtr_value constant = MTR_INT(value);
                 push(engine, constant);
                 break;
             }
 
             case MTR_OP_FLOAT: {
                 const f64 value = READ(f64);
-                const mtr_value constant = MTR_FLOAT_VAL(value);
+                const mtr_value constant = MTR_FLOAT(value);
                 push(engine, constant);
                 break;
             }
 
             case MTR_OP_FALSE: {
-                const mtr_value c = MTR_INT_VAL(0);
+                const mtr_value c = MTR_INT(0);
                 push(engine , c);
                 break;
             }
 
             case MTR_OP_TRUE: {
-                const mtr_value c = MTR_INT_VAL(1);
+                const mtr_value c = MTR_INT(1);
                 push(engine , c);
                 break;
             }
@@ -96,7 +96,7 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
                 const char* string = READ(const char*);
                 u32 length = READ(u32);
                 struct mtr_string* s = mtr_new_string(string, length);
-                push(engine, MTR_OBJ_VAL(s));
+                push(engine, MTR_OBJ(s));
                 break;
             }
 
@@ -110,7 +110,7 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
                     mtr_array_append(array, elem);
                 }
 
-                push(engine, MTR_OBJ_VAL(array));
+                push(engine, MTR_OBJ(array));
                 break;
             }
 
@@ -125,7 +125,7 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
                     mtr_map_insert(map, key, value);
                 }
 
-                push(engine, MTR_OBJ_VAL(map));
+                push(engine, MTR_OBJ(map));
                 break;
             }
 
@@ -136,7 +136,7 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
                     u8 actual_index = count - i - 1;
                     s->members[actual_index] = pop(engine);
                 }
-                push(engine, MTR_OBJ_VAL(s));
+                push(engine, MTR_OBJ(s));
                 break;
             }
 
@@ -151,7 +151,7 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
                 if (NULL == string.object) {
                     pop(engine); // pop null value;
                     struct mtr_string* string_object = mtr_new_string(NULL, 0);
-                    push(engine, MTR_OBJ_VAL(string_object));
+                    push(engine, MTR_OBJ(string_object));
                 }
                 break;
             }
@@ -161,7 +161,7 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
                 if (NULL == array.object) {
                     pop(engine); // pop null value;
                     struct mtr_array* array_object = mtr_new_array();
-                    push(engine, MTR_OBJ_VAL(array_object));
+                    push(engine, MTR_OBJ(array_object));
                 }
                 break;
             }
@@ -171,7 +171,7 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
                 if (NULL == map.object) {
                     pop(engine); // pop null value;
                     struct mtr_map* map = mtr_new_map();
-                    push(engine, MTR_OBJ_VAL(map));
+                    push(engine, MTR_OBJ(map));
                 }
                 break;
             }
@@ -240,7 +240,7 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
             case MTR_OP_GLOBAL_GET: {
                 const u16 index = READ(u16);
                 struct mtr_object* o = engine->package->globals[index];
-                push(engine, MTR_OBJ_VAL(o));
+                push(engine, MTR_OBJ(o));
                 break;
             }
 
@@ -392,14 +392,14 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
 
             case MTR_OP_INT_CAST: {
                 const mtr_value from = pop(engine);
-                const mtr_value to = MTR_INT_VAL((i64) from.floating);
+                const mtr_value to = MTR_INT((i64) from.floating);
                 push(engine, to);
                 break;
             }
 
             case MTR_OP_FLOAT_CAST: {
                 const mtr_value from = pop(engine);
-                const mtr_value to = MTR_FLOAT_VAL((f64) from.integer);
+                const mtr_value to = MTR_FLOAT((f64) from.integer);
                 push(engine, to);
                 break;
             }

@@ -22,6 +22,23 @@ static bool is_literal(struct mtr_expr* expr) {
 //     return t.type == MTR_DATA_FN;
 // }
 
+static bool check_assignemnt(struct mtr_type assign_to, struct mtr_type what) {
+    if (!mtr_type_match(assign_to, what)) {
+
+        if (assign_to.type == MTR_DATA_UNION) {
+            struct mtr_union_type* u = (struct mtr_union_type*) assign_to.obj;
+            for (u8 i = 0; i < u->argc; ++i) {
+                if (mtr_type_match(u->types[i], what)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+    return true;
+}
+
 static void expr_error(struct mtr_expr* expr, const char* message, const char* const source) {
     switch (expr->type)
     {
@@ -144,9 +161,6 @@ static struct mtr_type analyze_binary(struct mtr_binary* expr, struct mtr_scope*
     if (t.type == MTR_DATA_INVALID) {
         mtr_report_error(expr->operator.token, "Invalid operation between objects of different types.", source);
         return invalid_type;
-    } else if (t.type == MTR_DATA_STRUCT || t.type == MTR_DATA_UNION) {
-        mtr_report_error(expr->operator.token, "Custom types not yet supported.", source);
-        return invalid_type;
     }
 
     if (!mtr_type_match(l, r)) {
@@ -241,10 +255,10 @@ static struct mtr_type analyze_call(struct mtr_call* call, struct mtr_scope* sco
     if (f->argc == call->argc) {
         for (u8 i = 0 ; i < call->argc; ++i) {
             struct mtr_expr* a = call->argv[i];
-            struct mtr_type ta = analyze_expr(a, scope, source);
+            struct mtr_type from = analyze_expr(a, scope, source);
 
-            struct mtr_type tp = f->argv[i];
-            bool match = mtr_type_match(ta, tp);
+            struct mtr_type to = f->argv[i];
+            bool match = check_assignemnt(to, from);
             if (!match) {
                 expr_error(a, "Wrong type of argument.", source);
                 return invalid_type;
@@ -409,6 +423,54 @@ static struct mtr_stmt* analyze_block(struct mtr_block* block, struct mtr_scope*
     return sanitize_stmt(block, all_ok);
 }
 
+static struct mtr_stmt* analyze_variable(struct mtr_variable* decl, struct mtr_scope* parent, const char* const source) {
+    bool expr = true;
+
+    if (decl->value) {
+        const struct mtr_type type = analyze_expr(decl->value, parent, source);
+        if (decl->symbol.type.type == MTR_DATA_INVALID) { // this means it was an implicit var decl
+            decl->symbol.type = is_literal(decl->value) ? type : mtr_copy_type(type);
+        } else if (!check_assignemnt(decl->symbol.type, type)) {
+            mtr_report_error(decl->symbol.token, "Invalid assignement to variable of different type", source);
+            expr = false;
+        }
+    }
+
+    if (decl->symbol.type.type == MTR_DATA_USER) {
+        // Variable declarations with user types default to the mtr_user_type as we
+        // have no way of knowing if it was a struct or a union.
+        struct mtr_user_type* type = decl->symbol.type.obj;
+        struct mtr_symbol* name = mtr_scope_find(parent, type->name);
+        if (NULL == name) {
+            mtr_report_error(decl->symbol.token, "Unknown type.", source);
+            expr = false;
+        }
+        // When we check if the type does exist we can now define whether the variable is
+        // a struct or a union.
+
+        decl->symbol.type = mtr_copy_type(name->type);
+        // free(type); Apparently this causes a double free
+
+        if (!decl->value && decl->symbol.type.type == MTR_DATA_STRUCT) {
+            // TODO: Handle union constructors
+            // Create an expression for the constructor
+            struct mtr_primary* primary = malloc(sizeof(struct mtr_primary));
+            primary->expr_.type = MTR_EXPR_PRIMARY;
+            primary->symbol = *name;
+
+            struct mtr_call* constructor = malloc(sizeof(struct mtr_call));
+            constructor->expr_.type = MTR_EXPR_CALL;
+            constructor->callable = (struct mtr_expr*) primary;
+            decl->value = (struct mtr_expr*) constructor;
+        }
+    }
+
+
+    decl->symbol.type.assignable = true;
+    bool loaded = load_var(decl, parent, source);
+    return sanitize_stmt(decl, expr && loaded);
+}
+
 static struct mtr_stmt* analyze_fn(struct mtr_function_decl* stmt, struct mtr_scope* parent, const char* const source) {
     bool all_ok = true;
 
@@ -416,7 +478,7 @@ static struct mtr_stmt* analyze_fn(struct mtr_function_decl* stmt, struct mtr_sc
 
     for (size_t i = 0; i < stmt->argc; ++i) {
         struct mtr_variable* arg = stmt->argv + i;
-        all_ok = load_var(arg, &scope, source) && all_ok;
+        all_ok = analyze_variable(arg, &scope, source) && all_ok;
     }
 
     struct mtr_stmt* checked = analyze(stmt->body, &scope, source);
@@ -436,59 +498,6 @@ static struct mtr_stmt* analyze_fn(struct mtr_function_decl* stmt, struct mtr_sc
     }
 
     return sanitize_stmt(stmt, all_ok);
-}
-
-static struct mtr_stmt* analyze_variable(struct mtr_variable* decl, struct mtr_scope* parent, const char* const source) {
-    bool expr = true;
-
-    if (decl->value) {
-        const struct mtr_type type = analyze_expr(decl->value, parent, source);
-        if (decl->symbol.type.type == MTR_DATA_INVALID) { // this means it was an implicit var decl
-            decl->symbol.type = is_literal(decl->value) ? type : mtr_copy_type(type);
-        } else if (!mtr_type_match(decl->symbol.type, type)) {
-            // try and mathc the types. Cast if needed
-            struct mtr_expr* cast = try_promoting(decl->value, type, decl->symbol.type);
-            if (NULL != cast) {
-                decl->value = cast;
-            } else {
-                mtr_report_error(decl->symbol.token, "Invalid assignement to variable of different type", source);
-                expr = false;
-            }
-        }
-    }
-
-    if (decl->symbol.type.type == MTR_DATA_USER) {
-        // Variable declarations with user types default to the mtr_user_type as we
-        // have no way of knowing if it was a struct or a union.
-        struct mtr_user_type* type = decl->symbol.type.obj;
-        struct mtr_symbol* name = mtr_scope_find(parent, type->name);
-        if (NULL == name) {
-            mtr_report_error(decl->symbol.token, "Unknown type.", source);
-            expr = false;
-        }
-        // When we check if the type does exist we can now define whether the variable is
-        // a struct or a union.
-        decl->symbol.type = mtr_copy_type(name->type);
-        free(type);
-
-        if (!decl->value) {
-            // TODO: Handle union constructors
-            // Create an expression for the constructor
-            struct mtr_primary* primary = malloc(sizeof(struct mtr_primary));
-            primary->expr_.type = MTR_EXPR_PRIMARY;
-            primary->symbol = *name;
-
-            struct mtr_call* constructor = malloc(sizeof(struct mtr_call));
-            constructor->expr_.type = MTR_EXPR_CALL;
-            constructor->callable = (struct mtr_expr*) primary;
-            decl->value = (struct mtr_expr*) constructor;
-        }
-    }
-
-
-    decl->symbol.type.assignable = true;
-    bool loaded = load_var(decl, parent, source);
-    return sanitize_stmt(decl, expr && loaded);
 }
 
 static struct mtr_stmt* analyze_assignment(struct mtr_assignment* stmt, struct mtr_scope* parent, const char* const source) {
@@ -516,18 +525,11 @@ static struct mtr_stmt* analyze_assignment(struct mtr_assignment* stmt, struct m
 
     const struct mtr_type expr_t = analyze_expr(stmt->expression, parent, source);
 
-    bool expr_ok = mtr_type_match(right_t, expr_t);
-    if (!expr_ok) {
-        // try and mathc the types. Cast if needed
-        struct mtr_expr* cast = try_promoting(stmt->expression, expr_t, right_t);
-        if (NULL != cast) {
-            stmt->expression = cast;
-            expr_ok = true;
-        } else {
-            expr_error(stmt->right, "Invalid assignement to variable of different type", source);
-        }
+    bool expr_ok = true;
+    if (!check_assignemnt(right_t, expr_t)) {
+        expr_error(stmt->right, "Invalid assignement to variable of different type", source);
+        expr_ok = false;
     }
-
     return sanitize_stmt(stmt, expr_ok);
 }
 
