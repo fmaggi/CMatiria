@@ -426,14 +426,10 @@ static struct mtr_stmt* analyze_block(struct mtr_block* block, struct mtr_scope*
 static struct mtr_stmt* analyze_variable(struct mtr_variable* decl, struct mtr_scope* parent, const char* const source) {
     bool expr = true;
 
-    if (decl->value) {
-        const struct mtr_type type = analyze_expr(decl->value, parent, source);
-        if (decl->symbol.type.type == MTR_DATA_INVALID) { // this means it was an implicit var decl
-            decl->symbol.type = is_literal(decl->value) ? type : mtr_copy_type(type);
-        } else if (!check_assignemnt(decl->symbol.type, type)) {
-            mtr_report_error(decl->symbol.token, "Invalid assignement to variable of different type", source);
-            expr = false;
-        }
+    const struct mtr_type value_type = decl->value == NULL ? invalid_type : analyze_expr(decl->value, parent, source);
+
+    if (decl->symbol.type.type == MTR_DATA_INVALID) { // this means it was an implicit var decl
+        decl->symbol.type = is_literal(decl->value) ? value_type : mtr_copy_type(value_type);
     }
 
     if (decl->symbol.type.type == MTR_DATA_USER) {
@@ -452,7 +448,6 @@ static struct mtr_stmt* analyze_variable(struct mtr_variable* decl, struct mtr_s
         // free(type); Apparently this causes a double free
 
         if (!decl->value && decl->symbol.type.type == MTR_DATA_STRUCT) {
-            // TODO: Handle union constructors
             // Create an expression for the constructor
             struct mtr_primary* primary = malloc(sizeof(struct mtr_primary));
             primary->expr_.type = MTR_EXPR_PRIMARY;
@@ -462,10 +457,16 @@ static struct mtr_stmt* analyze_variable(struct mtr_variable* decl, struct mtr_s
             constructor->expr_.type = MTR_EXPR_CALL;
             constructor->callable = (struct mtr_expr*) primary;
             decl->value = (struct mtr_expr*) constructor;
+            goto ret;
         }
     }
 
+    if (decl->value && !check_assignemnt(decl->symbol.type, value_type)) {
+        mtr_report_error(decl->symbol.token, "Invalid assignement to variable of different type", source);
+        expr = false;
+    }
 
+ret:
     decl->symbol.type.assignable = true;
     bool loaded = load_var(decl, parent, source);
     return sanitize_stmt(decl, expr && loaded);
