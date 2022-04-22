@@ -46,6 +46,19 @@ struct mtr_function {
 
 struct mtr_function* mtr_new_function(struct mtr_chunk chunk);
 
+struct mtr_upvalue {
+    mtr_value value;
+    bool is_local;
+};
+
+struct mtr_closure {
+    struct mtr_object obj;
+    struct mtr_chunk chunk;
+    struct mtr_upvalue* upvalues;
+};
+
+struct mtr_closure* mtr_new_closure(struct mtr_chunk chunk, mtr_value* upvalues, u8 count);
+
 struct mtr_array {
     struct mtr_object obj;
     mtr_value* elements;
@@ -53,7 +66,7 @@ struct mtr_array {
     size_t capacity;
 };
 
-struct mtr_array* mtr_new_array(void);
+struct mtr_array* mtr_new_array(size_t length);
 void mtr_delete_array(struct mtr_array* array);
 
 void mtr_array_append(struct mtr_array* array, mtr_value value);

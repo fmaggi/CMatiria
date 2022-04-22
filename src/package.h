@@ -10,11 +10,11 @@
 struct mtr_package {
     struct mtr_scope global_symbols;
     struct mtr_object** globals;
+    struct mtr_function* main;
     size_t count;
-    const char* source;
 };
 
-struct mtr_package* mtr_new_package(const char* const source, struct mtr_ast* ast);
+struct mtr_package* mtr_new_package(struct mtr_ast* ast);
 void mtr_delete_package(struct mtr_package* package);
 
 void mtr_package_insert_function(struct mtr_package* package, struct mtr_object* object, struct mtr_symbol symbol);

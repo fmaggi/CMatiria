@@ -12,7 +12,7 @@
 struct mtr_engine {
     mtr_value stack[MTR_MAX_STACK];
     mtr_value* stack_top;
-    struct mtr_package* package;
+    struct mtr_object** globals;
 };
 
 i32 mtr_execute(struct mtr_engine* engine, struct mtr_package* package);

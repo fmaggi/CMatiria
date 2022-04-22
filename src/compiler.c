@@ -542,7 +542,7 @@ struct mtr_package* mtr_compile(const char* source) {
         goto ret;
     }
 
-    package = mtr_new_package(source, &ast);
+    package = mtr_new_package(&ast);
 
     struct mtr_block* block = (struct mtr_block*) ast.head;
     for (size_t i = 0; i < block->size; ++i) {

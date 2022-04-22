@@ -3,6 +3,7 @@
 #include "AST/stmt.h"
 
 #include "AST/symbol.h"
+#include "AST/type.h"
 #include "core/log.h"
 #include "core/utils.h"
 #include "runtime/object.h"
@@ -39,13 +40,17 @@ static struct mtr_symbol get_symbol(struct mtr_stmt* s) {
     }
 }
 
-struct mtr_package* mtr_new_package(const char* const source, struct mtr_ast* ast) {
+static bool is_main(struct mtr_symbol symbol) {
+    return symbol.token.length == strlen("main") && memcmp(symbol.token.start, "main", strlen("main")) == 0;
+}
+
+struct mtr_package* mtr_new_package(struct mtr_ast* ast) {
     struct mtr_package* package = malloc(sizeof(struct mtr_package));
-    package->source = source;
     package->global_symbols = mtr_new_scope(NULL);
 
     struct mtr_block* block = (struct mtr_block*) ast->head;
     package->globals = malloc(sizeof(struct mtr_object*) * block->size);
+    package->main = NULL;
 
     for (size_t i = 0; i < block->size; ++i) {
         if (block->statements[i]->type == MTR_STMT_UNION) {
@@ -58,7 +63,6 @@ struct mtr_package* mtr_new_package(const char* const source, struct mtr_ast* as
     }
 
     package->count = block->size;
-
     return package;
 }
 
@@ -68,6 +72,11 @@ void mtr_package_insert_function(struct mtr_package* package, struct mtr_object*
         MTR_LOG_WARN("Name not found!");
         return;
     }
+
+    if (is_main(*s)) {
+        package->main = (struct mtr_function*) object;
+    }
+
     package->globals[s->index] = object;
 }
 

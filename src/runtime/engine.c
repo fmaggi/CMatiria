@@ -30,21 +30,6 @@ static void push(struct mtr_engine* engine, mtr_value value) {
 
 static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc);
 
-static void invoke(struct mtr_engine* engine, struct mtr_object* object, u8 argc) {
-    if (object->type == MTR_OBJ_FUNCTION) {
-        struct mtr_function* f = (struct mtr_function*) object;
-        call(engine, f->chunk, argc);
-        return;
-    } else if (object->type == MTR_OBJ_NATIVE_FN) {
-        struct mtr_native_fn* n = (struct mtr_native_fn*) object;
-        mtr_value val = n->function(argc, engine->stack_top - argc);
-        engine->stack_top -= argc;
-        push(engine, val);
-        return;
-    }
-    MTR_ASSERT(false, "Object is not invokable");
-}
-
 #define BINARY_OP(op, type)                                            \
     do {                                                               \
         const mtr_value r = pop(engine);                               \
@@ -101,13 +86,12 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
             }
 
             case MTR_OP_ARRAY_LITERAL: {
-                struct mtr_array* array = mtr_new_array();
-
                 u8 count = READ(u8);
+                struct mtr_array* array = mtr_new_array(count);
 
                 for (u8 i = 0; i < count; ++i) {
                     const mtr_value elem = pop(engine);
-                    mtr_array_append(array, elem);
+                    array->elements[i] = elem;
                 }
 
                 push(engine, MTR_OBJ(array));
@@ -160,7 +144,7 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
                 mtr_value array = peek(engine, 0);
                 if (NULL == array.object) {
                     pop(engine); // pop null value;
-                    struct mtr_array* array_object = mtr_new_array();
+                    struct mtr_array* array_object = mtr_new_array(8);
                     push(engine, MTR_OBJ(array_object));
                 }
                 break;
@@ -239,7 +223,7 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
 
             case MTR_OP_GLOBAL_GET: {
                 const u16 index = READ(u16);
-                struct mtr_object* o = engine->package->globals[index];
+                struct mtr_object* o = engine->globals[index];
                 push(engine, MTR_OBJ(o));
                 break;
             }
@@ -359,9 +343,7 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
                 const mtr_value value = pop(engine);
                 const bool condition = MTR_AS_INT(value);
                 const i16 where = READ(i16);
-                if (!condition) {
-                    ip += where;
-                }
+                ip += where * (condition == false);
                 break;
             }
 
@@ -378,8 +360,19 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
 
             case MTR_OP_CALL: {
                 const u8 argc = READ(u8);
-                struct mtr_object* obj = MTR_AS_OBJ(pop(engine));
-                invoke(engine, obj, argc);
+                struct mtr_object* object = MTR_AS_OBJ(pop(engine));
+                if (object->type == MTR_OBJ_FUNCTION) {
+                    struct mtr_function* f = (struct mtr_function*) object;
+                    call(engine, f->chunk, argc);
+                    break;
+                } else if (object->type == MTR_OBJ_NATIVE_FN) {
+                    struct mtr_native_fn* n = (struct mtr_native_fn*) object;
+                    mtr_value val = n->function(argc, engine->stack_top - argc);
+                    engine->stack_top -= argc;
+                    push(engine, val);
+                    break;
+                }
+                MTR_ASSERT(false, "Object is not invokable");
                 break;
             }
 
@@ -411,15 +404,13 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
 #undef READ
 
 i32 mtr_execute(struct mtr_engine* engine, struct mtr_package* package) {
-    engine->package = package;
+    engine->globals = package->globals;
     engine->stack_top = engine->stack;
-    struct mtr_object* o = mtr_package_get_function_by_name(engine->package, "main");
-    if (NULL == o) {
+    struct mtr_function* f = package->main;
+    if (NULL == f) {
         MTR_LOG_ERROR("Did not find main.");
         return -1;
     }
-
-    struct mtr_function* f = (struct mtr_function*) o;
 
     call(engine, f->chunk, 0);
 

@@ -14,6 +14,7 @@ int main(int argc, char* argv[])
     if (argc != 2) {
         return -1;
     }
+
     char* source = mtr_read_file(argv[1]);
     struct mtr_package* package = mtr_compile(source);
     if (NULL == package)
@@ -30,6 +31,4 @@ int main(int argc, char* argv[])
     mtr_delete_package(package);
 end:
     free(source);
-
-    return 0;
 }

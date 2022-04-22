@@ -20,13 +20,12 @@ struct mtr_scope {
     struct mtr_symbol_table symbols;
     struct mtr_scope* parent;
     size_t current;
-    bool is_global_scope;
 };
 
 struct mtr_scope mtr_new_scope(struct mtr_scope* parent);
 void mtr_delete_scope(struct mtr_scope* scope);
 
 struct mtr_symbol* mtr_scope_find(const struct mtr_scope* scope, struct mtr_token token);
-void mtr_scope_add(struct mtr_scope* scope, struct mtr_symbol symbol);
+struct mtr_symbol* mtr_scope_add(struct mtr_scope* scope, struct mtr_symbol symbol);
 
 #endif

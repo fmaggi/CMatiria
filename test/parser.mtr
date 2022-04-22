@@ -1,18 +1,18 @@
 fn main() {
-    MyType y := "Hello";
-    x := 0;
-
-    while x < 45:
-    {
-        print(x);
-        x := x+1;
-    }
+    MyType2 x;
+    test(x);
 }
 
 fn print(Any x) ...
 
-fn what(MyType y) {
-    print(y);
+fn test(MyType2 x) {
+    print(x.y);
 }
 
-type MyType := [ Int | String | Float | [Int] ]
+type MyType := {
+    Int x := 5;
+}
+
+type MyType2 := {
+    Int y := 6;
+}

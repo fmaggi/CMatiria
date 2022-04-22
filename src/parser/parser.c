@@ -722,6 +722,9 @@ static struct mtr_stmt* declaration(struct mtr_parser* parser) {
         parser_error(parser, "'Any' expressions are only allowed as parameters to native functions.");
         exit(-1);
     }
+    // case MTR_TOKEN_FN: {
+    //     return closure(parser);
+    // }
     default:
         return statement(parser);
     }

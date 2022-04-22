@@ -83,12 +83,12 @@ struct mtr_function* mtr_new_function(struct mtr_chunk chunk) {
 
 // Array
 
-struct mtr_array* mtr_new_array(void) {
+struct mtr_array* mtr_new_array(size_t length) {
     struct mtr_array* a = malloc(sizeof(*a));
 
     a->obj.type = MTR_OBJ_ARRAY;
-    a->elements = malloc(sizeof(mtr_value) * 8);
-    a->capacity = 8;
+    a->elements = malloc(sizeof(mtr_value) * length);
+    a->capacity = length;
     a->size = 0;
 
     return a;
@@ -147,6 +147,7 @@ struct mtr_map_element* mtr_get_key_value_pair(struct mtr_map* map, size_t index
 }
 
 struct mtr_map* mtr_new_map(void) {
+
     struct mtr_map* map = malloc(sizeof(*map));
 
     map->obj.type = MTR_OBJ_MAP;

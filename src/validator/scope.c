@@ -117,9 +117,8 @@ void mtr_symbol_table_remove(const struct mtr_symbol_table* table, const char* k
 struct mtr_scope mtr_new_scope(struct mtr_scope* parent) {
     struct mtr_scope scope;
     scope.parent = parent;
-    scope.is_global_scope = parent == NULL ? true : false;
     scope.symbols = mtr_new_symbol_table();
-    bool should_be_zero = parent == NULL || parent->is_global_scope;
+    bool should_be_zero = parent == NULL || parent->parent == NULL;
     scope.current = should_be_zero ? 0 : parent->current;
     return scope;
 }
@@ -137,7 +136,13 @@ struct mtr_symbol* mtr_scope_find(const struct mtr_scope* scope, struct mtr_toke
     return s;
 }
 
-void mtr_scope_add(struct mtr_scope* scope, struct mtr_symbol symbol) {
-    mtr_symbol_table_insert(&scope->symbols, symbol.token.start, symbol.token.length, symbol);
-}
+struct mtr_symbol* mtr_scope_add(struct mtr_scope* scope, struct mtr_symbol symbol) {
+    struct mtr_symbol* s = mtr_scope_find(scope, symbol.token);
+    if (NULL != s) {
+        return s;
+    }
 
+    symbol.index = scope->current++;
+    mtr_symbol_table_insert(&scope->symbols, symbol.token.start, symbol.token.length, symbol);
+    return NULL;
+}

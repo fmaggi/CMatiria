@@ -221,7 +221,7 @@ static struct mtr_type analyze_array_literal(struct mtr_array_literal* array, st
         }
     }
 
-    struct mtr_type type = mtr_new_array_type(array_type);
+    struct mtr_type type = mtr_new_array_type(mtr_copy_type(array_type));
     return type;
 }
 
@@ -244,6 +244,31 @@ static struct mtr_type analyze_map_literal(struct mtr_map_literal* map, struct m
     return type;
 }
 
+static bool check_params(struct mtr_function_type* f, struct mtr_call* call, struct mtr_scope* scope, const char* const source) {
+    for (u8 i = 0 ; i < call->argc; ++i) {
+        struct mtr_expr* a = call->argv[i];
+        struct mtr_type from = analyze_expr(a, scope, source);
+
+        struct mtr_type to = f->argv[i];
+        bool match = check_assignemnt(to, from);
+        if (!match) {
+            expr_error(a, "Wrong type of argument.", source);
+            return false;
+        }
+    }
+    return true;
+}
+
+// static struct mtr_type curry_call(struct mtr_call* call, struct mtr_type type, struct mtr_scope* scope, const char* const source) {
+//     struct mtr_function_type* f = type.obj;
+//     bool match = check_params(f, call, scope, source);
+//     if (!match) {
+//         return invalid_type;
+//     }
+
+//     return mtr_new_function_type(f->return_, f->argc - call->argc, f->argv + call->argc);
+// }
+
 static struct mtr_type analyze_call(struct mtr_call* call, struct mtr_scope* scope, const char* const source) {
     struct mtr_type type = analyze_expr(call->callable, scope, source);
     if (type.type != MTR_DATA_FN) {
@@ -253,20 +278,11 @@ static struct mtr_type analyze_call(struct mtr_call* call, struct mtr_scope* sco
 
     struct mtr_function_type* f = type.obj;
     if (f->argc == call->argc) {
-        for (u8 i = 0 ; i < call->argc; ++i) {
-            struct mtr_expr* a = call->argv[i];
-            struct mtr_type from = analyze_expr(a, scope, source);
-
-            struct mtr_type to = f->argv[i];
-            bool match = check_assignemnt(to, from);
-            if (!match) {
-                expr_error(a, "Wrong type of argument.", source);
-                return invalid_type;
-            }
+        if (!check_params(f, call, scope, source)) {
+            return invalid_type;
         }
-
     } else if (f->argc > call->argc) {
-        expr_error(call->callable, "Expected more arguments.", source);
+        // return curry_call(call, type, scope, source);
         return invalid_type;
     } else {
         expr_error(call->callable, "Too many arguments.", source);
@@ -339,7 +355,7 @@ static struct mtr_type analyze_access(struct mtr_access* expr, struct mtr_scope*
             return st->members[i]->type;
         }
     }
-
+    expr_error(expr->element, "No member.", source);
     return invalid_type;
 }
 
@@ -363,35 +379,28 @@ static struct mtr_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* sco
 }
 
 static bool load_fn(struct mtr_function_decl* stmt, struct mtr_scope* scope, const char* const source) {
-    const struct mtr_symbol* s = mtr_scope_find(scope, stmt->symbol.token);
+    stmt->symbol.type.is_global = true;
+    const struct mtr_symbol* s = mtr_scope_add(scope, stmt->symbol);
     if (NULL != s) {
         mtr_report_error(stmt->symbol.token, "Redefinition of name.", source);
         mtr_report_message(s->token, "Previuosly defined here.", source);
         return false;
     }
-
-    stmt->symbol.index = scope->current++;
-    stmt->symbol.type.is_global = true;
-    mtr_scope_add(scope, stmt->symbol);
     return true;
 }
 
 static bool load_var(struct mtr_variable* stmt, struct mtr_scope* scope, const char* const source) {
-    const struct mtr_symbol* s = mtr_scope_find(scope, stmt->symbol.token);
-    if (NULL != s) {
-        mtr_report_error(stmt->symbol.token, "Redefinition of name.", source);
-        mtr_report_message(s->token, "Previuosly defined here.", source);
-        return false;
-    }
-
-    stmt->symbol.index = scope->current++;
-    mtr_scope_add(scope, stmt->symbol);
-
     if (stmt->symbol.type.type == MTR_DATA_ANY) {
         mtr_report_error(stmt->symbol.token, "'Any' expressions are only allowed as parameters to native functions.", source);
         return false;
     }
 
+    const struct mtr_symbol* s = mtr_scope_add(scope, stmt->symbol);
+    if (NULL != s) {
+        mtr_report_error(stmt->symbol.token, "Redefinition of name.", source);
+        mtr_report_message(s->token, "Previuosly defined here.", source);
+        return false;
+    }
     return true;
 }
 
@@ -655,30 +664,26 @@ static struct mtr_stmt* global_analysis(struct mtr_stmt* stmt, struct mtr_scope*
 }
 
 static bool load_union(struct mtr_union_decl* u, struct mtr_scope* scope, const char* const source) {
-    const struct mtr_symbol* s = mtr_scope_find(scope, u->symbol.token);
+    u->symbol.type.is_global = true;
+    const struct mtr_symbol* s = mtr_scope_add(scope, u->symbol);
     if (NULL != s) {
         mtr_report_error(u->symbol.token, "Redefinition of name.", source);
         mtr_report_message(s->token, "Previuosly defined here.", source);
         return false;
     }
 
-    u->symbol.index = scope->current++;
-    u->symbol.type.is_global = true;
-    mtr_scope_add(scope, u->symbol);
     return true;
 }
 
 static bool load_struct(struct mtr_struct_decl* st, struct mtr_scope* scope, const char* const source) {
-    const struct mtr_symbol* s = mtr_scope_find(scope, st->symbol.token);
+    st->symbol.type.is_global = true;
+    const struct mtr_symbol* s = mtr_scope_add(scope, st->symbol);
     if (NULL != s) {
         mtr_report_error(st->symbol.token, "Redefinition of name.", source);
         mtr_report_message(s->token, "Previuosly defined here.", source);
         return false;
     }
 
-    st->symbol.index = scope->current++;
-    st->symbol.type.is_global = true;
-    mtr_scope_add(scope, st->symbol);
     return true;
 }
 
