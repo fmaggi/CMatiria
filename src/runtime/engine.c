@@ -94,6 +94,8 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
                     array->elements[i] = elem;
                 }
 
+                array->size = count;
+
                 push(engine, MTR_OBJ(array));
                 break;
             }

@@ -63,9 +63,9 @@ static void print_value(mtr_value value) {
         }
         case MTR_OBJ_FUNCTION:
         case MTR_OBJ_NATIVE_FN:
-            MTR_LOG("%s", mtr_obj_type_to_str(value.object));
+            MTR_PRINT("%s", mtr_obj_type_to_str(value.object));
         case MTR_OBJ_STRUCT:
-            MTR_LOG("%s is not printable", mtr_obj_type_to_str(value.object));
+            MTR_PRINT("%s is not printable", mtr_obj_type_to_str(value.object));
         }
     }
     }

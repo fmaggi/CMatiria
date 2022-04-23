@@ -1,18 +1,12 @@
 fn main() {
-    x := test(4);
-    y := test(5.0);
+    MyType z;
+    x := [1, 2, 3, 4];
     print(x);
-    print(y);
-}
-
-fn test(Int x) -> Int {
-    print("Hello");
-    return x + 4;
-}
-
-fn test(Float y) -> Float {
-    print("Bye");
-    return y + 5.0;
 }
 
 fn print(Any x) ...
+
+type MyType := {
+    Int x := 46;
+}
+

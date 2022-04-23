@@ -272,34 +272,55 @@ static bool check_params(struct mtr_function_type* f, struct mtr_call* call, str
 //     return mtr_new_function_type(f->return_, f->argc - call->argc, f->argv + call->argc);
 // }
 
+static struct mtr_type function_call(struct mtr_call* call, struct mtr_type type, struct mtr_scope* scope, const char* const source) {
+    struct mtr_function_type* fc = type.obj;
+    if (fc->argc == call->argc && check_params(fc, call, scope, source, false)) {
+        return fc->return_;
+    }
+
+    return invalid_type;
+}
+
+static struct mtr_expr* build_callable(struct mtr_expr* callable, u8 index) {
+    // This is very hacky and temporary. Just a proof of concept
+    struct mtr_primary* p = malloc(sizeof(*p));
+    p->expr_.type = MTR_EXPR_PRIMARY;
+    p->symbol.index = index;
+
+    struct mtr_access* a = malloc(sizeof(*a));
+    a->expr_.type = MTR_EXPR_ACCESS;
+    a->object = callable;
+    a->element = (struct mtr_expr*)p;
+
+    return (struct mtr_expr*) a;
+}
+
+static struct mtr_type overloaded_function_call(struct mtr_call* call, struct mtr_type type, struct mtr_scope* scope, const char* const source) {
+    struct mtr_function_collection_type* fc = type.obj;
+    for (u8 i = 0; i < fc->argc; ++i) {
+        struct mtr_function_type* f = fc->functions + i;
+        if (f->argc == call->argc && check_params(f, call, scope, source, false)) {
+            call->callable = build_callable(call->callable, i);
+            return f->return_;
+        }
+    }
+    expr_error(call->callable, "There is no overload with this params.", source);
+    return invalid_type;
+}
+
 static struct mtr_type analyze_call(struct mtr_call* call, struct mtr_scope* scope, const char* const source) {
     struct mtr_type type = analyze_expr(call->callable, scope, source);
+
+    if (type.type == MTR_DATA_FN) {
+        return function_call(call, type, scope, source);
+    }
 
     if (type.type != MTR_DATA_FN_COLLECTION) {
         expr_error(call->callable, "Expression is not callable.", source);
         return invalid_type;
     }
 
-    struct mtr_function_collection_type* fc = type.obj;
-    for (u8 i = 0; i < fc->argc; ++i) {
-        struct mtr_function_type* f = fc->functions + i;
-        if (f->argc == call->argc && check_params(f, call, scope, source, false)) {
-            // This is very hacky and temporary. Just a proof of concept
-            struct mtr_primary* p = malloc(sizeof(*p));
-            p->expr_.type = MTR_EXPR_PRIMARY;
-            p->symbol.index = i;
-
-            struct mtr_access* a = malloc(sizeof(*a));
-            a->expr_.type = MTR_EXPR_ACCESS;
-            a->object = call->callable;
-            a->element = (struct mtr_expr*)p;
-
-            call->callable = (struct mtr_expr*) a;
-            return f->return_;
-        }
-    }
-    expr_error(call->callable, "There is no overload with this params.", source);
-    return invalid_type;
+    return overloaded_function_call(call, type, scope, source);
 }
 
 static struct mtr_type analyze_subscript(struct mtr_access* expr, struct mtr_scope* scope, const char* const source) {
@@ -399,6 +420,7 @@ static bool load_fn(struct mtr_function_decl* stmt, struct mtr_scope* scope, con
             stmt->symbol.type = s->type;
             return true;
         }
+        stmt->symbol.type = invalid_type;
         mtr_report_error(stmt->symbol.token, "Too many overloads.", source);
         return false;
     }
@@ -487,16 +509,23 @@ static struct mtr_stmt* analyze_variable(struct mtr_variable* decl, struct mtr_s
             primary->expr_.type = MTR_EXPR_PRIMARY;
             primary->symbol = *name;
 
-            struct mtr_call* constructor = malloc(sizeof(struct mtr_call));
-            constructor->expr_.type = MTR_EXPR_CALL;
-            constructor->callable = (struct mtr_expr*) primary;
-            decl->value = (struct mtr_expr*) constructor;
+            struct mtr_call* call = malloc(sizeof (struct mtr_call));
+            call->expr_.type = MTR_EXPR_CALL;
+            call->callable = build_callable((struct mtr_expr*)primary, 0);
+            call->argv = NULL;
+            call->argc = 0;
+
+            decl->value = (struct mtr_expr*)call;
             goto ret;
         }
     }
 
     if (decl->value && !check_assignemnt(decl->symbol.type, value_type)) {
         mtr_report_error(decl->symbol.token, "Invalid assignement to variable of different type", source);
+        expr = false;
+    }
+
+    if (decl->symbol.type.type == MTR_DATA_INVALID) {
         expr = false;
     }
 
@@ -715,10 +744,23 @@ static bool load_struct(struct mtr_struct_decl* st, struct mtr_scope* scope, con
     return true;
 }
 
+static bool load_native_fn(struct mtr_function_decl* stmt, struct mtr_scope* scope, const char* const source) {
+    stmt->symbol.type.is_global = true;
+    const struct mtr_symbol* s = mtr_scope_add(scope, stmt->symbol);
+    if (NULL != s) {
+        mtr_report_error(stmt->symbol.token, "Redefinition of name. (Native functions are not overloadable)", source);
+        mtr_report_message(s->token, "Previuosly defined here.", source);
+        return false;
+    }
+
+    return true;
+}
+
 static bool load_global(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* const source) {
     switch (stmt->type)
     {
     case MTR_STMT_NATIVE_FN:
+        return load_native_fn((struct mtr_function_decl*) stmt, scope, source);
     case MTR_STMT_FN:
         return load_fn((struct mtr_function_decl*) stmt, scope, source);
     case MTR_STMT_UNION:

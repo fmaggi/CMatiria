@@ -109,9 +109,7 @@ void mtr_package_insert_native_function(struct mtr_package* package, struct mtr_
         return;
     }
 
-    struct mtr_struct* st = mtr_new_struct(1);
-    package->globals[s->index] = (struct mtr_object*) st;
-    st->members[0] = MTR_OBJ(object);
+    package->globals[s->index] = object;
 }
 
 struct mtr_object* mtr_package_get_function(struct mtr_package* package, struct mtr_symbol symbol) {

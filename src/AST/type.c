@@ -295,6 +295,21 @@ bool mtr_add_function_signature(struct mtr_function_collection_type* function, s
         return false;
     }
 
+    // for (u8 i = 0; i < function->argc; ++i) {
+    //     struct mtr_function_type* f = function->functions + i;
+    //     if (f->argc != signature.argc || !mtr_type_match(f->return_, signature.return_)) {
+    //         continue;
+    //     }
+    //     for (u8 j = 0; j < signature.argc; ++j) {
+    //         if (!mtr_type_match(f->argv[j], signature.argv[j])) {
+    //             goto next;
+    //         }
+    //     }
+    //     return false;
+    // next:
+    //     continue;
+    // }
+
     if (function->argc >= function->capacity) {
         struct mtr_function_type* temp = realloc(function->functions, function->capacity * 2);
         function->functions = temp;
