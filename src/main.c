@@ -20,11 +20,15 @@ int main(int argc, char* argv[])
     if (NULL == package)
         goto end;
 
+    MTR_LOG_DEBUG("Adding io...");
     mtr_add_io(package);
+    MTR_LOG_DEBUG("Done");
 
     struct mtr_engine engine;
 
+    MTR_LOG_DEBUG("Executing...");
     i32 result = mtr_execute(&engine, package);
+    MTR_LOG_DEBUG("Done");
     (void) result;
     MTR_LOG_DEBUG("return %i", result);
 

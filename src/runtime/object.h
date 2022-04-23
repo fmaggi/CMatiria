@@ -81,7 +81,6 @@ struct mtr_string {
 
 struct mtr_string* mtr_new_string(const char* string, size_t length);
 
-
 struct mtr_map {
     struct mtr_object obj;
     struct map_entry* entries;

@@ -6,6 +6,7 @@
 #include "AST/type.h"
 #include "core/log.h"
 #include "core/utils.h"
+#include "debug/disassemble.h"
 #include "runtime/object.h"
 
 #include "debug/dump.h"
@@ -38,6 +39,7 @@ static struct mtr_symbol get_symbol(struct mtr_stmt* s) {
     default:
         MTR_ASSERT(false, "Invalid stmt");
     }
+    return (struct mtr_symbol){ .index = 0};
 }
 
 static bool is_main(struct mtr_symbol symbol) {
@@ -45,6 +47,7 @@ static bool is_main(struct mtr_symbol symbol) {
 }
 
 struct mtr_package* mtr_new_package(struct mtr_ast* ast) {
+    (void) valid_as_global;
     struct mtr_package* package = malloc(sizeof(struct mtr_package));
     package->global_symbols = mtr_new_scope(NULL);
 
@@ -69,7 +72,7 @@ struct mtr_package* mtr_new_package(struct mtr_ast* ast) {
 void mtr_package_insert_function(struct mtr_package* package, struct mtr_object* object, struct mtr_symbol symbol) {
     const struct mtr_symbol* s = mtr_scope_find(&package->global_symbols, symbol.token);
     if (s == NULL) {
-        MTR_LOG_WARN("Name not found!");
+        MTR_LOG_WARN("Name '%.*s' not found!", symbol.token.length, symbol.token.start);
         return;
     }
 
@@ -77,14 +80,38 @@ void mtr_package_insert_function(struct mtr_package* package, struct mtr_object*
         package->main = (struct mtr_function*) object;
     }
 
-    package->globals[s->index] = object;
+    if (package->globals[s->index] == NULL) {
+        struct mtr_function_collection_type* fc = (struct mtr_function_collection_type*) symbol.type.obj;
+        struct mtr_struct* st = mtr_new_struct(fc->argc);
+        package->globals[s->index] = (struct mtr_object*) st;
+    }
+
+    struct mtr_struct* st = (struct mtr_struct*) package->globals[s->index];
+    st->members[symbol.index] = MTR_OBJ(object);
 }
 
-void mtr_package_insert_function_by_name(struct mtr_package* package, struct mtr_object* object, const char* name) {
-    struct mtr_symbol s;
-    s.token.start = name;
-    s.token.length = strlen(name);
-    mtr_package_insert_function(package, object, s);
+void mtr_package_insert_native_function(struct mtr_package* package, struct mtr_object* object, const char* name) {
+    struct mtr_token t;
+    t.start = name;
+    t.length = strlen(name);
+    const struct mtr_symbol* s = mtr_scope_find(&package->global_symbols, t);
+    if (s == NULL) {
+        MTR_LOG_WARN("Name '%.*s' not found!", t.length, t.start);
+        return;
+    }
+
+    if (is_main(*s)) {
+        package->main = (struct mtr_function*) object;
+    }
+
+    if (package->globals[s->index] != NULL) {
+        MTR_LOG_ERROR("Native function already inserted!");
+        return;
+    }
+
+    struct mtr_struct* st = mtr_new_struct(1);
+    package->globals[s->index] = (struct mtr_object*) st;
+    st->members[0] = MTR_OBJ(object);
 }
 
 struct mtr_object* mtr_package_get_function(struct mtr_package* package, struct mtr_symbol symbol) {

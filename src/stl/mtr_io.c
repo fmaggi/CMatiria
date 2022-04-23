@@ -79,5 +79,6 @@ mtr_value mtr_print(u8 argc, mtr_value* argv) {
 }
 
 void mtr_add_io(struct mtr_package* package) {
-    mtr_package_insert_function_by_name(package, (struct mtr_object*)mtr_new_native_function(mtr_print), "print");
+    struct mtr_native_fn* n = mtr_new_native_function(mtr_print);
+    mtr_package_insert_native_function(package, (struct mtr_object*)n, "print");
 }

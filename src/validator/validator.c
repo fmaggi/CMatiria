@@ -127,6 +127,7 @@ static struct mtr_expr* try_promoting(struct mtr_expr* expr, struct mtr_type typ
     case MTR_DATA_ARRAY:
     case MTR_DATA_MAP:
     case MTR_DATA_FN:
+    case MTR_DATA_FN_COLLECTION:
     case MTR_DATA_VOID:
     case MTR_DATA_USER:
     case MTR_DATA_UNION:
@@ -244,7 +245,7 @@ static struct mtr_type analyze_map_literal(struct mtr_map_literal* map, struct m
     return type;
 }
 
-static bool check_params(struct mtr_function_type* f, struct mtr_call* call, struct mtr_scope* scope, const char* const source) {
+static bool check_params(struct mtr_function_type* f, struct mtr_call* call, struct mtr_scope* scope, const char* const source, bool message) {
     for (u8 i = 0 ; i < call->argc; ++i) {
         struct mtr_expr* a = call->argv[i];
         struct mtr_type from = analyze_expr(a, scope, source);
@@ -252,7 +253,9 @@ static bool check_params(struct mtr_function_type* f, struct mtr_call* call, str
         struct mtr_type to = f->argv[i];
         bool match = check_assignemnt(to, from);
         if (!match) {
-            expr_error(a, "Wrong type of argument.", source);
+            if (message) {
+                expr_error(a, "Wrong type of argument.", source);
+            }
             return false;
         }
     }
@@ -271,25 +274,32 @@ static bool check_params(struct mtr_function_type* f, struct mtr_call* call, str
 
 static struct mtr_type analyze_call(struct mtr_call* call, struct mtr_scope* scope, const char* const source) {
     struct mtr_type type = analyze_expr(call->callable, scope, source);
-    if (type.type != MTR_DATA_FN) {
+
+    if (type.type != MTR_DATA_FN_COLLECTION) {
         expr_error(call->callable, "Expression is not callable.", source);
         return invalid_type;
     }
 
-    struct mtr_function_type* f = type.obj;
-    if (f->argc == call->argc) {
-        if (!check_params(f, call, scope, source)) {
-            return invalid_type;
-        }
-    } else if (f->argc > call->argc) {
-        // return curry_call(call, type, scope, source);
-        return invalid_type;
-    } else {
-        expr_error(call->callable, "Too many arguments.", source);
-        return invalid_type;
-    }
+    struct mtr_function_collection_type* fc = type.obj;
+    for (u8 i = 0; i < fc->argc; ++i) {
+        struct mtr_function_type* f = fc->functions + i;
+        if (f->argc == call->argc && check_params(f, call, scope, source, false)) {
+            // This is very hacky and temporary. Just a proof of concept
+            struct mtr_primary* p = malloc(sizeof(*p));
+            p->expr_.type = MTR_EXPR_PRIMARY;
+            p->symbol.index = i;
 
-    return f->return_;
+            struct mtr_access* a = malloc(sizeof(*a));
+            a->expr_.type = MTR_EXPR_ACCESS;
+            a->object = call->callable;
+            a->element = (struct mtr_expr*)p;
+
+            call->callable = (struct mtr_expr*) a;
+            return f->return_;
+        }
+    }
+    expr_error(call->callable, "There is no overload with this params.", source);
+    return invalid_type;
 }
 
 static struct mtr_type analyze_subscript(struct mtr_access* expr, struct mtr_scope* scope, const char* const source) {
@@ -335,7 +345,6 @@ static struct mtr_type analyze_unary(struct mtr_unary* expr, struct mtr_scope* s
 static struct mtr_type analyze_access(struct mtr_access* expr, struct mtr_scope* scope, const char* const source) {
     const struct mtr_type right_t = analyze_expr(expr->object, scope, source);
     if (right_t.type != MTR_DATA_STRUCT) {
-        mtr_dump_type(right_t);
         expr_error(expr->object, "Expression is not accessible.", source);
         return invalid_type;
     }
@@ -380,12 +389,28 @@ static struct mtr_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* sco
 
 static bool load_fn(struct mtr_function_decl* stmt, struct mtr_scope* scope, const char* const source) {
     stmt->symbol.type.is_global = true;
-    const struct mtr_symbol* s = mtr_scope_add(scope, stmt->symbol);
+    struct mtr_symbol* s = mtr_scope_find(scope, stmt->symbol.token);
+    struct mtr_function_type* f = (struct mtr_function_type*) stmt->symbol.type.obj;
     if (NULL != s) {
-        mtr_report_error(stmt->symbol.token, "Redefinition of name.", source);
-        mtr_report_message(s->token, "Previuosly defined here.", source);
+        struct mtr_function_collection_type* fc = (struct mtr_function_collection_type*) s->type.obj;
+        stmt->symbol.index = fc->argc;
+        if (mtr_add_function_signature(fc, *f)) {
+            free(f);
+            stmt->symbol.type = s->type;
+            return true;
+        }
+        mtr_report_error(stmt->symbol.token, "Too many overloads.", source);
         return false;
     }
+    struct mtr_function_type types[] = { *f };
+    stmt->symbol.type = mtr_new_function_collection_type(types, 1);
+    stmt->symbol.index = 0;
+
+    struct mtr_symbol symbol = stmt->symbol;
+    symbol.index = scope->current++;
+    mtr_symbol_table_insert(&scope->symbols, symbol.token.start, symbol.token.length, symbol);
+
+    free(f);
     return true;
 }
 
@@ -497,7 +522,8 @@ static struct mtr_stmt* analyze_fn(struct mtr_function_decl* stmt, struct mtr_sc
     all_ok = checked != NULL && all_ok;
     mtr_delete_scope(&scope);
 
-    struct mtr_function_type* type = stmt->symbol.type.obj;
+    struct mtr_function_collection_type* t = stmt->symbol.type.obj;
+    struct mtr_function_type* type = t->functions + stmt->symbol.index;
     if (type->return_.type != MTR_DATA_VOID) {
         struct mtr_block* body = (struct mtr_block*) stmt->body;
         struct mtr_stmt* last = body->statements[body->size-1];
@@ -591,7 +617,9 @@ static struct mtr_stmt* analyze_return(struct mtr_return* stmt, struct mtr_scope
         }
     }
 
-    struct mtr_type type = mtr_get_underlying_type(stmt->from->symbol.type);
+    MTR_ASSERT(stmt->from->symbol.type.type == MTR_DATA_FN_COLLECTION, "Whaaaaaat!");
+    struct mtr_function_collection_type* t = stmt->from->symbol.type.obj;
+    struct mtr_type type = t->functions[stmt->from->symbol.index].return_;
 
     struct mtr_type expr_type = analyze_expr(stmt->expr, parent, source);
     bool ok = mtr_type_match(expr_type, type);

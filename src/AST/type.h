@@ -11,6 +11,7 @@ enum mtr_data_type {
     MTR_DATA_ARRAY,
     MTR_DATA_MAP,
     MTR_DATA_FN,
+    MTR_DATA_FN_COLLECTION,
     MTR_DATA_UNION,
     MTR_DATA_STRUCT,
     MTR_DATA_USER,
@@ -63,6 +64,15 @@ struct mtr_function_type {
 };
 
 struct mtr_type mtr_new_function_type(struct mtr_type return_, u8 argc, struct mtr_type* argv);
+
+struct mtr_function_collection_type {
+    struct mtr_function_type* functions;
+    u8 argc;
+    u8 capacity;
+};
+
+struct mtr_type mtr_new_function_collection_type(struct mtr_function_type* functions, u8 argc);
+bool mtr_add_function_signature(struct mtr_function_collection_type* function, struct mtr_function_type signature);
 
 struct mtr_user_type {
     struct mtr_token name;

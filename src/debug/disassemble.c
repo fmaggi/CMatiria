@@ -210,12 +210,12 @@ void mtr_disassemble(struct mtr_chunk chunk, const char* name) {
 }
 
 void mtr_dump_stack(mtr_value* stack, mtr_value* top) {
-    MTR_PRINT_DEBUG("[");
+    MTR_PRINT("[");
     while(stack < top) {
         switch (stack->type) {
-        case MTR_VAL_INT: MTR_PRINT_DEBUG("%li,", stack->integer); break;
-        case MTR_VAL_FLOAT: MTR_PRINT_DEBUG("%f,", stack->floating); break;
-        case MTR_VAL_OBJ: MTR_PRINT_DEBUG("%s,", mtr_obj_type_to_str(stack->object)); break;
+        case MTR_VAL_INT: MTR_PRINT("%li,", stack->integer); break;
+        case MTR_VAL_FLOAT: MTR_PRINT("%f,", stack->floating); break;
+        case MTR_VAL_OBJ: MTR_PRINT("%s,", mtr_obj_type_to_str(stack->object)); break;
         }
         stack++;
     }

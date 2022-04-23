@@ -30,11 +30,11 @@ static void push(struct mtr_engine* engine, mtr_value value) {
 
 static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc);
 
-#define BINARY_OP(op, type)                                            \
+#define BINARY_OP(op, t, tag)                                            \
     do {                                                               \
         const mtr_value r = pop(engine);                               \
         const mtr_value l = pop(engine);                               \
-        const mtr_value res = { .type = l.type op r.type };            \
+        const mtr_value res = { .t = l.t op r.t, .type = tag };            \
         push(engine, res);                                             \
     } while (false)
 
@@ -197,23 +197,23 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
                 break;
             }
 
-            case MTR_OP_ADD_I: BINARY_OP(+, integer); break;
-            case MTR_OP_SUB_I: BINARY_OP(-, integer); break;
-            case MTR_OP_MUL_I: BINARY_OP(*, integer); break;
-            case MTR_OP_DIV_I: BINARY_OP(/, integer); break;
+            case MTR_OP_ADD_I: BINARY_OP(+, integer, MTR_VAL_INT); break;
+            case MTR_OP_SUB_I: BINARY_OP(-, integer, MTR_VAL_INT); break;
+            case MTR_OP_MUL_I: BINARY_OP(*, integer, MTR_VAL_INT); break;
+            case MTR_OP_DIV_I: BINARY_OP(/, integer, MTR_VAL_INT); break;
 
-            case MTR_OP_ADD_F: BINARY_OP(+, floating); break;
-            case MTR_OP_SUB_F: BINARY_OP(-, floating); break;
-            case MTR_OP_MUL_F: BINARY_OP(*, floating); break;
-            case MTR_OP_DIV_F: BINARY_OP(/, floating); break;
+            case MTR_OP_ADD_F: BINARY_OP(+, floating, MTR_VAL_FLOAT); break;
+            case MTR_OP_SUB_F: BINARY_OP(-, floating, MTR_VAL_FLOAT); break;
+            case MTR_OP_MUL_F: BINARY_OP(*, floating, MTR_VAL_FLOAT); break;
+            case MTR_OP_DIV_F: BINARY_OP(/, floating, MTR_VAL_FLOAT); break;
 
-            case MTR_OP_LESS_I: BINARY_OP(<, integer); break;
-            case MTR_OP_GREATER_I: BINARY_OP(>, integer); break;
-            case MTR_OP_EQUAL_I: BINARY_OP(==, integer); break;
+            case MTR_OP_LESS_I: BINARY_OP(<, integer, MTR_VAL_INT); break;
+            case MTR_OP_GREATER_I: BINARY_OP(>, integer, MTR_VAL_INT); break;
+            case MTR_OP_EQUAL_I: BINARY_OP(==, integer, MTR_VAL_INT); break;
 
-            case MTR_OP_LESS_F: BINARY_OP(<, floating); break;
-            case MTR_OP_GREATER_F: BINARY_OP(>, floating); break;
-            case MTR_OP_EQUAL_F: BINARY_OP(==, floating); break;
+            case MTR_OP_LESS_F: BINARY_OP(<, floating, MTR_VAL_FLOAT); break;
+            case MTR_OP_GREATER_F: BINARY_OP(>, floating, MTR_VAL_FLOAT); break;
+            case MTR_OP_EQUAL_F: BINARY_OP(==, floating, MTR_VAL_FLOAT); break;
 
             case MTR_OP_GET: {
                 const u16 index = READ(u16);

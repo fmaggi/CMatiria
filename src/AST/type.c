@@ -68,6 +68,10 @@ struct mtr_type mtr_copy_type(struct mtr_type type) {
         struct mtr_function_type* f = (struct mtr_function_type*) type.obj;
         return mtr_new_function_type(f->return_, f->argc, f->argv);
     }
+    case MTR_DATA_FN_COLLECTION: {
+        struct mtr_function_collection_type* fc = (struct mtr_function_collection_type*) type.obj;
+        return mtr_new_function_collection_type(fc->functions, fc->argc);
+    }
     case MTR_DATA_USER: {
         struct mtr_user_type* s = (struct mtr_user_type*) type.obj;
         return mtr_new_user_type(s->name);
@@ -115,6 +119,11 @@ static void delete_object_type(mtr_object_type* obj, enum mtr_data_type type) {
         }
         free(f->argv);
         free(f);
+        return;
+    }
+    case MTR_DATA_FN_COLLECTION: {
+        // struct mtr_function_collection_type* fc = (struct mtr_function_collection_type*) obj;
+        // free(fc);
         return;
     }
     case MTR_DATA_STRUCT: {
@@ -257,6 +266,43 @@ struct mtr_type mtr_new_function_type(struct mtr_type return_, u8 argc, struct m
     t.obj = f;
     t.assignable = false;
     return t;
+}
+
+struct mtr_type mtr_new_function_collection_type(struct mtr_function_type* functions, u8 argc) {
+    struct mtr_type t;
+    t.type = MTR_DATA_FN_COLLECTION;
+    t.assignable = false;
+    t.is_global = true;
+    t.obj = NULL;
+    if (argc >= 255) {
+        return t;
+    }
+
+    struct mtr_function_collection_type* f = malloc(sizeof(*f));
+    f->functions = malloc(sizeof(struct mtr_function_type*) * 8);
+    f->capacity = 8;
+    f->argc = 0;
+    for (u8 i = 0; i < argc; ++i) {
+        mtr_add_function_signature(f, functions[i]);
+    }
+
+    t.obj = f;
+    return t;
+}
+
+bool mtr_add_function_signature(struct mtr_function_collection_type* function, struct mtr_function_type signature) {
+    if (function->argc >= 255) {
+        return false;
+    }
+
+    if (function->argc >= function->capacity) {
+        struct mtr_function_type* temp = realloc(function->functions, function->capacity * 2);
+        function->functions = temp;
+        function->capacity *= 2;
+    }
+
+    function->functions[function->argc++] = signature;
+    return true;
 }
 
 struct mtr_type mtr_new_union_type(struct mtr_token token, struct mtr_type* types, u8 argc) {
