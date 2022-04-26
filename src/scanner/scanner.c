@@ -156,7 +156,7 @@ struct mtr_token mtr_next_token(struct mtr_scanner* scanner) {
         }
         return make_token(scanner, MTR_TOKEN_PIPE);
 
-    case '"': return scan_string(scanner);
+    case '\'': return scan_string(scanner);
 
     case '0': case '1': case '2': case '3': case '4':
     case '5': case '6': case '7': case '8': case '9':
@@ -220,7 +220,7 @@ static struct mtr_token make_token(const struct mtr_scanner* scanner, enum mtr_t
 }
 
 static struct mtr_token scan_string(struct mtr_scanner* scanner) {
-    while (*scanner->current != '"')
+    while (*scanner->current != '\'')
         advance(scanner);
     advance(scanner); // closing "
     return make_token(scanner, MTR_TOKEN_STRING_LITERAL);

@@ -1,11 +1,7 @@
 fn main() {
-    x := [print];
-    x[0](45);
+    String x := 'Hello';
+
+    print(x);
 }
 
 fn print(Any x) ...
-
-type MyType := {
-    Int x := 46;
-}
-
