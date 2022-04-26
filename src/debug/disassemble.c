@@ -65,17 +65,17 @@ u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {
         MTR_LOG("NIL");
         break;
 
-    case MTR_OP_STRING: {
+    case MTR_OP_EMPTY_STRING: {
         MTR_LOG("sNEW");
         break;
     }
 
-    case MTR_OP_ARRAY: {
+    case MTR_OP_EMPTY_ARRAY: {
         MTR_LOG("aNEW");
         break;
     }
 
-    case MTR_OP_MAP: {
+    case MTR_OP_EMPTY_MAP: {
         MTR_LOG("mNEW");
         break;
     }

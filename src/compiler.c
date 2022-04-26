@@ -127,6 +127,7 @@ static void write_literal(struct mtr_chunk* chunk, struct mtr_literal* expr) {
     }
 
     case MTR_TOKEN_STRING_LITERAL: {
+        // this is weird
         mtr_write_chunk(chunk, MTR_OP_STRING_LITERAL);
         const char* string_start = expr->literal.start+1; // skip opening "
         write_u64(chunk, mtr_reinterpret_cast(u64, string_start));
@@ -348,36 +349,39 @@ static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr) {
 static void write(struct mtr_chunk* chunk, struct mtr_stmt* stmt);
 
 static void write_variable(struct mtr_chunk* chunk, struct mtr_variable* var) {
-
-    if (NULL == var->value) {
-        mtr_write_chunk(chunk, MTR_OP_NIL);
-    } else {
-        write_expr(chunk, var->value);
-    }
+    u8 nil_op;
 
     switch (var->symbol.type.type) {
     case MTR_DATA_STRING: {
-        mtr_write_chunk(chunk, MTR_OP_STRING);
+        nil_op = MTR_OP_EMPTY_STRING;
         break;
     }
 
     case MTR_DATA_ARRAY: {
-        mtr_write_chunk(chunk, MTR_OP_ARRAY);
+        nil_op = MTR_OP_EMPTY_ARRAY;
         break;
     }
 
     case MTR_DATA_MAP: {
-        mtr_write_chunk(chunk, MTR_OP_MAP);
-        return;
+        nil_op = MTR_OP_EMPTY_MAP;
+        break;
     }
 
     case MTR_DATA_STRUCT: {
-        // It is a no-op. Constructors push the instance directly and assignment as well.
-        return;
+        nil_op = MTR_OP_NIL;
+        break;
     }
 
-    default:
+    default: {
+        nil_op = MTR_OP_NIL;
         break;
+    }
+    }
+
+    if (NULL == var->value) {
+        mtr_write_chunk(chunk, nil_op);
+    } else {
+        write_expr(chunk, var->value);
     }
 }
 

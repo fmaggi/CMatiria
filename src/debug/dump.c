@@ -237,6 +237,10 @@ static void dump_object_type(mtr_object_type* obj, enum mtr_data_type type, u32 
         MTR_LOG("%.*s", u->name.length, u->name.start);
         return;
     }
+    case MTR_DATA_FN_COLLECTION: {
+        IMPLEMENT
+        return;
+    }
     default:
         break;
     }

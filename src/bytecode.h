@@ -17,10 +17,9 @@ enum mtr_op_code {
 
     MTR_OP_NIL,
 
-    MTR_OP_STRING,
-    MTR_OP_ARRAY,
-    MTR_OP_MAP,
-    MTR_OP_STRUCT,
+    MTR_OP_EMPTY_STRING,
+    MTR_OP_EMPTY_ARRAY,
+    MTR_OP_EMPTY_MAP,
 
     MTR_OP_OR,
     MTR_OP_AND,

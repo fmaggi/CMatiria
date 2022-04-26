@@ -67,8 +67,8 @@ struct mtr_type mtr_new_function_type(struct mtr_type return_, u8 argc, struct m
 
 struct mtr_function_collection_type {
     struct mtr_function_type* functions;
-    u8 argc;
-    u8 capacity;
+    u16 argc;
+    u16 capacity;
 };
 
 struct mtr_type mtr_new_function_collection_type(struct mtr_function_type* functions, u8 argc);
@@ -81,18 +81,18 @@ struct mtr_user_type {
 struct mtr_union_type {
     struct mtr_user_type name;
     struct mtr_type* types;
-    u8 argc;
+    u16 argc;
 };
 
-struct mtr_type mtr_new_union_type(struct mtr_token token, struct mtr_type* types, u8 argc);
+struct mtr_type mtr_new_union_type(struct mtr_token token, struct mtr_type* types, u16 argc);
 
 struct mtr_struct_type {
     struct mtr_user_type name;
     struct mtr_symbol** members;
-    u8 argc;
+    u16 argc;
 };
 
-struct mtr_type mtr_new_struct_type(struct mtr_token token, struct mtr_symbol** members, u8 argc);
+struct mtr_type mtr_new_struct_type(struct mtr_token token, struct mtr_symbol** members, u16 argc);
 
 struct mtr_type mtr_new_user_type(struct mtr_token token);
 

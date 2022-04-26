@@ -8,6 +8,7 @@
 #include "core/report.h"
 #include "core/log.h"
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -373,12 +374,10 @@ static struct mtr_type array_or_map(struct mtr_parser* parser) {
     if (CHECK(MTR_TOKEN_COMMA)) {
         advance(parser);
         struct mtr_type type2 = parse_var_type(parser);
-        ret_type = mtr_new_map_type(type1, type2);
-    } else {
-        ret_type = mtr_new_array_type(type1);
+        return mtr_new_map_type(type1, type2);
     }
 
-    return ret_type;
+    return mtr_new_array_type(type1);
 }
 
 static struct mtr_type parse_var_type(struct mtr_parser* parser) {
@@ -406,7 +405,7 @@ static struct mtr_type parse_var_type(struct mtr_parser* parser) {
 
     case MTR_TOKEN_IDENTIFIER: {
         struct mtr_token token = advance(parser);
-        type = mtr_new_user_type(token); // treating unions and structs as structs here for now
+        type = mtr_new_user_type(token);
         break;
     }
 
@@ -620,10 +619,10 @@ static struct mtr_stmt* union_type(struct mtr_parser* parser, struct mtr_token n
     struct mtr_union_decl* union_ = ALLOCATE_STMT(MTR_STMT_UNION, mtr_union_decl);
     union_->symbol.token = name;
 
-    struct mtr_type types[255];
-    u8 argc = 0;
+    struct mtr_type types[UINT16_MAX];
+    u16 argc = 0;
     bool cont = true;
-    while (argc < 255 && cont) {
+    while (argc < UINT16_MAX && cont) {
         struct mtr_type* type = types + argc++;
         *type = parse_var_type(parser);
 
@@ -640,7 +639,7 @@ static struct mtr_stmt* union_type(struct mtr_parser* parser, struct mtr_token n
     }
 
     if (argc > 255) {
-        parser_error(parser, "Exceded maximum number of types (255)");
+        parser_error(parser, "Exceded maximum number of types.");
     }
 
     union_->symbol.type = mtr_new_union_type(name, types, argc);
@@ -653,11 +652,11 @@ static struct mtr_stmt* struct_type(struct mtr_parser* parser, struct mtr_token 
     struct mtr_struct_decl* struct_ = ALLOCATE_STMT(MTR_STMT_STRUCT, mtr_struct_decl);
     struct_->symbol.token = name;
 
-    struct mtr_variable* vars[255];
-    struct mtr_symbol* symbols[255];
-    u8 argc = 0;
+    struct mtr_variable* vars[UINT16_MAX];
+    struct mtr_symbol* symbols[UINT16_MAX];
+    u16 argc = 0;
     bool cont = true;
-    while (argc < 255 && cont) {
+    while (argc < UINT16_MAX && cont) {
         struct mtr_variable** type = vars + argc;
         struct mtr_symbol** symbol = symbols + argc++;
         *type = (struct mtr_variable*) variable(parser);
@@ -675,7 +674,7 @@ static struct mtr_stmt* struct_type(struct mtr_parser* parser, struct mtr_token 
     }
 
     if (argc > 255) {
-        parser_error(parser, "Exceded maximum number of members (255)");
+        parser_error(parser, "Exceded maximum number of members.");
     }
 
     struct_->members = malloc(sizeof(struct mtr_variable*) * argc);
@@ -707,10 +706,10 @@ static struct mtr_stmt* declaration(struct mtr_parser* parser) {
     {
     case MTR_TOKEN_IDENTIFIER: {
         struct mtr_token next_token = peek(parser);
-        if (next_token.type == MTR_TOKEN_IDENTIFIER) {
-            return variable(parser);
+        if (next_token.type != MTR_TOKEN_IDENTIFIER) {
+            return statement(parser);
         }
-        return statement(parser);
+        // fallthrough to variable
     }
     case MTR_TOKEN_INT:
     case MTR_TOKEN_FLOAT:

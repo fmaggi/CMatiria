@@ -14,6 +14,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define TYPE_CHECK(t) \
+    do {              \
+        if (t.type == MTR_DATA_INVALID) return INVALID_RETURN_VALUE; \
+    } while(0)
+
 static bool is_literal(struct mtr_expr* expr) {
     return expr->type == MTR_EXPR_ARRAY_LITERAL || expr->type == MTR_EXPR_MAP_LITERAL || expr->type == MTR_EXPR_LITERAL;
 }
@@ -151,11 +156,16 @@ static struct mtr_expr* try_promoting(struct mtr_expr* expr, struct mtr_type typ
     return (struct mtr_expr*) cast;
 }
 
+#define INVALID_RETURN_VALUE invalid_type
+
 static struct mtr_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* scope, const char* const source);
 
 static struct mtr_type analyze_binary(struct mtr_binary* expr, struct mtr_scope* scope, const char* const source) {
     const struct mtr_type l = analyze_expr(expr->left, scope, source);
     const struct mtr_type r = analyze_expr(expr->right, scope, source);
+
+    TYPE_CHECK(l);
+    TYPE_CHECK(r);
 
     struct mtr_type t = get_operator_type(expr->operator.token, l, r);
 
@@ -212,6 +222,7 @@ static struct mtr_type analyze_literal(struct mtr_literal* literal, struct mtr_s
 static struct mtr_type analyze_array_literal(struct mtr_array_literal* array, struct mtr_scope* scope, const char* const source) {
     struct mtr_expr* first = array->expressions[0];
     struct mtr_type array_type = analyze_expr(first, scope, source);
+    TYPE_CHECK(array_type);
 
     for (u8 i = 1; i < array->count; ++i) {
         struct mtr_expr* e = array->expressions[i];
@@ -230,6 +241,9 @@ static struct mtr_type analyze_map_literal(struct mtr_map_literal* map, struct m
     struct mtr_map_entry first = map->entries[0];
     struct mtr_type key_type = analyze_expr(first.key, scope, source);
     struct mtr_type val_type = analyze_expr(first.value, scope, source);
+
+    TYPE_CHECK(key_type);
+    TYPE_CHECK(val_type);
 
     for (u8 i = 1; i < map->count; ++i) {
         struct mtr_map_entry e = map->entries[i];
@@ -310,22 +324,25 @@ static struct mtr_type overloaded_function_call(struct mtr_call* call, struct mt
 
 static struct mtr_type analyze_call(struct mtr_call* call, struct mtr_scope* scope, const char* const source) {
     struct mtr_type type = analyze_expr(call->callable, scope, source);
+    TYPE_CHECK(type);
 
     if (type.type == MTR_DATA_FN) {
         return function_call(call, type, scope, source);
     }
 
-    if (type.type != MTR_DATA_FN_COLLECTION) {
-        expr_error(call->callable, "Expression is not callable.", source);
-        return invalid_type;
+    if (type.type == MTR_DATA_FN_COLLECTION) {
+        return overloaded_function_call(call, type, scope, source);
     }
 
-    return overloaded_function_call(call, type, scope, source);
+    expr_error(call->callable, "Expression is not callable.", source);
+    return invalid_type;
 }
 
 static struct mtr_type analyze_subscript(struct mtr_access* expr, struct mtr_scope* scope, const char* const source) {
     struct mtr_type type = analyze_expr(expr->object, scope, source);
     struct mtr_type index_type = analyze_expr(expr->element, scope, source);
+    TYPE_CHECK(type);
+    TYPE_CHECK(index_type);
 
     switch (type.type) {
 
@@ -365,6 +382,8 @@ static struct mtr_type analyze_unary(struct mtr_unary* expr, struct mtr_scope* s
 
 static struct mtr_type analyze_access(struct mtr_access* expr, struct mtr_scope* scope, const char* const source) {
     const struct mtr_type right_t = analyze_expr(expr->object, scope, source);
+    TYPE_CHECK(right_t);
+
     if (right_t.type != MTR_DATA_STRUCT) {
         expr_error(expr->object, "Expression is not accessible.", source);
         return invalid_type;
@@ -453,6 +472,9 @@ static bool load_var(struct mtr_variable* stmt, struct mtr_scope* scope, const c
 
 static struct mtr_stmt* analyze(struct mtr_stmt* stmt, struct mtr_scope* parent, const char* const source);
 
+#undef INVALID_RETURN_VALUE
+#define INVALID_RETURN_VALUE sanitize_stmt(stmt, false)
+
 static struct mtr_stmt* sanitize_stmt(void* stmt, bool condition) {
     if (!condition) {
         mtr_free_stmt(stmt);
@@ -481,11 +503,10 @@ static struct mtr_stmt* analyze_block(struct mtr_block* block, struct mtr_scope*
 
 static struct mtr_stmt* analyze_variable(struct mtr_variable* decl, struct mtr_scope* parent, const char* const source) {
     bool expr = true;
-
     const struct mtr_type value_type = decl->value == NULL ? invalid_type : analyze_expr(decl->value, parent, source);
 
     if (decl->symbol.type.type == MTR_DATA_INVALID) { // this means it was an implicit var decl
-        decl->symbol.type = is_literal(decl->value) ? value_type : mtr_copy_type(value_type);
+        decl->symbol.type = mtr_copy_type(value_type);
     }
 
     if (decl->symbol.type.type == MTR_DATA_USER) {
@@ -520,9 +541,14 @@ static struct mtr_stmt* analyze_variable(struct mtr_variable* decl, struct mtr_s
         }
     }
 
-    if (decl->value && !check_assignemnt(decl->symbol.type, value_type)) {
-        mtr_report_error(decl->symbol.token, "Invalid assignement to variable of different type", source);
-        expr = false;
+    if (decl->value) {
+        if (!check_assignemnt(decl->symbol.type, value_type)) {
+            mtr_report_error(decl->symbol.token, "Invalid assignement to variable of different type", source);
+            expr = false;
+        }
+        if (is_literal(decl->value)) {
+            mtr_delete_type(value_type);
+        }
     }
 
     if (decl->symbol.type.type == MTR_DATA_INVALID) {
@@ -583,23 +609,29 @@ static struct mtr_stmt* analyze_assignment(struct mtr_assignment* stmt, struct m
     }
 
     const struct mtr_type right_t = analyze_expr(stmt->right, parent, source);
+    TYPE_CHECK(right_t);
+
     if (!right_t.assignable) {
         expr_error(stmt->right, "Expression is not assignable.", source);
         return sanitize_stmt(stmt, false);
     }
 
     const struct mtr_type expr_t = analyze_expr(stmt->expression, parent, source);
+    TYPE_CHECK(expr_t);
 
     bool expr_ok = true;
     if (!check_assignemnt(right_t, expr_t)) {
         expr_error(stmt->right, "Invalid assignement to variable of different type", source);
         expr_ok = false;
     }
+
     return sanitize_stmt(stmt, expr_ok);
 }
 
 static struct mtr_stmt* analyze_if(struct mtr_if* stmt, struct mtr_scope* parent, const char* const source) {
     struct mtr_type expr_type = analyze_expr(stmt->condition, parent, source);
+    TYPE_CHECK(expr_type);
+
     bool condition_ok = expr_type.type == MTR_DATA_FLOAT || expr_type.type == MTR_DATA_INT || expr_type.type == MTR_DATA_BOOL;
     if (!condition_ok) {
         expr_error(stmt->condition, "Expression doesn't return Bool.", source);
@@ -624,6 +656,8 @@ static struct mtr_stmt* analyze_if(struct mtr_if* stmt, struct mtr_scope* parent
 
 static struct mtr_stmt* analyze_while(struct mtr_while* stmt, struct mtr_scope* parent, const char* const source) {
     struct mtr_type expr_type = analyze_expr(stmt->condition, parent, source);
+    TYPE_CHECK(expr_type);
+
     bool condition_ok = expr_type.type == MTR_DATA_FLOAT || expr_type.type == MTR_DATA_INT || expr_type.type == MTR_DATA_BOOL;
     if (!condition_ok) {
         expr_error(stmt->condition, "Expression doesn't return Bool.", source);
@@ -651,6 +685,8 @@ static struct mtr_stmt* analyze_return(struct mtr_return* stmt, struct mtr_scope
     struct mtr_type type = t->functions[stmt->from->symbol.index].return_;
 
     struct mtr_type expr_type = analyze_expr(stmt->expr, parent, source);
+    TYPE_CHECK(expr_type);
+
     bool ok = mtr_type_match(expr_type, type);
     if (!ok) {
         expr_error(stmt->expr, "Incompatible return type.", source);
@@ -748,7 +784,7 @@ static bool load_native_fn(struct mtr_function_decl* stmt, struct mtr_scope* sco
     stmt->symbol.type.is_global = true;
     const struct mtr_symbol* s = mtr_scope_add(scope, stmt->symbol);
     if (NULL != s) {
-        mtr_report_error(stmt->symbol.token, "Redefinition of name. (Native functions are not overloadable)", source);
+        mtr_report_error(stmt->symbol.token, "Redefinition of name. (Native functions are not overloadable).", source);
         mtr_report_message(s->token, "Previuosly defined here.", source);
         return false;
     }

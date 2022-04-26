@@ -43,7 +43,7 @@
     #define MTR_LOG_DEBUG(...)  (printf((MTR_DEBUG_PRE)), MTR_LOG(__VA_ARGS__))
     #define MTR_PRINT_DEBUG(...) (printf(__VA_ARGS__))
 
-    #define MTR_ASSERT(x, m) if (!(x)) { MTR_PRINT_DEBUG(MTR_BOLD_DARK(MTR_WHITE)"[%s]: "MTR_RESET, __func__); MTR_LOG_ERROR((m)); exit(-1); }
+    #define MTR_ASSERT(x, m) if (!(x)) { MTR_PRINT_DEBUG(MTR_BOLD_DARK(MTR_WHITE)"[%s]: "MTR_RESET, __func__); MTR_LOG_ERROR((m)); abort(); }
 
     #define IMPLEMENT MTR_LOG_WARN("%s function needs to be implemented!", __func__);
 

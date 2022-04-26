@@ -16,7 +16,7 @@ ifndef config
 endif
 
 ifeq ($(config), debug)
-	CFLAGS += -g -pg
+	CFLAGS += -g -pg -Wno-unused-variable -Wno-unused-function
 	EXEFLAGS += -g -pg
 else
 	CFLAGS += -DNDEBUG -m64 -Ofast -ffast-math -flto -O3 -mllvm -polly -mllvm -polly-parallel

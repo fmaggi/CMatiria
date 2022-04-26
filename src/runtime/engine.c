@@ -132,33 +132,21 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
                 break;
             }
 
-            case MTR_OP_STRING: {
-                mtr_value string = peek(engine, 0);
-                if (NULL == string.object) {
-                    pop(engine); // pop null value;
-                    struct mtr_string* string_object = mtr_new_string(NULL, 0);
-                    push(engine, MTR_OBJ(string_object));
-                }
+            case MTR_OP_EMPTY_STRING: {
+                struct mtr_string* string_object = mtr_new_string(NULL, 0);
+                push(engine, MTR_OBJ(string_object));
                 break;
             }
 
-            case MTR_OP_ARRAY: {
-                mtr_value array = peek(engine, 0);
-                if (NULL == array.object) {
-                    pop(engine); // pop null value;
-                    struct mtr_array* array_object = mtr_new_array(8);
-                    push(engine, MTR_OBJ(array_object));
-                }
+            case MTR_OP_EMPTY_ARRAY: {
+                struct mtr_array* array_object = mtr_new_array(8);
+                push(engine, MTR_OBJ(array_object));
                 break;
             }
 
-            case MTR_OP_MAP: {
-                mtr_value map = peek(engine, 0);
-                if (NULL == map.object) {
-                    pop(engine); // pop null value;
-                    struct mtr_map* map = mtr_new_map();
-                    push(engine, MTR_OBJ(map));
-                }
+            case MTR_OP_EMPTY_MAP: {
+                struct mtr_map* map = mtr_new_map();
+                push(engine, MTR_OBJ(map));
                 break;
             }
 
