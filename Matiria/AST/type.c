@@ -131,8 +131,16 @@ static void delete_object_type(mtr_object_type* obj, enum mtr_data_type type) {
         return;
     }
     case MTR_DATA_FN_COLLECTION: {
-        // struct mtr_function_collection_type* fc = (struct mtr_function_collection_type*) obj;
-        // free(fc);
+        struct mtr_function_collection_type* fc = (struct mtr_function_collection_type*) obj;
+        for (u16 i = 0; i < fc->argc; ++i) {
+            struct mtr_function_type* f = (struct mtr_function_type*) fc->functions + i;
+            mtr_delete_type(f->return_);
+            for (u8 i = 0; i < f->argc; ++i) {
+                mtr_delete_type(f->argv[i]);
+            }
+            free(f->argv);
+        }
+        free(fc);
         return;
     }
     case MTR_DATA_STRUCT: {
@@ -206,7 +214,7 @@ static bool object_type_match(mtr_object_type* lhs, mtr_object_type* rhs, enum m
 
 bool mtr_type_match(struct mtr_type lhs, struct mtr_type rhs) {
     bool any = lhs.type == MTR_DATA_ANY || rhs.type == MTR_DATA_ANY;
-    bool trivial_type = lhs.obj == NULL;
+    bool trivial_type = lhs.obj == NULL && rhs.obj == NULL;
     bool match = ((lhs.type == rhs.type) || are_user_types(lhs.type, rhs.type))
             && (
                 trivial_type || object_type_match(lhs.obj, rhs.obj, lhs.type)

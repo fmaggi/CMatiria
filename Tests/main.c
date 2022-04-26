@@ -1,5 +1,3 @@
-// this file is just temporary (probably :) )
-
 #include "compiler.h"
 #include "runtime/engine.h"
 #include "core/file.h"
@@ -7,15 +5,12 @@
 
 #include "stl/mtr_stdlib.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 
 int main(int argc, char* argv[])
 {
-    if (argc != 2) {
-        return -1;
-    }
-
-    char* source = mtr_read_file(argv[1]);
+    char* source = mtr_read_file("Tests/parser.mtr");
     struct mtr_package* package = mtr_compile(source);
     if (NULL == package)
         goto end;

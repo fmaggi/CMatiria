@@ -1,4 +1,5 @@
-fn main() {
+fn main()
+{
     Int i := 0;
     Int count := 10;
 

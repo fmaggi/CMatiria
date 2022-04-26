@@ -1,11 +1,12 @@
+SRC_DIR = Matiria
+MATIRIA = libMatiria.a
+
 CC = clang
 LL = llvm-ar
 
-CFLAGS = -Isrc -Werror -Wall -Wextra -pedantic -Wno-unused-parameter -D_FORTIFY_SOURCE=2 -std=c17
+CFLAGS = -I$(SRC_DIR) -Werror -Wall -Wextra -pedantic -Wno-unused-parameter -D_FORTIFY_SOURCE=2 -std=c17
 EXEFLAGS =
-
-MATIRIA = matiria
-SRC_DIR = src
+LLFLAGS =
 
 SRC = $(wildcard $(SRC_DIR)/*.c) $(wildcard $(SRC_DIR)/**/*.c) $(wildcard $(SRC_DIR)/**/**/*.c) $(wildcard $(SRC_DIR)/**/**/**/*.c)
 OBJS = $(SRC:%.c=%.o)
@@ -21,11 +22,18 @@ ifeq ($(config), debug)
 else
 	CFLAGS += -DNDEBUG -m64 -Ofast -ffast-math -flto -O3 -mllvm -polly -mllvm -polly-parallel
 	EXEFLAGS += -flto -lgomp -m64 -Ofast -ffast-math -flto -O3
+	LLFLAGS += -flto -lgomp -m64 -Ofast -ffast-math -flto -O3
 endif
 
+all: test
+
+test: Tests/main.o $(MATIRIA)
+	@echo [EXE] test
+	@$(CC) $(EXEFLAGS) -o test $^
+
 $(MATIRIA): $(OBJS)
-	@echo [EXE] $(MATIRIA)
-	@$(CC) -o $@ $^ $(EXEFLAGS)
+	@echo [LIB] $(MATIRIA)
+	@$(LL) rcs $@ $^ $(LLFLAGS)
 
 %.o: %.c
 	@echo [CC] $<
