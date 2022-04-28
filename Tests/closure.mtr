@@ -1,0 +1,8 @@
+fn main() {
+    fn test() {
+        print(5);
+    }
+    test();
+}
+
+fn print(Any x) ...

@@ -12,6 +12,7 @@ enum mtr_stmt_type {
     MTR_STMT_UNION,
     MTR_STMT_FN,
     MTR_STMT_NATIVE_FN,
+    MTR_STMT_CLOSURE,
     MTR_STMT_RETURN,
     MTR_STMT_VAR,
     MTR_STMT_IF,
@@ -61,6 +62,17 @@ struct mtr_function_decl {
     struct mtr_symbol symbol;
     struct mtr_variable* argv;
     u8 argc;
+};
+
+struct mtr_closed {
+    size_t* captured;
+    u8 count;
+};
+
+struct mtr_closure_decl {
+    struct mtr_stmt stmt;
+    struct mtr_function_decl* function;
+    struct mtr_closed closed;
 };
 
 struct mtr_struct_decl {

@@ -608,6 +608,24 @@ type_check:; // this is some weird shit with labels. prob a clang bug
     return (struct mtr_stmt*) node;
 }
 
+static struct mtr_stmt* closure(struct mtr_parser* parser) {
+    struct mtr_closure_decl* closure = ALLOCATE_STMT(MTR_STMT_CLOSURE, mtr_closure_decl);
+
+    struct mtr_stmt* fn = func_decl(parser);
+    if (fn->type == MTR_STMT_NATIVE_FN) {
+        parser_error(parser, "Closures cannot be native functions.");
+        mtr_free_stmt(fn);
+        free(closure);
+        return NULL;
+    }
+
+    closure->function = (struct mtr_function_decl*) fn;
+    closure->closed.count = 0;
+    closure->closed.captured = NULL;
+
+    return (struct mtr_stmt*) closure;
+}
+
 static struct mtr_stmt* union_type(struct mtr_parser* parser, struct mtr_token name) {
     advance(parser);
 
@@ -716,9 +734,9 @@ static struct mtr_stmt* declaration(struct mtr_parser* parser) {
         parser_error(parser, "'Any' expressions are only allowed as parameters to native functions.");
         exit(-1);
     }
-    // case MTR_TOKEN_FN: {
-    //     return closure(parser);
-    // }
+    case MTR_TOKEN_FN: {
+        return closure(parser);
+    }
     default:
         return statement(parser);
     }
@@ -816,15 +834,22 @@ void mtr_free_stmt(struct mtr_stmt* s) {
             free(a);
             break;
         }
+        case MTR_STMT_CLOSURE: {
+            struct mtr_closure_decl* c = (struct mtr_closure_decl*) s;
+            mtr_free_stmt((struct mtr_stmt*) c->function);
+            free(c->closed.captured);
+            c->closed.captured = NULL;
+            c->closed.count = 0;
+            free(c);
+            break;
+        }
         case MTR_STMT_NATIVE_FN:
         case MTR_STMT_FN: {
             struct mtr_function_decl* f = (struct mtr_function_decl*) s;
             mtr_delete_type(f->symbol.type);
-            if (f->argc > 0) {
-                for (u8 i = 0; i < f->argc; ++i) {
-                    struct mtr_variable* v = f->argv + i;
-                    mtr_delete_type(v->symbol.type);
-                }
+            for (u8 i = 0; i < f->argc; ++i) {
+                struct mtr_variable* v = f->argv + i;
+                mtr_delete_type(v->symbol.type);
             }
             free(f->argv);
             if (f->body) {

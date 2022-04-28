@@ -44,7 +44,7 @@ static bool check_assignemnt(struct mtr_type assign_to, struct mtr_type what) {
     return true;
 }
 
-static void expr_error(struct mtr_expr* expr, const char* message, const char* const source) {
+static void expr_error(struct mtr_expr* expr, const char* message, const char* source) {
     switch (expr->type)
     {
     case MTR_EXPR_BINARY: {
@@ -158,9 +158,9 @@ static struct mtr_expr* try_promoting(struct mtr_expr* expr, struct mtr_type typ
 
 #define INVALID_RETURN_VALUE invalid_type
 
-static struct mtr_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* scope, const char* const source);
+static struct mtr_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* scope, const char* source);
 
-static struct mtr_type analyze_binary(struct mtr_binary* expr, struct mtr_scope* scope, const char* const source) {
+static struct mtr_type analyze_binary(struct mtr_binary* expr, struct mtr_scope* scope, const char* source) {
     const struct mtr_type l = analyze_expr(expr->left, scope, source);
     const struct mtr_type r = analyze_expr(expr->right, scope, source);
 
@@ -201,7 +201,7 @@ static struct mtr_type analyze_binary(struct mtr_binary* expr, struct mtr_scope*
     return  expr->operator.type;
 }
 
-static struct mtr_type analyze_primary(struct mtr_primary* expr, struct mtr_scope* scope, const char* const source) {
+static struct mtr_type analyze_primary(struct mtr_primary* expr, struct mtr_scope* scope, const char* source) {
     struct mtr_symbol* s = mtr_scope_find(scope, expr->symbol.token);
     if (NULL == s) {
         mtr_report_error(expr->symbol.token, "Undeclared variable.", source);
@@ -214,12 +214,12 @@ static struct mtr_type analyze_primary(struct mtr_primary* expr, struct mtr_scop
     return s->type;
 }
 
-static struct mtr_type analyze_literal(struct mtr_literal* literal, struct mtr_scope* scope, const char* const source) {
+static struct mtr_type analyze_literal(struct mtr_literal* literal, struct mtr_scope* scope, const char* source) {
     struct mtr_type t = mtr_get_data_type(literal->literal);
     return t;
 }
 
-static struct mtr_type analyze_array_literal(struct mtr_array_literal* array, struct mtr_scope* scope, const char* const source) {
+static struct mtr_type analyze_array_literal(struct mtr_array_literal* array, struct mtr_scope* scope, const char* source) {
     struct mtr_expr* first = array->expressions[0];
     struct mtr_type array_type = analyze_expr(first, scope, source);
     TYPE_CHECK(array_type);
@@ -237,7 +237,7 @@ static struct mtr_type analyze_array_literal(struct mtr_array_literal* array, st
     return type;
 }
 
-static struct mtr_type analyze_map_literal(struct mtr_map_literal* map, struct mtr_scope* scope, const char* const source) {
+static struct mtr_type analyze_map_literal(struct mtr_map_literal* map, struct mtr_scope* scope, const char* source) {
     struct mtr_map_entry first = map->entries[0];
     struct mtr_type key_type = analyze_expr(first.key, scope, source);
     struct mtr_type val_type = analyze_expr(first.value, scope, source);
@@ -259,7 +259,7 @@ static struct mtr_type analyze_map_literal(struct mtr_map_literal* map, struct m
     return type;
 }
 
-static bool check_params(struct mtr_function_type* f, struct mtr_call* call, struct mtr_scope* scope, const char* const source, bool message) {
+static bool check_params(struct mtr_function_type* f, struct mtr_call* call, struct mtr_scope* scope, const char* source, bool message) {
     for (u8 i = 0 ; i < call->argc; ++i) {
         struct mtr_expr* a = call->argv[i];
         struct mtr_type from = analyze_expr(a, scope, source);
@@ -276,7 +276,7 @@ static bool check_params(struct mtr_function_type* f, struct mtr_call* call, str
     return true;
 }
 
-// static struct mtr_type curry_call(struct mtr_call* call, struct mtr_type type, struct mtr_scope* scope, const char* const source) {
+// static struct mtr_type curry_call(struct mtr_call* call, struct mtr_type type, struct mtr_scope* scope, const char* source) {
 //     struct mtr_function_type* f = type.obj;
 //     bool match = check_params(f, call, scope, source);
 //     if (!match) {
@@ -286,7 +286,7 @@ static bool check_params(struct mtr_function_type* f, struct mtr_call* call, str
 //     return mtr_new_function_type(f->return_, f->argc - call->argc, f->argv + call->argc);
 // }
 
-static struct mtr_type function_call(struct mtr_call* call, struct mtr_type type, struct mtr_scope* scope, const char* const source) {
+static struct mtr_type function_call(struct mtr_call* call, struct mtr_type type, struct mtr_scope* scope, const char* source) {
     struct mtr_function_type* fc = type.obj;
     if (fc->argc == call->argc && check_params(fc, call, scope, source, false)) {
         return fc->return_;
@@ -309,7 +309,7 @@ static struct mtr_expr* build_callable(struct mtr_expr* callable, u8 index) {
     return (struct mtr_expr*) a;
 }
 
-static struct mtr_type overloaded_function_call(struct mtr_call* call, struct mtr_type type, struct mtr_scope* scope, const char* const source) {
+static struct mtr_type overloaded_function_call(struct mtr_call* call, struct mtr_type type, struct mtr_scope* scope, const char* source) {
     struct mtr_function_collection_type* fc = type.obj;
     for (u8 i = 0; i < fc->argc; ++i) {
         struct mtr_function_type* f = fc->functions + i;
@@ -322,7 +322,7 @@ static struct mtr_type overloaded_function_call(struct mtr_call* call, struct mt
     return invalid_type;
 }
 
-static struct mtr_type analyze_call(struct mtr_call* call, struct mtr_scope* scope, const char* const source) {
+static struct mtr_type analyze_call(struct mtr_call* call, struct mtr_scope* scope, const char* source) {
     struct mtr_type type = analyze_expr(call->callable, scope, source);
     TYPE_CHECK(type);
 
@@ -338,7 +338,7 @@ static struct mtr_type analyze_call(struct mtr_call* call, struct mtr_scope* sco
     return invalid_type;
 }
 
-static struct mtr_type analyze_subscript(struct mtr_access* expr, struct mtr_scope* scope, const char* const source) {
+static struct mtr_type analyze_subscript(struct mtr_access* expr, struct mtr_scope* scope, const char* source) {
     struct mtr_type type = analyze_expr(expr->object, scope, source);
     struct mtr_type index_type = analyze_expr(expr->element, scope, source);
     TYPE_CHECK(type);
@@ -372,7 +372,7 @@ static struct mtr_type analyze_subscript(struct mtr_access* expr, struct mtr_sco
     return ret;
 }
 
-static struct mtr_type analyze_unary(struct mtr_unary* expr, struct mtr_scope* scope, const char* const source) {
+static struct mtr_type analyze_unary(struct mtr_unary* expr, struct mtr_scope* scope, const char* source) {
     const struct mtr_type r = analyze_expr(expr->right, scope, source);
     struct mtr_type dummy = invalid_type;
     expr->operator.type = get_operator_type(expr->operator.token, r, dummy);
@@ -380,7 +380,7 @@ static struct mtr_type analyze_unary(struct mtr_unary* expr, struct mtr_scope* s
     return  expr->operator.type;
 }
 
-static struct mtr_type analyze_access(struct mtr_access* expr, struct mtr_scope* scope, const char* const source) {
+static struct mtr_type analyze_access(struct mtr_access* expr, struct mtr_scope* scope, const char* source) {
     const struct mtr_type right_t = analyze_expr(expr->object, scope, source);
     TYPE_CHECK(right_t);
 
@@ -408,7 +408,7 @@ static struct mtr_type analyze_access(struct mtr_access* expr, struct mtr_scope*
     return invalid_type;
 }
 
-static struct mtr_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* scope, const char* const source) {
+static struct mtr_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* scope, const char* source) {
     switch (expr->type)
     {
     case MTR_EXPR_BINARY:   return analyze_binary((struct mtr_binary*) expr, scope, source);
@@ -427,7 +427,7 @@ static struct mtr_type analyze_expr(struct mtr_expr* expr, struct mtr_scope* sco
     return invalid_type;
 }
 
-static bool load_fn(struct mtr_function_decl* stmt, struct mtr_scope* scope, const char* const source) {
+static bool load_fn(struct mtr_function_decl* stmt, struct mtr_scope* scope, const char* source) {
     stmt->symbol.type.is_global = true;
     struct mtr_symbol* s = mtr_scope_find(scope, stmt->symbol.token);
     struct mtr_function_type* f = (struct mtr_function_type*) stmt->symbol.type.obj;
@@ -455,7 +455,7 @@ static bool load_fn(struct mtr_function_decl* stmt, struct mtr_scope* scope, con
     return true;
 }
 
-static bool load_var(struct mtr_variable* stmt, struct mtr_scope* scope, const char* const source) {
+static bool load_var(struct mtr_variable* stmt, struct mtr_scope* scope, const char* source) {
     if (stmt->symbol.type.type == MTR_DATA_ANY) {
         mtr_report_error(stmt->symbol.token, "'Any' expressions are only allowed as parameters to native functions.", source);
         return false;
@@ -470,7 +470,7 @@ static bool load_var(struct mtr_variable* stmt, struct mtr_scope* scope, const c
     return true;
 }
 
-static struct mtr_stmt* analyze(struct mtr_stmt* stmt, struct mtr_scope* parent, const char* const source);
+static struct mtr_stmt* analyze(struct mtr_stmt* stmt, struct mtr_scope* parent, const char* source);
 
 #undef INVALID_RETURN_VALUE
 #define INVALID_RETURN_VALUE sanitize_stmt(stmt, false)
@@ -483,7 +483,7 @@ static struct mtr_stmt* sanitize_stmt(void* stmt, bool condition) {
     return stmt;
 }
 
-static struct mtr_stmt* analyze_block(struct mtr_block* block, struct mtr_scope* parent, const char* const source) {
+static struct mtr_stmt* analyze_block(struct mtr_block* block, struct mtr_scope* parent, const char* source) {
     bool all_ok = true;
 
     struct mtr_scope scope = mtr_new_scope(parent);
@@ -501,7 +501,7 @@ static struct mtr_stmt* analyze_block(struct mtr_block* block, struct mtr_scope*
     return sanitize_stmt(block, all_ok);
 }
 
-static struct mtr_stmt* analyze_variable(struct mtr_variable* decl, struct mtr_scope* parent, const char* const source) {
+static struct mtr_stmt* analyze_variable(struct mtr_variable* decl, struct mtr_scope* parent, const char* source) {
     bool expr = true;
     const struct mtr_type value_type = decl->value == NULL ? invalid_type : analyze_expr(decl->value, parent, source);
 
@@ -561,7 +561,7 @@ ret:
     return sanitize_stmt(decl, expr && loaded);
 }
 
-static struct mtr_stmt* analyze_fn(struct mtr_function_decl* stmt, struct mtr_scope* parent, const char* const source) {
+static struct mtr_stmt* analyze_fn(struct mtr_function_decl* stmt, struct mtr_scope* parent, const char* source) {
     bool all_ok = true;
 
     struct mtr_scope scope = mtr_new_scope(parent);
@@ -577,8 +577,15 @@ static struct mtr_stmt* analyze_fn(struct mtr_function_decl* stmt, struct mtr_sc
     all_ok = checked != NULL && all_ok;
     mtr_delete_scope(&scope);
 
-    struct mtr_function_collection_type* t = stmt->symbol.type.obj;
-    struct mtr_function_type* type = t->functions + stmt->symbol.index;
+    struct mtr_function_type* type = NULL;
+
+    if (stmt->symbol.type.type == MTR_DATA_FN_COLLECTION) {
+        struct mtr_function_collection_type* t = stmt->symbol.type.obj;
+        type = t->functions + stmt->symbol.index;
+    } else {
+        type = stmt->symbol.type.obj;
+    }
+
     if (type->return_.type != MTR_DATA_VOID) {
         struct mtr_block* body = (struct mtr_block*) stmt->body;
         struct mtr_stmt* last = body->statements[body->size-1];
@@ -591,7 +598,7 @@ static struct mtr_stmt* analyze_fn(struct mtr_function_decl* stmt, struct mtr_sc
     return sanitize_stmt(stmt, all_ok);
 }
 
-static struct mtr_stmt* analyze_assignment(struct mtr_assignment* stmt, struct mtr_scope* parent, const char* const source) {
+static struct mtr_stmt* analyze_assignment(struct mtr_assignment* stmt, struct mtr_scope* parent, const char* source) {
     if (stmt->right->type == MTR_EXPR_PRIMARY) {
         struct mtr_primary* p = (struct mtr_primary*) stmt->right;
         struct mtr_symbol* s = mtr_scope_find(parent, p->symbol.token);
@@ -628,7 +635,7 @@ static struct mtr_stmt* analyze_assignment(struct mtr_assignment* stmt, struct m
     return sanitize_stmt(stmt, expr_ok);
 }
 
-static struct mtr_stmt* analyze_if(struct mtr_if* stmt, struct mtr_scope* parent, const char* const source) {
+static struct mtr_stmt* analyze_if(struct mtr_if* stmt, struct mtr_scope* parent, const char* source) {
     struct mtr_type expr_type = analyze_expr(stmt->condition, parent, source);
     TYPE_CHECK(expr_type);
 
@@ -654,7 +661,7 @@ static struct mtr_stmt* analyze_if(struct mtr_if* stmt, struct mtr_scope* parent
     return sanitize_stmt(stmt, condition_ok && then_ok && e_ok);
 }
 
-static struct mtr_stmt* analyze_while(struct mtr_while* stmt, struct mtr_scope* parent, const char* const source) {
+static struct mtr_stmt* analyze_while(struct mtr_while* stmt, struct mtr_scope* parent, const char* source) {
     struct mtr_type expr_type = analyze_expr(stmt->condition, parent, source);
     TYPE_CHECK(expr_type);
 
@@ -670,7 +677,7 @@ static struct mtr_stmt* analyze_while(struct mtr_while* stmt, struct mtr_scope* 
     return sanitize_stmt(stmt, condition_ok && body_ok);
 }
 
-static struct mtr_stmt* analyze_return(struct mtr_return* stmt, struct mtr_scope* parent, const char* const source) {
+static struct mtr_stmt* analyze_return(struct mtr_return* stmt, struct mtr_scope* parent, const char* source) {
     if (stmt->from->symbol.type.type == MTR_DATA_VOID) {
         if (NULL == stmt->expr) {
             return (struct mtr_stmt*) stmt;
@@ -696,16 +703,26 @@ static struct mtr_stmt* analyze_return(struct mtr_return* stmt, struct mtr_scope
     return (struct mtr_stmt*) stmt;
 }
 
-static struct mtr_stmt* analyze_call_stmt(struct mtr_call_stmt* call, struct mtr_scope* scope, const char* const source) {
+static struct mtr_stmt* analyze_call_stmt(struct mtr_call_stmt* call, struct mtr_scope* scope, const char* source) {
     struct mtr_type type = analyze_expr(call->call, scope, source);
     return sanitize_stmt(call, type.type != MTR_DATA_INVALID);
 }
 
-static struct mtr_stmt* analyze_union(struct mtr_union_decl* u, struct mtr_scope* scope, const char* const source) {
+static struct mtr_stmt* analyze_union(struct mtr_union_decl* u, struct mtr_scope* scope, const char* source) {
     return (struct mtr_stmt*) u;
 }
 
-static struct mtr_stmt* analyze_struct(struct mtr_struct_decl* s, struct mtr_scope* parent, const char* const source) {
+static void find_closed_on_variables(struct mtr_stmt* stmt, struct mtr_scope* locals, struct mtr_closed* closed);
+
+static struct mtr_stmt* analyze_closure(struct mtr_closure_decl* closure, struct mtr_scope* parent, const char* source) {
+    MTR_ASSERT(false, "Closures not fully implemented yet!");
+    struct mtr_symbol* s = mtr_scope_add(parent, closure->function->symbol);
+    find_closed_on_variables(closure->function->body, parent, &closure->closed);
+    closure->function = (struct mtr_function_decl*) analyze_fn(closure->function, parent, source);
+    return sanitize_stmt(closure, closure->function != NULL);
+}
+
+static struct mtr_stmt* analyze_struct(struct mtr_struct_decl* s, struct mtr_scope* parent, const char* source) {
     bool all_ok = true;
 
     struct mtr_scope scope = mtr_new_scope(parent);
@@ -722,7 +739,7 @@ static struct mtr_stmt* analyze_struct(struct mtr_struct_decl* s, struct mtr_sco
     return sanitize_stmt(s, all_ok);
 }
 
-static struct mtr_stmt* analyze(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* const source) {
+static struct mtr_stmt* analyze(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* source) {
     switch (stmt->type)
     {
     case MTR_STMT_BLOCK:      return analyze_block((struct mtr_block*) stmt, scope, source);
@@ -734,6 +751,8 @@ static struct mtr_stmt* analyze(struct mtr_stmt* stmt, struct mtr_scope* scope, 
     case MTR_STMT_RETURN:     return analyze_return((struct mtr_return*) stmt, scope, source);
     case MTR_STMT_CALL:       return analyze_call_stmt((struct mtr_call_stmt*) stmt, scope, source);
     case MTR_STMT_STRUCT:     return analyze_struct((struct mtr_struct_decl*) stmt, scope, source);
+    case MTR_STMT_CLOSURE:    return analyze_closure((struct mtr_closure_decl*) stmt, scope, source);
+
     case MTR_STMT_UNION:
     case MTR_STMT_NATIVE_FN:
         return stmt;
@@ -742,7 +761,7 @@ static struct mtr_stmt* analyze(struct mtr_stmt* stmt, struct mtr_scope* scope, 
     return false;
 }
 
-static struct mtr_stmt* global_analysis(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* const source) {
+static struct mtr_stmt* global_analysis(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* source) {
     switch (stmt->type)
     {
     case MTR_STMT_NATIVE_FN: return stmt;
@@ -756,7 +775,7 @@ static struct mtr_stmt* global_analysis(struct mtr_stmt* stmt, struct mtr_scope*
     return NULL;
 }
 
-static bool load_union(struct mtr_union_decl* u, struct mtr_scope* scope, const char* const source) {
+static bool load_union(struct mtr_union_decl* u, struct mtr_scope* scope, const char* source) {
     u->symbol.type.is_global = true;
     const struct mtr_symbol* s = mtr_scope_add(scope, u->symbol);
     if (NULL != s) {
@@ -768,7 +787,7 @@ static bool load_union(struct mtr_union_decl* u, struct mtr_scope* scope, const 
     return true;
 }
 
-static bool load_struct(struct mtr_struct_decl* st, struct mtr_scope* scope, const char* const source) {
+static bool load_struct(struct mtr_struct_decl* st, struct mtr_scope* scope, const char* source) {
     st->symbol.type.is_global = true;
     const struct mtr_symbol* s = mtr_scope_add(scope, st->symbol);
     if (NULL != s) {
@@ -780,7 +799,7 @@ static bool load_struct(struct mtr_struct_decl* st, struct mtr_scope* scope, con
     return true;
 }
 
-static bool load_native_fn(struct mtr_function_decl* stmt, struct mtr_scope* scope, const char* const source) {
+static bool load_native_fn(struct mtr_function_decl* stmt, struct mtr_scope* scope, const char* source) {
     stmt->symbol.type.is_global = true;
     const struct mtr_symbol* s = mtr_scope_add(scope, stmt->symbol);
     if (NULL != s) {
@@ -792,7 +811,7 @@ static bool load_native_fn(struct mtr_function_decl* stmt, struct mtr_scope* sco
     return true;
 }
 
-static bool load_global(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* const source) {
+static bool load_global(struct mtr_stmt* stmt, struct mtr_scope* scope, const char* source) {
     switch (stmt->type)
     {
     case MTR_STMT_NATIVE_FN:
@@ -810,7 +829,7 @@ static bool load_global(struct mtr_stmt* stmt, struct mtr_scope* scope, const ch
     return false;
 }
 
-bool mtr_validate(struct mtr_ast* ast, const char* const source) {
+bool mtr_validate(struct mtr_ast* ast, const char* source) {
     bool all_ok = true;
 
     struct mtr_scope global = mtr_new_scope(NULL);
@@ -831,4 +850,8 @@ bool mtr_validate(struct mtr_ast* ast, const char* const source) {
 
     mtr_delete_scope(&global);
     return all_ok;
+}
+
+static void find_closed_on_variables(struct mtr_stmt* stmt, struct mtr_scope* locals, struct mtr_closed* closed) {
+    IMPLEMENT
 }

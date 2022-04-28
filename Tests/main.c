@@ -10,7 +10,7 @@
 
 int main(int argc, char* argv[])
 {
-    char* source = mtr_read_file("Tests/parser.mtr");
+    char* source = mtr_read_file("Tests/closure.mtr");
     struct mtr_package* package = mtr_compile(source);
     if (NULL == package)
         goto end;
