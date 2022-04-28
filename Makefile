@@ -22,7 +22,6 @@ ifeq ($(config), debug)
 else
 	CFLAGS += -DNDEBUG -m64 -Ofast -ffast-math -flto -O3 -mllvm -polly -mllvm -polly-parallel
 	EXEFLAGS += -flto -lgomp -m64 -Ofast -ffast-math -flto -O3
-	LLFLAGS += -flto -lgomp -m64 -Ofast -ffast-math -flto -O3
 endif
 
 all: test
@@ -40,7 +39,7 @@ $(MATIRIA): $(OBJS)
 	@$(CC) $(CFLAGS) -o $@ -c $<
 
 clean:
-	@rm $(OBJS) $(MATIRIA)
+	@rm $(OBJS) $(MATIRIA) test Tests/main.o
 
 vscode_setup: $(JSON)
 	@sed -e '1s/^/[\n/' -e '$$s/,$$/\n]/' $(JSON:%.j=%.j.json) > build/compile_commands.json

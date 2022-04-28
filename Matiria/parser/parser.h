@@ -14,7 +14,7 @@ struct mtr_parser {
     bool panic;
 };
 
-struct mtr_parser mtr_parser_init(struct mtr_scanner scanner);
+void mtr_parser_init(struct mtr_parser* parser, const char* source);
 
 struct mtr_ast mtr_parse(struct mtr_parser* parser);
 

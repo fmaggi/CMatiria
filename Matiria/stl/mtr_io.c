@@ -25,7 +25,7 @@ static void print_value(mtr_value value) {
         switch (value.object->type) {
         case MTR_OBJ_STRING: {
             struct mtr_string* s = (struct mtr_string*) value.object;
-            MTR_PRINT("'%.*s'", (u32)s->length, s->s);
+            MTR_PRINT("%.*s", (u32)s->length, s->s);
             break;
         }
         case MTR_OBJ_ARRAY: {

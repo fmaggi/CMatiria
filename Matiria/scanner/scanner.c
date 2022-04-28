@@ -3,13 +3,10 @@
 
 #include <string.h>
 
-struct mtr_scanner mtr_scanner_init(const char* source) {
-    struct mtr_scanner scanner = {
-        .source  = source,
-        .start   = source,
-        .current = source
-    };
-    return scanner;
+void mtr_scanner_init(struct mtr_scanner* scanner, const char* source) {
+    scanner->source = source;
+    scanner->current = source;
+    scanner->start = source;
 }
 
 struct keyword_entry {

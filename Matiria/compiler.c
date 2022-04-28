@@ -509,11 +509,11 @@ static void write_bytecode(struct mtr_stmt* stmt, struct mtr_package* package) {
     switch (stmt->type)
     {
     case MTR_STMT_FN: {
-        struct mtr_function_decl* fd = (struct mtr_function_decl*) stmt;
+        struct mtr_function_decl* fn = (struct mtr_function_decl*) stmt;
         struct mtr_chunk chunk = mtr_new_chunk();
-        write_function(&chunk, fd);
+        write_function(&chunk, fn);
         struct mtr_function* f = mtr_new_function(chunk);
-        mtr_package_insert_function(package, (struct mtr_object*) f, fd->symbol);
+        mtr_package_insert_function(package, (struct mtr_object*) f, fn->symbol);
         break;
     }
     case MTR_STMT_STRUCT: {
@@ -532,8 +532,8 @@ static void write_bytecode(struct mtr_stmt* stmt, struct mtr_package* package) {
 struct mtr_package* mtr_compile(const char* source) {
     struct mtr_package* package = NULL;
 
-    struct mtr_scanner scanner = mtr_scanner_init(source);
-    struct mtr_parser parser = mtr_parser_init(scanner);
+    struct mtr_parser parser;
+    mtr_parser_init(&parser, source);
 
     MTR_LOG_DEBUG("Parsing...");
     struct mtr_ast ast = mtr_parse(&parser);

@@ -79,14 +79,11 @@ static struct mtr_token consume(struct mtr_parser* parser, enum mtr_token_type t
     return invalid_token;
 }
 
-struct mtr_parser mtr_parser_init(struct mtr_scanner scanner) {
-    struct mtr_parser parser = {
-        .scanner = scanner,
-        .had_error = false,
-        .panic = false
-    };
-
-    return parser;
+void mtr_parser_init(struct mtr_parser* parser, const char* source) {
+    mtr_scanner_init(&parser->scanner, source);
+    parser->current_function = NULL;
+    parser->had_error = false;
+    parser->panic = false;
 }
 
 static void synchronize(struct mtr_parser* parser) {
@@ -367,8 +364,6 @@ static struct mtr_expr* expression(struct mtr_parser* parser) {
 static struct mtr_type parse_var_type(struct mtr_parser* parser);
 
 static struct mtr_type array_or_map(struct mtr_parser* parser) {
-    struct mtr_type ret_type = invalid_type;
-
     struct mtr_type type1 = parse_var_type(parser);
 
     if (CHECK(MTR_TOKEN_COMMA)) {
