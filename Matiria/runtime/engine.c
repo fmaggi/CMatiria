@@ -138,9 +138,10 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
                 u16 count = c->count;
 
                 c->upvalues = malloc(sizeof(mtr_value) * count);
+
                 for (u16 i = 0; i < count; ++i) {
                     u16 index = READ(u16);
-                    c->upvalues[i] = frame.stack[i];
+                    c->upvalues[i] = frame.stack[index];
                 }
 
                 push(engine, MTR_OBJ(c));

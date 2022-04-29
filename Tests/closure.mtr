@@ -1,8 +1,9 @@
 fn main() {
     x := 45;
     s := 'Hello';
-    fn test(Int z) -> String {
-        return s;
+    fn test(Int z) -> Int {
+        print(s);
+        return x + z;
     }
     y := test(35);
     print(y);
