@@ -1,12 +1,17 @@
-fn main() {
-    x := 45;
-    s := 'Hello';
-    fn test(Int z) -> Int {
-        print(s);
-        return x + z;
+fn main()
+{
+    [(Float) -> Int] x := help();
+    print(x(45));
+}
+
+fn help() -> [(Int) -> Int]
+{
+    x := 3;
+    fn c(Int y) -> Int
+    {
+        return x + 45 + y;
     }
-    y := test(35);
-    print(y);
+    return c;
 }
 
 fn print(Any x) ...

@@ -231,7 +231,6 @@ static struct mtr_type analyze_primary(struct mtr_primary* expr, struct validato
         struct mtr_symbol* closed = mtr_scope_find(&scope, expr->symbol.token);
         if (s != NULL && closed == NULL) {
             // We didnt find it on the local scope so it is a closed on var
-            MTR_LOG_TRACE("trying to close on '%.*s'", expr->symbol.token.length, expr->symbol.token.start);
             expr->symbol.type = s->type;
             expr->symbol.index = s->index;
             bool written = write_closed_on(validator->closure, expr);
@@ -304,6 +303,9 @@ static bool check_params(struct mtr_function_type* f, struct mtr_call* call, str
     for (u8 i = 0 ; i < call->argc; ++i) {
         struct mtr_expr* a = call->argv[i];
         struct mtr_type from = analyze_expr(a, validator);
+        if (from.type == MTR_DATA_INVALID) {
+            return false;
+        }
 
         struct mtr_type to = f->argv[i];
         bool match = check_assignemnt(to, from);
@@ -329,8 +331,12 @@ static bool check_params(struct mtr_function_type* f, struct mtr_call* call, str
 
 static struct mtr_type function_call(struct mtr_call* call, struct mtr_type type, struct validator* validator) {
     struct mtr_function_type* fc = type.obj;
-    if (fc->argc == call->argc && check_params(fc, call, validator, false)) {
+    if (fc->argc == call->argc && check_params(fc, call, validator, true)) {
         return fc->return_;
+    } else if (fc->argc > call->argc) {
+        expr_error(call->callable, "Expected more arguments.", validator->source);
+    } else if (fc->argc < call->argc) {
+        expr_error(call->callable, "Too many arguments.", validator->source);
     }
 
     return invalid_type;
@@ -625,7 +631,7 @@ static struct mtr_stmt* analyze_fn(struct mtr_function_decl* stmt, struct valida
         type = stmt->symbol.type.obj;
     }
 
-    if (type->return_.type != MTR_DATA_VOID) {
+    if (type->return_.type != MTR_DATA_VOID && all_ok) {
         struct mtr_block* body = (struct mtr_block*) stmt->body;
         struct mtr_stmt* last = body->statements[body->size-1];
         if (last->type != MTR_STMT_RETURN) {
@@ -725,15 +731,6 @@ static struct mtr_stmt* analyze_while(struct mtr_while* stmt, struct validator* 
 }
 
 static struct mtr_stmt* analyze_return(struct mtr_return* stmt, struct validator* validator) {
-    if (stmt->from->symbol.type.type == MTR_DATA_VOID) {
-        if (NULL == stmt->expr) {
-            return (struct mtr_stmt*) stmt;
-        } else {
-            expr_error(stmt->expr, "Void function returns a value.", validator->source);
-            return sanitize_stmt(stmt, false);
-        }
-    }
-
     struct mtr_type type;
     if (stmt->from->symbol.type.type == MTR_DATA_FN_COLLECTION) {
         struct mtr_function_collection_type* t = stmt->from->symbol.type.obj;

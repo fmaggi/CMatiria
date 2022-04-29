@@ -364,6 +364,42 @@ static struct mtr_expr* expression(struct mtr_parser* parser) {
 static struct mtr_type parse_var_type(struct mtr_parser* parser);
 
 static struct mtr_type array_or_map(struct mtr_parser* parser) {
+    if (CHECK(MTR_TOKEN_PAREN_L)) {
+        advance(parser);
+        u8 argc = 0;
+        struct mtr_type types[255];
+        bool cont = true;
+        if (CHECK(MTR_TOKEN_PAREN_R)) {
+            advance(parser);
+            goto ret;
+        }
+
+        while (argc < 255 && cont) {
+            types[argc++] = parse_var_type(parser);
+            if (CHECK(MTR_TOKEN_PAREN_R)) {
+                advance(parser);
+                break;
+            }
+
+            cont = consume(parser, MTR_TOKEN_COMMA, "Expected ','.").type == MTR_TOKEN_COMMA;
+        }
+
+        if (argc > 255) {
+            parser_error(parser, "Exceded maximum number of arguments (255)");
+            return invalid_type;
+        }
+ret:;
+        struct mtr_type return_type;
+        return_type.type = MTR_DATA_VOID;
+        return_type.obj = NULL;
+        if (CHECK(MTR_TOKEN_ARROW)) {
+            advance(parser);
+            return_type = parse_var_type(parser);
+        }
+
+        return mtr_new_function_type(return_type, argc, types);
+    }
+
     struct mtr_type type1 = parse_var_type(parser);
 
     if (CHECK(MTR_TOKEN_COMMA)) {
@@ -611,6 +647,8 @@ type_check:; // this is some weird shit with labels. prob a clang bug
 static struct mtr_stmt* closure(struct mtr_parser* parser) {
     struct mtr_closure_decl* closure = ALLOCATE_STMT(MTR_STMT_CLOSURE, mtr_closure_decl);
 
+    struct mtr_function_decl* current_function = parser->current_function;
+
     struct mtr_stmt* fn = func_decl(parser);
     if (fn->type == MTR_STMT_NATIVE_FN) {
         parser_error(parser, "Closures cannot be native functions.");
@@ -623,6 +661,8 @@ static struct mtr_stmt* closure(struct mtr_parser* parser) {
     closure->upvalues = NULL;
     closure->capacity = 0;
     closure->count = 0;
+
+    parser->current_function = current_function;
 
     return (struct mtr_stmt*) closure;
 }
