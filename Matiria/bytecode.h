@@ -14,6 +14,7 @@ enum mtr_op_code {
     MTR_OP_ARRAY_LITERAL,
     MTR_OP_MAP_LITERAL,
     MTR_OP_CONSTRUCTOR,
+    MTR_OP_CLOSURE,
 
     MTR_OP_NIL,
 
@@ -51,6 +52,9 @@ enum mtr_op_code {
     MTR_OP_SET,
 
     MTR_OP_GLOBAL_GET,
+
+    MTR_OP_UPVALUE_GET,
+    MTR_OP_UPVALUE_SET,
 
     MTR_OP_INDEX_GET,
     MTR_OP_INDEX_SET,

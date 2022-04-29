@@ -61,6 +61,13 @@ u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {
         break;
     }
 
+    case MTR_OP_CLOSURE: {
+        void* p = READ(void*);
+        u16 count = READ(u16);
+        MTR_LOG("CLOSURE");
+        break;
+    }
+
     case MTR_OP_NIL:
         MTR_LOG("NIL");
         break;
@@ -126,15 +133,23 @@ u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {
         break;
     }
 
-    case MTR_OP_GLOBAL_GET: {
-        u16 index = READ(u16);
-        MTR_LOG("gGET at %u", index);
-        break;
-    }
-
     case  MTR_OP_SET: {
         u16 index = READ(u16);
         MTR_LOG("SET at %u", index);
+        break;
+    }
+
+    case MTR_OP_UPVALUE_GET: {
+        break;
+    }
+
+    case MTR_OP_UPVALUE_SET: {
+        break;
+    }
+
+    case MTR_OP_GLOBAL_GET: {
+        u16 index = READ(u16);
+        MTR_LOG("gGET at %u", index);
         break;
     }
 
@@ -242,5 +257,6 @@ const char* mtr_obj_type_to_str(struct mtr_object* obj) {
     case MTR_OBJ_ARRAY:     return "<array>";
     case MTR_OBJ_MAP:       return "<map>";
     case MTR_OBJ_STRING:    return "<string>";
+    case MTR_OBJ_CLOSURE:   return "<closure>";
     }
 }

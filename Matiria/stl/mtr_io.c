@@ -91,6 +91,8 @@ static void print_value(mtr_value value) {
             MTR_PRINT("%s", mtr_obj_type_to_str(value.object));
         case MTR_OBJ_STRUCT:
             MTR_PRINT("%s is not printable", mtr_obj_type_to_str(value.object));
+        default:
+            break;
         }
     }
     }

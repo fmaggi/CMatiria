@@ -1,10 +1,11 @@
 fn main() {
-    x := 0;
-    fn test(Int z) {
-        y := z;
-        print(y);
+    x := 45;
+    s := 'Hello';
+    fn test(Int z) -> String {
+        return s;
     }
-    test(35);
+    y := test(35);
+    print(y);
 }
 
 fn print(Any x) ...

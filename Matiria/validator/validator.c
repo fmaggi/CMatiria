@@ -1,6 +1,7 @@
 #include "validator.h"
 
 #include "AST/symbol.h"
+#include "scanner/token.h"
 #include "scope.h"
 
 #include "AST/expr.h"
@@ -11,6 +12,7 @@
 #include "core/log.h"
 #include "debug/dump.h"
 
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -26,7 +28,7 @@ static void init_validator(struct validator* validator, struct validator* old_va
     validator->source = old_validator->source;
 }
 
-static bool write_closed_on(struct mtr_closure_decl* closure, struct mtr_expr* closed_on);
+static bool write_closed_on(struct mtr_closure_decl* closure, struct mtr_primary* closed_on);
 
 #define TYPE_CHECK(t) \
     do {              \
@@ -215,20 +217,33 @@ static struct mtr_type analyze_binary(struct mtr_binary* expr, struct validator*
     return  expr->operator.type;
 }
 
+
 static struct mtr_type analyze_primary(struct mtr_primary* expr, struct validator* validator) {
-    if (validator->closure != NULL) {
+    struct mtr_symbol* s = mtr_scope_find(&validator->scope, expr->symbol.token);
+
+    bool not_global = s != NULL && !s->type.is_global;
+    bool check_closed_on = validator->closure != NULL && not_global;
+
+    if (check_closed_on) {
         struct mtr_scope scope = validator->scope;
         scope.parent = NULL;
 
-        struct mtr_symbol* s = mtr_scope_find(&scope, expr->symbol.token);
-        if (NULL == s) {
+        struct mtr_symbol* closed = mtr_scope_find(&scope, expr->symbol.token);
+        if (s != NULL && closed == NULL) {
+            // We didnt find it on the local scope so it is a closed on var
             MTR_LOG_TRACE("trying to close on '%.*s'", expr->symbol.token.length, expr->symbol.token.start);
-            MTR_ASSERT(false, "Closed on vars not yet implemented. (Check against globals).");
+            expr->symbol.type = s->type;
+            expr->symbol.index = s->index;
+            bool written = write_closed_on(validator->closure, expr);
+            if (!written) {
+                mtr_report_error(expr->symbol.token, "Too many closures.", validator->source);
+                return invalid_type;
+            }
+            return s->type;
         }
     }
 
 
-    struct mtr_symbol* s = mtr_scope_find(&validator->scope, expr->symbol.token);
     if (NULL == s) {
         mtr_report_error(expr->symbol.token, "Undeclared variable.", validator->source);
         return invalid_type;
@@ -423,8 +438,7 @@ static struct mtr_type analyze_access(struct mtr_access* expr, struct validator*
     struct mtr_primary* p = (struct mtr_primary*) expr->element;
     const struct mtr_struct_type* st = right_t.obj;
     for (u8 i = 0; i < st->argc; ++i) {
-        bool match = st->members[i]->token.length == p->symbol.token.length
-            && memcmp(st->members[i]->token.start, p->symbol.token.start, p->symbol.token.length) == 0;
+        bool match = mtr_token_compare(st->members[i]->token, p->symbol.token);
         if (match) {
             p->symbol.index = i;
             return st->members[i]->type;
@@ -454,7 +468,6 @@ static struct mtr_type analyze_expr(struct mtr_expr* expr, struct validator* val
 }
 
 static bool load_fn(struct mtr_function_decl* stmt, struct validator* validator) {
-    stmt->symbol.type.is_global = true;
     struct mtr_symbol* s = mtr_scope_find(&validator->scope, stmt->symbol.token);
     struct mtr_function_type* f = (struct mtr_function_type*) stmt->symbol.type.obj;
     if (NULL != s) {
@@ -721,9 +734,16 @@ static struct mtr_stmt* analyze_return(struct mtr_return* stmt, struct validator
         }
     }
 
-    MTR_ASSERT(stmt->from->symbol.type.type == MTR_DATA_FN_COLLECTION, "Whaaaaaat!");
-    struct mtr_function_collection_type* t = stmt->from->symbol.type.obj;
-    struct mtr_type type = t->functions[stmt->from->symbol.index].return_;
+    struct mtr_type type;
+    if (stmt->from->symbol.type.type == MTR_DATA_FN_COLLECTION) {
+        struct mtr_function_collection_type* t = stmt->from->symbol.type.obj;
+        type = t->functions[stmt->from->symbol.index].return_;
+    } else if (stmt->from->symbol.type.type == MTR_DATA_FN) {
+        struct mtr_function_type* t = stmt->from->symbol.type.obj;
+        type = t->return_;
+    } else {
+        MTR_ASSERT(false, "Whaaaaaat!");
+    }
 
     struct mtr_type expr_type = analyze_expr(stmt->expr, validator);
     TYPE_CHECK(expr_type);
@@ -747,9 +767,6 @@ static struct mtr_stmt* analyze_union(struct mtr_union_decl* u, struct validator
 }
 
 static struct mtr_stmt* analyze_closure(struct mtr_closure_decl* closure, struct validator* validator) {
-    // MTR_ASSERT(false, "Closures not fully implemented yet!");
-
-
     struct mtr_symbol* s = mtr_scope_add(&validator->scope, closure->function->symbol);
     if (s != NULL) {
         mtr_report_error(closure->function->symbol.token, "Redefinition of name.", validator->source);
@@ -820,7 +837,6 @@ static struct mtr_stmt* global_analysis(struct mtr_stmt* stmt, struct validator*
 }
 
 static bool load_union(struct mtr_union_decl* u, struct validator* validator) {
-    u->symbol.type.is_global = true;
     const struct mtr_symbol* s = mtr_scope_add(&validator->scope, u->symbol);
     if (NULL != s) {
         mtr_report_error(u->symbol.token, "Redefinition of name.", validator->source);
@@ -832,7 +848,6 @@ static bool load_union(struct mtr_union_decl* u, struct validator* validator) {
 }
 
 static bool load_struct(struct mtr_struct_decl* st, struct validator* validator) {
-    st->symbol.type.is_global = true;
     const struct mtr_symbol* s = mtr_scope_add(&validator->scope, st->symbol);
     if (NULL != s) {
         mtr_report_error(st->symbol.token, "Redefinition of name.", validator->source);
@@ -881,7 +896,6 @@ bool mtr_validate(struct mtr_ast* ast) {
 
     bool all_ok = true;
 
-    struct mtr_scope global = mtr_new_scope(NULL);
     struct mtr_block* block = (struct mtr_block*) ast->head;
 
     for (size_t i = 0; i < block->size; ++i) {
@@ -900,22 +914,33 @@ bool mtr_validate(struct mtr_ast* ast) {
     return all_ok;
 }
 
-static bool write_closed_on(struct mtr_closure_decl* closure, struct mtr_expr* closed_on) {
-    if (closure->count >= 255) {
+static bool write_closed_on(struct mtr_closure_decl* closure, struct mtr_primary* upvalue) {
+    if (closure->count >= UINT16_MAX) {
         return false;
     }
 
-    if (closure->closed_on == NULL) {
-        closure->closed_on = malloc(sizeof(struct mtr_expr*) * 8);
+    if (closure->upvalues == NULL) {
+        closure->upvalues = malloc(sizeof(struct mtr_symbol) * 8);
         closure->capacity = 8;
         closure->count = 0;
     }
 
-    if (closure->count == closure->capacity) {
-        closure->capacity *= 2;
-        closure->closed_on = realloc(closure->closed_on, sizeof(struct mtr_expr*) * closure->capacity);
+    for (u8 i = 0; i < closure->count; ++i) {
+        if (mtr_token_compare(upvalue->symbol.token, closure->upvalues[i].token)) {
+            MTR_LOG_TRACE("Already here!");
+            upvalue->symbol.index = closure->upvalues[i].index;
+            upvalue->symbol.type.upvalue = true;
+            return true;
+        }
     }
 
-    closure->closed_on[closure->count++] = closed_on;
+    if (closure->count == closure->capacity) {
+        closure->capacity *= 2;
+        closure->upvalues = realloc(closure->upvalues, sizeof(struct mtr_symbol) * closure->capacity);
+    }
+
+    closure->upvalues[closure->count] = upvalue->symbol;
+    upvalue->symbol.index = closure->count++;
+    upvalue->symbol.type.upvalue = true;
     return true;
 }

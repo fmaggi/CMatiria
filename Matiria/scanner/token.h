@@ -54,6 +54,8 @@ struct mtr_token {
     u32 length;
 };
 
+bool mtr_token_compare(struct mtr_token t1, struct mtr_token t2);
+
 extern const struct mtr_token invalid_token;
 
 #endif

@@ -33,7 +33,7 @@ struct mtr_type {
         struct {
             u8 is_global : 1;
             u8 assignable : 1;
-            u8 closed_on : 1;
+            u8 upvalue : 1;
         };
         u8 flags;
     };

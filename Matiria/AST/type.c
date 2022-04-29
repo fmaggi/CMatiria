@@ -203,7 +203,7 @@ static bool object_type_match(mtr_object_type* lhs, mtr_object_type* rhs, enum m
     case MTR_DATA_STRUCT: {
         struct mtr_user_type* l = (struct mtr_user_type*) lhs;
         struct mtr_user_type* r = (struct mtr_user_type*) rhs;
-        return l->name.length == r->name.length && memcmp(l->name.start, r->name.start, l->name.length) == 0;
+        return mtr_token_compare(l->name, r->name);
     }
     default:
         break;
@@ -213,6 +213,7 @@ static bool object_type_match(mtr_object_type* lhs, mtr_object_type* rhs, enum m
 }
 
 bool mtr_type_match(struct mtr_type lhs, struct mtr_type rhs) {
+    bool invalid = lhs.type == MTR_DATA_INVALID || rhs.type == MTR_DATA_INVALID;
     bool any = lhs.type == MTR_DATA_ANY || rhs.type == MTR_DATA_ANY;
     bool trivial_type = lhs.obj == NULL && rhs.obj == NULL;
     bool match = ((lhs.type == rhs.type) || are_user_types(lhs.type, rhs.type))
@@ -220,7 +221,7 @@ bool mtr_type_match(struct mtr_type lhs, struct mtr_type rhs) {
                 trivial_type || object_type_match(lhs.obj, rhs.obj, lhs.type)
             // relying on short circuiting to decide whether to call object_type_match or not
             );
-    return any || match;
+    return !invalid && (any || match);
 }
 
 

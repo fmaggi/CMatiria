@@ -620,7 +620,7 @@ static struct mtr_stmt* closure(struct mtr_parser* parser) {
     }
 
     closure->function = (struct mtr_function_decl*) fn;
-    closure->closed_on = NULL;
+    closure->upvalues = NULL;
     closure->capacity = 0;
     closure->count = 0;
 
@@ -839,8 +839,8 @@ void mtr_free_stmt(struct mtr_stmt* s) {
         case MTR_STMT_CLOSURE: {
             struct mtr_closure_decl* c = (struct mtr_closure_decl*) s;
             mtr_free_stmt((struct mtr_stmt*) c->function);
-            free(c->closed_on);
-            c->closed_on = NULL;
+            free(c->upvalues);
+            c->upvalues = NULL;
             c->count = 0;
             c->capacity = 0;
             free(c);

@@ -49,6 +49,8 @@ void mtr_delete_object(struct mtr_object* object) {
         free(fn);
         break;
     }
+    default:
+        break;
     }
 }
 
@@ -80,6 +82,18 @@ struct mtr_function* mtr_new_function(struct mtr_chunk chunk) {
 }
 
 // Function End
+
+struct mtr_closure* mtr_new_closure(struct mtr_chunk chunk, mtr_value* upvalues, u8 count) {
+    struct mtr_closure* cl = malloc(sizeof(*cl));
+    cl->obj.type = MTR_OBJ_CLOSURE;
+    cl->chunk = chunk;
+    cl->count = count;
+    if (upvalues != NULL && count > 0) {
+        cl->upvalues = malloc(sizeof(mtr_value) * count);
+        memcpy(cl->upvalues, upvalues, sizeof(mtr_value) * count);
+    }
+    return cl;
+}
 
 // Array
 

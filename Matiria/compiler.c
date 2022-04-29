@@ -104,7 +104,9 @@ static void write_loop(struct mtr_chunk* chunk, u16 offset) {
 static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr);
 
 static void write_primary(struct mtr_chunk* chunk, struct mtr_primary* expr) {
-    u8 op = expr->symbol.type.is_global ? MTR_OP_GLOBAL_GET : MTR_OP_GET;
+    u8 op = expr->symbol.type.is_global ? MTR_OP_GLOBAL_GET
+        : expr->symbol.type.upvalue ? MTR_OP_UPVALUE_GET
+        : MTR_OP_GET;
     mtr_write_chunk(chunk, op);
     write_u16(chunk, (u16)expr->symbol.index);
 }
@@ -428,8 +430,9 @@ static void write_assignment(struct mtr_chunk* chunk, struct mtr_assignment* stm
 
     switch (stmt->right->type) {
     case MTR_EXPR_PRIMARY: {
-        mtr_write_chunk(chunk, MTR_OP_SET);
         struct mtr_primary* p = (struct mtr_primary*) stmt->right;
+        u8 op = p->symbol.type.upvalue ? MTR_OP_UPVALUE_SET : MTR_OP_SET;
+        mtr_write_chunk(chunk, op);
         write_u16(chunk, p->symbol.index);
         return;
     }
@@ -470,6 +473,24 @@ static void write_call_stmt(struct mtr_chunk* chunk, struct mtr_call_stmt* call)
     mtr_write_chunk(chunk, MTR_OP_POP);
 }
 
+static void write_function(struct mtr_chunk* chunk, struct mtr_function_decl* fn) {
+    write(chunk, fn->body);
+}
+
+static void write_closure(struct mtr_chunk* chunk, struct mtr_closure_decl* c) {
+    struct mtr_chunk closure_chunk = mtr_new_chunk();
+    write_function(&closure_chunk, c->function);
+
+    struct mtr_closure* closure = mtr_new_closure(closure_chunk, NULL, c->count);
+
+    mtr_write_chunk(chunk, MTR_OP_CLOSURE);
+    write_u64(chunk, mtr_reinterpret_cast(u64, closure));
+
+    for (u16 i = 0; i < c->count; ++i) {
+        write_u16(chunk, (u16)c->upvalues[i].index);
+    }
+}
+
 static void write(struct mtr_chunk* chunk, struct mtr_stmt* stmt) {
     switch (stmt->type)
     {
@@ -480,7 +501,7 @@ static void write(struct mtr_chunk* chunk, struct mtr_stmt* stmt) {
     case MTR_STMT_ASSIGNMENT: write_assignment(chunk, (struct mtr_assignment*) stmt); return;
     case MTR_STMT_RETURN: write_return(chunk, (struct mtr_return*) stmt); return;
     case MTR_STMT_CALL: write_call_stmt(chunk, (struct mtr_call_stmt*) stmt); return;
-    case MTR_STMT_CLOSURE: MTR_ASSERT(false, "Closures not fully implemented"); return;
+    case MTR_STMT_CLOSURE: write_closure(chunk, (struct mtr_closure_decl*) stmt); return;
 
     case MTR_STMT_UNION:
     case MTR_STMT_STRUCT:
@@ -489,10 +510,6 @@ static void write(struct mtr_chunk* chunk, struct mtr_stmt* stmt) {
         return;
 
     }
-}
-
-static void write_function(struct mtr_chunk* chunk, struct mtr_function_decl* fn) {
-    write(chunk, fn->body);
 }
 
 static void write_struct(struct mtr_chunk* chunk, struct mtr_struct_decl* s) {

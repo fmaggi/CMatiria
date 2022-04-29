@@ -259,3 +259,8 @@ static struct mtr_token scan_comment(struct mtr_scanner* scanner) {
         advance(scanner);
     return make_token(scanner, MTR_TOKEN_COMMENT);
 }
+
+bool mtr_token_compare(struct mtr_token t1, struct mtr_token t2) {
+    bool same_type = t1.type == t2.type;
+    return same_type && t1.length == t2.length && memcmp(t1.start, t2.start, t1.length) == 0;
+}

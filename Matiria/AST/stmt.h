@@ -72,9 +72,9 @@ struct mtr_closed {
 struct mtr_closure_decl {
     struct mtr_stmt stmt;
     struct mtr_function_decl* function;
-    struct mtr_expr** closed_on;
-    u8 capacity;
-    u8 count;
+    struct mtr_symbol* upvalues;
+    u16 capacity;
+    u16 count;
 };
 
 struct mtr_struct_decl {

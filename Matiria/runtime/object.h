@@ -10,6 +10,7 @@ enum mtr_object_t {
     MTR_OBJ_STRUCT,
     MTR_OBJ_FUNCTION,
     MTR_OBJ_NATIVE_FN,
+    MTR_OBJ_CLOSURE,
     MTR_OBJ_STRING,
     MTR_OBJ_ARRAY,
     MTR_OBJ_MAP
@@ -46,15 +47,11 @@ struct mtr_function {
 
 struct mtr_function* mtr_new_function(struct mtr_chunk chunk);
 
-struct mtr_upvalue {
-    mtr_value value;
-    bool is_local;
-};
-
 struct mtr_closure {
     struct mtr_object obj;
     struct mtr_chunk chunk;
-    struct mtr_upvalue* upvalues;
+    mtr_value* upvalues;
+    u8 count;
 };
 
 struct mtr_closure* mtr_new_closure(struct mtr_chunk chunk, mtr_value* upvalues, u8 count);

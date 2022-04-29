@@ -10,6 +10,11 @@
 
 #include "core/macros.h"
 
+struct frame {
+    mtr_value* stack;
+    mtr_value* closed;
+};
+
 static mtr_value peek(struct mtr_engine* engine, size_t distance) {
     return *(engine->stack_top - distance - 1);
 }
@@ -28,7 +33,7 @@ static void push(struct mtr_engine* engine, mtr_value value) {
     *(engine->stack_top++) = value;
 }
 
-static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc);
+static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc, mtr_value* closed);
 
 #define BINARY_OP(op, t, tag)                                            \
     do {                                                               \
@@ -40,13 +45,15 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
 
 #define READ(type) *((type*)ip); ip += sizeof(type)
 
-static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc) {
-    mtr_value* frame = engine->stack_top - argc;
+static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc, mtr_value* closed) {
+    struct frame frame;
+    frame.stack = engine->stack_top - argc;
+    frame.closed = closed;
     register u8* ip = chunk.bytecode;
     u8* end = chunk.bytecode + chunk.size;
     while (ip < end) {
 
-        // mtr_dump_stack(frame, engine->stack_top);
+        // mtr_dump_stack(frame.stack, engine->stack_top);
         // mtr_disassemble_instruction(ip, ip - chunk.bytecode);
 
         switch (*ip++)
@@ -123,6 +130,20 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
                     s->members[actual_index] = pop(engine);
                 }
                 push(engine, MTR_OBJ(s));
+                break;
+            }
+
+            case MTR_OP_CLOSURE: {
+                struct mtr_closure* c = READ(struct mtr_closure*);
+                u16 count = c->count;
+
+                c->upvalues = malloc(sizeof(mtr_value) * count);
+                for (u16 i = 0; i < count; ++i) {
+                    u16 index = READ(u16);
+                    c->upvalues[i] = frame.stack[i];
+                }
+
+                push(engine, MTR_OBJ(c));
                 break;
             }
 
@@ -207,7 +228,13 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
 
             case MTR_OP_GET: {
                 const u16 index = READ(u16);
-                push(engine, frame[index]);
+                push(engine, frame.stack[index]);
+                break;
+            }
+
+            case MTR_OP_SET: {
+                const u16 index = READ(u16);
+                frame.stack[index] = pop(engine);
                 break;
             }
 
@@ -218,9 +245,16 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
                 break;
             }
 
-            case MTR_OP_SET: {
+            case MTR_OP_UPVALUE_GET: {
                 const u16 index = READ(u16);
-                frame[index] = pop(engine);
+                mtr_value val = frame.closed[index];
+                push(engine, val);
+                break;
+            }
+
+            case MTR_OP_UPVALUE_SET: {
+                const u16 index = READ(u16);
+                frame.closed[index] = pop(engine);
                 break;
             }
 
@@ -353,7 +387,11 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
                 struct mtr_object* object = MTR_AS_OBJ(pop(engine));
                 if (object->type == MTR_OBJ_FUNCTION) {
                     struct mtr_function* f = (struct mtr_function*) object;
-                    call(engine, f->chunk, argc);
+                    call(engine, f->chunk, argc, NULL);
+                    break;
+                } else if (object->type == MTR_OBJ_CLOSURE) {
+                    struct mtr_closure* c = (struct mtr_closure*) object;
+                    call(engine, c->chunk, argc, c->upvalues);
                     break;
                 } else if (object->type == MTR_OBJ_NATIVE_FN) {
                     struct mtr_native_fn* n = (struct mtr_native_fn*) object;
@@ -368,7 +406,7 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
 
             case MTR_OP_RETURN: {
                 mtr_value res = pop(engine);
-                engine->stack_top = frame;
+                engine->stack_top = frame.stack;
                 push(engine, res);
                 return;
             }
@@ -402,7 +440,7 @@ i32 mtr_execute(struct mtr_engine* engine, struct mtr_package* package) {
         return -1;
     }
 
-    call(engine, f->chunk, 0);
+    call(engine, f->chunk, 0, NULL);
 
     // mtr_dump_stack(engine->stack, engine->stack_top);
     return 0;
