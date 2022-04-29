@@ -72,7 +72,9 @@ struct mtr_closed {
 struct mtr_closure_decl {
     struct mtr_stmt stmt;
     struct mtr_function_decl* function;
-    struct mtr_closed closed;
+    struct mtr_expr** closed_on;
+    u8 capacity;
+    u8 count;
 };
 
 struct mtr_struct_decl {
@@ -107,6 +109,7 @@ struct mtr_call_stmt {
 
 struct mtr_ast {
     struct mtr_stmt* head;
+    const char* source;
 };
 
 void mtr_free_stmt(struct mtr_stmt* s);

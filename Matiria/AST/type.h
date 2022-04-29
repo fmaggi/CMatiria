@@ -29,8 +29,14 @@ typedef void mtr_object_type;
 struct mtr_type {
     mtr_object_type* obj;
     enum mtr_data_type type;
-    bool is_global;
-    bool assignable;
+    union {
+        struct {
+            u8 is_global : 1;
+            u8 assignable : 1;
+            u8 closed_on : 1;
+        };
+        u8 flags;
+    };
 };
 
 struct mtr_type mtr_get_data_type(struct mtr_token token);

@@ -510,7 +510,7 @@ static struct mtr_stmt* statement(struct mtr_parser* parser) {
     {
     case MTR_TOKEN_IF:      return if_stmt(parser);
     case MTR_TOKEN_WHILE:   return while_stmt(parser);
-    case MTR_TOKEN_CURLY_L: return block(parser);
+    // case MTR_TOKEN_CURLY_L: return block(parser);
     case MTR_TOKEN_RETURN:  return return_stmt(parser);
     default:
         return expr_stmt(parser);
@@ -620,8 +620,9 @@ static struct mtr_stmt* closure(struct mtr_parser* parser) {
     }
 
     closure->function = (struct mtr_function_decl*) fn;
-    closure->closed.count = 0;
-    closure->closed.captured = NULL;
+    closure->closed_on = NULL;
+    closure->capacity = 0;
+    closure->count = 0;
 
     return (struct mtr_stmt*) closure;
 }
@@ -764,6 +765,7 @@ struct mtr_ast mtr_parse(struct mtr_parser* parser) {
     struct mtr_ast ast;
     struct mtr_block* block = ALLOCATE_STMT(MTR_STMT_BLOCK, mtr_block);
     ast.head = (struct mtr_stmt*) block;
+    ast.source = parser->scanner.source;
     init_block(block);
 
     while (parser->token.type != MTR_TOKEN_EOF) {
@@ -837,9 +839,10 @@ void mtr_free_stmt(struct mtr_stmt* s) {
         case MTR_STMT_CLOSURE: {
             struct mtr_closure_decl* c = (struct mtr_closure_decl*) s;
             mtr_free_stmt((struct mtr_stmt*) c->function);
-            free(c->closed.captured);
-            c->closed.captured = NULL;
-            c->closed.count = 0;
+            free(c->closed_on);
+            c->closed_on = NULL;
+            c->count = 0;
+            c->capacity = 0;
             free(c);
             break;
         }

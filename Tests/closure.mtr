@@ -1,8 +1,10 @@
 fn main() {
-    fn test() {
-        print(5);
+    x := 0;
+    fn test(Int z) {
+        y := z;
+        print(y);
     }
-    test();
+    test(35);
 }
 
 fn print(Any x) ...

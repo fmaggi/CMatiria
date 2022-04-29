@@ -480,7 +480,7 @@ static void write(struct mtr_chunk* chunk, struct mtr_stmt* stmt) {
     case MTR_STMT_ASSIGNMENT: write_assignment(chunk, (struct mtr_assignment*) stmt); return;
     case MTR_STMT_RETURN: write_return(chunk, (struct mtr_return*) stmt); return;
     case MTR_STMT_CALL: write_call_stmt(chunk, (struct mtr_call_stmt*) stmt); return;
-    case MTR_STMT_CLOSURE: IMPLEMENT return;
+    case MTR_STMT_CLOSURE: MTR_ASSERT(false, "Closures not fully implemented"); return;
 
     case MTR_STMT_UNION:
     case MTR_STMT_STRUCT:
@@ -545,7 +545,7 @@ struct mtr_package* mtr_compile(const char* source) {
     }
 
     MTR_LOG_DEBUG("Validating...");
-    bool all_ok = mtr_validate(&ast, source);
+    bool all_ok = mtr_validate(&ast);
     MTR_LOG_DEBUG("Done");
 
     if (!all_ok) {
