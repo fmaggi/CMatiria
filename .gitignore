@@ -57,6 +57,10 @@ matiria
 test
 
 *.temp
+*.json
 
-build/
+build/.cache/
 .cache/
+
+bin/**
+bin_int/**

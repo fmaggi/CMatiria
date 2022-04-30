@@ -8,9 +8,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int main(int argc, char* argv[])
+#include <unistd.h>
+
+#define MTR_PATH(path) "Tests/"path
+
+int main()
 {
-    char* source = mtr_read_file("Tests/closure.mtr");
+    char* source = mtr_read_file(MTR_PATH("closure.mtr"));
     struct mtr_package* package = mtr_compile(source);
     if (NULL == package)
         goto end;
