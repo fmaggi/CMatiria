@@ -2,7 +2,6 @@ fn main()
 {
     (Float) -> Int x := help();
     print(x(45.0));
-    test(x);
 
     fn c(Int y) -> Int
     {
@@ -10,6 +9,7 @@ fn main()
     }
 
     test(hello);
+    test(c);
 }
 
 fn help() -> (Float) -> Int
@@ -24,12 +24,7 @@ fn help() -> (Float) -> Int
 }
 
 fn test((Int) -> Int x) {
-    print('Innnnnnnnnnnnnt');
-}
-
-fn test((Float) -> Int x) {
-    print('Floaaaaaaaaaaaaat');
-    print(x(0.0));
+    print(x(3));
 }
 
 fn print(Any x) ...

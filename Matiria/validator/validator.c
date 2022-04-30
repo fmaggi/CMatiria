@@ -147,7 +147,6 @@ static struct mtr_expr* try_promoting(struct mtr_expr* expr, struct mtr_type typ
     case MTR_DATA_ARRAY:
     case MTR_DATA_MAP:
     case MTR_DATA_FN:
-    case MTR_DATA_FN_COLLECTION:
     case MTR_DATA_VOID:
     case MTR_DATA_USER:
     case MTR_DATA_UNION:
@@ -291,7 +290,7 @@ static struct mtr_type analyze_map_literal(struct mtr_map_literal* map, struct v
     return type;
 }
 
-static bool check_params(struct mtr_function_type* f, struct mtr_call* call, struct validator* validator, bool message) {
+static bool check_params(struct mtr_function_type* f, struct mtr_call* call, struct validator* validator) {
     for (u8 i = 0 ; i < call->argc; ++i) {
         struct mtr_expr* a = call->argv[i];
         struct mtr_type from = analyze_expr(a, validator);
@@ -302,9 +301,7 @@ static bool check_params(struct mtr_function_type* f, struct mtr_call* call, str
         struct mtr_type to = f->argv[i];
         bool match = check_assignemnt(to, from);
         if (!match) {
-            if (message) {
-                expr_error(a, "Wrong type of argument.", validator->source);
-            }
+            expr_error(a, "Wrong type of argument.", validator->source);
             return false;
         }
     }
@@ -323,7 +320,7 @@ static bool check_params(struct mtr_function_type* f, struct mtr_call* call, str
 
 static struct mtr_type function_call(struct mtr_call* call, struct mtr_type type, struct validator* validator) {
     struct mtr_function_type* fc = type.obj;
-    if (fc->argc == call->argc && check_params(fc, call, validator, true)) {
+    if (fc->argc == call->argc && check_params(fc, call, validator)) {
         return fc->return_;
     } else if (fc->argc > call->argc) {
         expr_error(call->callable, "Expected more arguments.", validator->source);
@@ -334,43 +331,12 @@ static struct mtr_type function_call(struct mtr_call* call, struct mtr_type type
     return invalid_type;
 }
 
-static struct mtr_expr* build_callable(struct mtr_expr* callable, u8 index) {
-    // This is very hacky and temporary. Just a proof of concept
-    struct mtr_primary* p = malloc(sizeof(*p));
-    p->expr_.type = MTR_EXPR_PRIMARY;
-    p->symbol.index = index;
-
-    struct mtr_access* a = malloc(sizeof(*a));
-    a->expr_.type = MTR_EXPR_ACCESS;
-    a->object = callable;
-    a->element = (struct mtr_expr*)p;
-
-    return (struct mtr_expr*) a;
-}
-
-static struct mtr_type overloaded_function_call(struct mtr_call* call, struct mtr_type type, struct validator* validator) {
-    struct mtr_function_collection_type* fc = type.obj;
-    for (u8 i = 0; i < fc->argc; ++i) {
-        struct mtr_function_type* f = fc->functions + i;
-        if (f->argc == call->argc && check_params(f, call, validator, false)) {
-            call->callable = build_callable(call->callable, i);
-            return f->return_;
-        }
-    }
-    expr_error(call->callable, "There is no overload with this params.", validator->source);
-    return invalid_type;
-}
-
 static struct mtr_type analyze_call(struct mtr_call* call, struct validator* validator) {
     struct mtr_type type = analyze_expr(call->callable, validator);
     TYPE_CHECK(type);
 
     if (type.type == MTR_DATA_FN) {
         return function_call(call, type, validator);
-    }
-
-    if (type.type == MTR_DATA_FN_COLLECTION) {
-        return overloaded_function_call(call, type, validator);
     }
 
     expr_error(call->callable, "Expression is not callable.", validator->source);
@@ -466,30 +432,13 @@ static struct mtr_type analyze_expr(struct mtr_expr* expr, struct validator* val
 }
 
 static bool load_fn(struct mtr_function_decl* stmt, struct validator* validator) {
-    struct mtr_symbol* s = mtr_scope_find(&validator->scope, stmt->symbol.token);
-    struct mtr_function_type* f = (struct mtr_function_type*) stmt->symbol.type.obj;
-    if (NULL != s) {
-        struct mtr_function_collection_type* fc = (struct mtr_function_collection_type*) s->type.obj;
-        stmt->symbol.index = fc->argc;
-        if (mtr_add_function_signature(fc, *f)) {
-            free(f);
-            stmt->symbol.type = s->type;
-            stmt->symbol.type.free_ = false;
-            return true;
-        }
-        stmt->symbol.type = invalid_type;
-        mtr_report_error(stmt->symbol.token, "Too many overloads.", validator->source);
+    const struct mtr_symbol* s = mtr_scope_add(&validator->scope, stmt->symbol);
+    if (s) {
+        mtr_report_error(stmt->symbol.token, "Redefinition of name.", validator->source);
+        mtr_report_message(s->token, "Previuosly defined here.", validator->source);
         return false;
     }
-    struct mtr_function_type types[] = { *f };
-    stmt->symbol.type = mtr_new_function_collection_type(types, 1);
-    stmt->symbol.index = 0;
 
-    struct mtr_symbol symbol = stmt->symbol;
-    symbol.index = validator->scope.current++;
-    mtr_symbol_table_insert(&validator->scope.symbols, symbol.token.start, symbol.token.length, symbol);
-
-    free(f);
     return true;
 }
 
@@ -568,7 +517,7 @@ static struct mtr_stmt* analyze_variable(struct mtr_variable* decl, struct valid
 
             struct mtr_call* call = malloc(sizeof (struct mtr_call));
             call->expr_.type = MTR_EXPR_CALL;
-            call->callable = build_callable((struct mtr_expr*)primary, 0);
+            call->callable = (struct mtr_expr*) primary;
             call->argv = NULL;
             call->argc = 0;
 
@@ -615,15 +564,7 @@ static struct mtr_stmt* analyze_fn(struct mtr_function_decl* stmt, struct valida
     all_ok = checked != NULL && all_ok;
     mtr_delete_scope(&fn_validator.scope);
 
-    struct mtr_function_type* type = NULL;
-
-    if (stmt->symbol.type.type == MTR_DATA_FN_COLLECTION) {
-        struct mtr_function_collection_type* t = stmt->symbol.type.obj;
-        type = t->functions + stmt->symbol.index;
-    } else {
-        type = stmt->symbol.type.obj;
-    }
-
+    struct mtr_function_type* type = stmt->symbol.type.obj;
     if (type->return_.type != MTR_DATA_VOID && all_ok) {
         struct mtr_block* body = (struct mtr_block*) stmt->body;
         struct mtr_stmt* last = body->statements[body->size-1];
@@ -724,16 +665,8 @@ static struct mtr_stmt* analyze_while(struct mtr_while* stmt, struct validator* 
 }
 
 static struct mtr_stmt* analyze_return(struct mtr_return* stmt, struct validator* validator) {
-    struct mtr_type type;
-    if (stmt->from->symbol.type.type == MTR_DATA_FN_COLLECTION) {
-        struct mtr_function_collection_type* t = stmt->from->symbol.type.obj;
-        type = t->functions[stmt->from->symbol.index].return_;
-    } else if (stmt->from->symbol.type.type == MTR_DATA_FN) {
-        struct mtr_function_type* t = stmt->from->symbol.type.obj;
-        type = t->return_;
-    } else {
-        MTR_ASSERT(false, "Whaaaaaat!");
-    }
+    struct mtr_function_type* t = stmt->from->symbol.type.obj;
+    struct mtr_type type = t->return_;;
 
     struct mtr_type expr_type = analyze_expr(stmt->expr, validator);
     TYPE_CHECK(expr_type);

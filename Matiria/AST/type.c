@@ -75,11 +75,6 @@ struct mtr_type mtr_copy_type(struct mtr_type type) {
 
         return mtr_new_function_type(mtr_copy_type(f->return_), f->argc, types);
     }
-    case MTR_DATA_FN_COLLECTION: {
-        IMPLEMENT
-        struct mtr_function_collection_type* fc = (struct mtr_function_collection_type*) type.obj;
-        return mtr_new_function_collection_type(fc->functions, fc->argc);
-    }
     case MTR_DATA_USER: {
         struct mtr_user_type* s = (struct mtr_user_type*) type.obj;
         return mtr_new_user_type(s->name);
@@ -105,7 +100,7 @@ struct mtr_type mtr_copy_type(struct mtr_type type) {
 
 }
 
-static void delete_object_type(mtr_object_type* obj, enum mtr_data_type type, u8 free_) {
+static void delete_object_type(mtr_object_type* obj, enum mtr_data_type type) {
     switch (type) {
     case MTR_DATA_ARRAY: {
         struct mtr_array_type* a = (struct mtr_array_type*) obj;
@@ -125,21 +120,6 @@ static void delete_object_type(mtr_object_type* obj, enum mtr_data_type type, u8
         mtr_delete_type(f->return_);
         free(f->argv);
         free(f);
-        return;
-    }
-    case MTR_DATA_FN_COLLECTION: {
-        struct mtr_function_collection_type* fc = (struct mtr_function_collection_type*) obj;
-        if (!free_) {
-            // just free the first one, they all share the same type
-            return;
-        }
-        for (u16 i = 0; i < fc->argc; ++i) {
-            struct mtr_function_type* f = (struct mtr_function_type*) fc->functions + i;
-            mtr_delete_type(f->return_);
-            // argvs are deleted by the vars
-            free(f->argv);
-        }
-        free(fc);
         return;
     }
     case MTR_DATA_STRUCT: {
@@ -170,7 +150,7 @@ static void delete_object_type(mtr_object_type* obj, enum mtr_data_type type, u8
 
 void mtr_delete_type(struct mtr_type type) {
     if (type.obj) {
-        delete_object_type(type.obj, type.type, type.free_);
+        delete_object_type(type.obj, type.type);
     }
 }
 
@@ -261,7 +241,7 @@ struct mtr_type mtr_new_array_type(struct mtr_type type) {
     t.type = MTR_DATA_ARRAY;
     t.obj = a;
     t.assignable = true;
-    t.free_ = true;
+
     return t;
 }
 
@@ -275,7 +255,7 @@ struct mtr_type mtr_new_map_type(struct mtr_type key, struct mtr_type value) {
     t.type = MTR_DATA_MAP;
     t.obj = m;
     t.assignable = true;
-    t.free_ = true;
+
     return t;
 }
 
@@ -293,69 +273,16 @@ struct mtr_type mtr_new_function_type(struct mtr_type return_, u8 argc, struct m
     t.type = MTR_DATA_FN;
     t.obj = f;
     t.assignable = false;
-    t.free_ = true;
     return t;
 }
 
-struct mtr_type mtr_new_function_collection_type(struct mtr_function_type* functions, u8 argc) {
-    struct mtr_type t;
-    t.type = MTR_DATA_FN_COLLECTION;
-    t.assignable = false;
-    t.is_global = true;
-    t.obj = NULL;
-    t.free_ = true;
-    if (argc >= 255) {
-        return t;
-    }
-
-    struct mtr_function_collection_type* f = malloc(sizeof(*f));
-    f->functions = malloc(sizeof(struct mtr_function_type*) * 8);
-    f->capacity = 8;
-    f->argc = 0;
-    for (u8 i = 0; i < argc; ++i) {
-        mtr_add_function_signature(f, functions[i]);
-    }
-
-    t.obj = f;
-    return t;
-}
-
-bool mtr_add_function_signature(struct mtr_function_collection_type* function, struct mtr_function_type signature) {
-    if (function->argc >= UINT16_MAX) {
-        return false;
-    }
-
-    // for (u8 i = 0; i < function->argc; ++i) {
-    //     struct mtr_function_type* f = function->functions + i;
-    //     if (f->argc != signature.argc || !mtr_type_match(f->return_, signature.return_)) {
-    //         continue;
-    //     }
-    //     for (u8 j = 0; j < signature.argc; ++j) {
-    //         if (!mtr_type_match(f->argv[j], signature.argv[j])) {
-    //             goto next;
-    //         }
-    //     }
-    //     return false;
-    // next:
-    //     continue;
-    // }
-
-    if (function->argc >= function->capacity) {
-        struct mtr_function_type* temp = realloc(function->functions, function->capacity * 2);
-        function->functions = temp;
-        function->capacity *= 2;
-    }
-
-    function->functions[function->argc++] = signature;
-    return true;
-}
 
 struct mtr_type mtr_new_union_type(struct mtr_token token, struct mtr_type* types, u16 argc) {
     struct mtr_type t;
     t.type = MTR_DATA_UNION;
     t.assignable = false;
     t.obj = NULL;
-    t.free_ = true;
+
     if (argc > 255 || argc < 0) {
         return t;
     }
@@ -374,7 +301,7 @@ struct mtr_type mtr_new_struct_type(struct mtr_token token, struct mtr_symbol** 
     struct mtr_type t;
     t.type = MTR_DATA_STRUCT;
     t.assignable = false;
-    t.free_ = true;
+
 
     struct mtr_struct_type* s = malloc(sizeof(*s));
     s->name.name = token;
@@ -395,6 +322,6 @@ struct mtr_type mtr_new_user_type(struct mtr_token token) {
     t.assignable = true;
     t.obj = u;
     t.type = MTR_DATA_USER;
-    t.free_ = true;
+
     return t;
 }

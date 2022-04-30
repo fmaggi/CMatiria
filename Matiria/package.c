@@ -80,14 +80,7 @@ void mtr_package_insert_function(struct mtr_package* package, struct mtr_object*
         package->main = (struct mtr_function*) object;
     }
 
-    if (package->globals[s->index] == NULL) {
-        struct mtr_function_collection_type* fc = (struct mtr_function_collection_type*) symbol.type.obj;
-        struct mtr_struct* st = mtr_new_struct(fc->argc);
-        package->globals[s->index] = (struct mtr_object*) st;
-    }
-
-    struct mtr_struct* st = (struct mtr_struct*) package->globals[s->index];
-    st->members[symbol.index] = MTR_OBJ(object);
+    package->globals[s->index] = object;
 }
 
 void mtr_package_insert_native_function(struct mtr_package* package, struct mtr_object* object, const char* name) {
@@ -102,11 +95,6 @@ void mtr_package_insert_native_function(struct mtr_package* package, struct mtr_
 
     if (is_main(*s)) {
         package->main = (struct mtr_function*) object;
-    }
-
-    if (package->globals[s->index] != NULL) {
-        MTR_LOG_ERROR("Native function already inserted!");
-        return;
     }
 
     package->globals[s->index] = object;

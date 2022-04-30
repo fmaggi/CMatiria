@@ -237,10 +237,6 @@ static void dump_object_type(mtr_object_type* obj, enum mtr_data_type type, u32 
         MTR_LOG("%.*s", u->name.length, u->name.start);
         return;
     }
-    case MTR_DATA_FN_COLLECTION: {
-        IMPLEMENT
-        return;
-    }
     default:
         break;
     }
@@ -334,7 +330,6 @@ const char* mtr_data_type_to_str(struct mtr_type type) {
     case MTR_DATA_ARRAY: return "Array";
     case MTR_DATA_MAP: return "Map";
     case MTR_DATA_FN: return "Function";
-    case MTR_DATA_FN_COLLECTION: return "Function Collection";
     case MTR_DATA_UNION: return "Union";
     case MTR_DATA_STRUCT: return "Struct";
     case MTR_DATA_USER: return "User";
