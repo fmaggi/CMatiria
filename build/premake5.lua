@@ -36,6 +36,21 @@ workspace 'Matiria'
 		flags			'LinkTimeOptimization'
         defines         'NDEBUG'
 
+	filter "system:windows"
+		systemversion "latest"
+
+	filter "system:linux"
+		toolset("clang")
+
+		filter 'Debug'
+			buildoptions        { '-Wno-unused-parameter', '-Wno-unused-variable', '-Wno-unused-function' }
+
+		filter 'Development'
+			buildoptions        { '-Wno-unused-parameter' }
+
+		filter 'Release'
+			buildoptions        { '-Wno-unused-parameter' }
+
 project 'Matiria'
 	location			'%{prj.name}'
 	kind				'StaticLib'
