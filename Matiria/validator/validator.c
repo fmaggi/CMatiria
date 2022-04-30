@@ -45,7 +45,6 @@ static bool is_literal(struct mtr_expr* expr) {
 
 static bool check_assignemnt(struct mtr_type assign_to, struct mtr_type what) {
     if (!mtr_type_match(assign_to, what)) {
-
         if (assign_to.type == MTR_DATA_UNION) {
             struct mtr_union_type* u = (struct mtr_union_type*) assign_to.obj;
             for (u8 i = 0; i < u->argc; ++i) {
@@ -220,10 +219,15 @@ static struct mtr_type analyze_binary(struct mtr_binary* expr, struct validator*
 
 static struct mtr_type analyze_primary(struct mtr_primary* expr, struct validator* validator) {
     struct mtr_symbol* s = mtr_scope_find(&validator->scope, expr->symbol.token);
+    if (NULL == s) {
+        mtr_report_error(expr->symbol.token, "Undeclared variable.", validator->source);
+        return invalid_type;
+    }
 
-    bool not_global = s != NULL && !s->type.is_global;
-    bool check_closed_on = validator->closure != NULL && not_global;
+    expr->symbol.type = s->type;
+    expr->symbol.index = s->index;
 
+    bool check_closed_on = validator->closure != NULL && !s->type.is_global;;
     if (check_closed_on) {
         struct mtr_scope scope = validator->scope;
         scope.parent = NULL;
@@ -231,25 +235,13 @@ static struct mtr_type analyze_primary(struct mtr_primary* expr, struct validato
         struct mtr_symbol* closed = mtr_scope_find(&scope, expr->symbol.token);
         if (s != NULL && closed == NULL) {
             // We didnt find it on the local scope so it is a closed on var
-            expr->symbol.type = s->type;
-            expr->symbol.index = s->index;
             bool written = write_closed_on(validator->closure, expr);
             if (!written) {
                 mtr_report_error(expr->symbol.token, "Too many closures.", validator->source);
                 return invalid_type;
             }
-            return s->type;
         }
     }
-
-
-    if (NULL == s) {
-        mtr_report_error(expr->symbol.token, "Undeclared variable.", validator->source);
-        return invalid_type;
-    }
-
-    expr->symbol.index = s->index;
-    expr->symbol.type = s->type;
 
     return s->type;
 }
