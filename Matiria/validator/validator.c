@@ -482,6 +482,7 @@ static bool load_fn(struct mtr_function_decl* stmt, struct validator* validator)
         if (mtr_add_function_signature(fc, *f)) {
             free(f);
             stmt->symbol.type = s->type;
+            stmt->symbol.type.free_ = false;
             return true;
         }
         stmt->symbol.type = invalid_type;

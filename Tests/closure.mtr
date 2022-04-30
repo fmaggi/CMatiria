@@ -1,17 +1,27 @@
 fn main()
 {
-    [(Float) -> Int] x := help();
+    (Float) -> Int x := help();
+    print(x(45.0));
+    test(x);
+}
+
+fn help() -> (Float) -> Int
+{
+    x := 3;
+    fn c(Float y) -> Int
+    {
+        return x + 3;
+    }
+    x := 45;
+    return c;
+}
+
+fn test((Int) -> Int x) {
     print(x(45));
 }
 
-fn help() -> [(Int) -> Int]
-{
-    x := 3;
-    fn c(Int y) -> Int
-    {
-        return x + 45 + y;
-    }
-    return c;
+fn test((Float) -> Int x) {
+    print('Floaaaaaaaaaaaaat');
 }
 
 fn print(Any x) ...

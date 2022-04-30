@@ -364,42 +364,6 @@ static struct mtr_expr* expression(struct mtr_parser* parser) {
 static struct mtr_type parse_var_type(struct mtr_parser* parser);
 
 static struct mtr_type array_or_map(struct mtr_parser* parser) {
-    if (CHECK(MTR_TOKEN_PAREN_L)) {
-        advance(parser);
-        u8 argc = 0;
-        struct mtr_type types[255];
-        bool cont = true;
-        if (CHECK(MTR_TOKEN_PAREN_R)) {
-            advance(parser);
-            goto ret;
-        }
-
-        while (argc < 255 && cont) {
-            types[argc++] = parse_var_type(parser);
-            if (CHECK(MTR_TOKEN_PAREN_R)) {
-                advance(parser);
-                break;
-            }
-
-            cont = consume(parser, MTR_TOKEN_COMMA, "Expected ','.").type == MTR_TOKEN_COMMA;
-        }
-
-        if (argc > 255) {
-            parser_error(parser, "Exceded maximum number of arguments (255)");
-            return invalid_type;
-        }
-ret:;
-        struct mtr_type return_type;
-        return_type.type = MTR_DATA_VOID;
-        return_type.obj = NULL;
-        if (CHECK(MTR_TOKEN_ARROW)) {
-            advance(parser);
-            return_type = parse_var_type(parser);
-        }
-
-        return mtr_new_function_type(return_type, argc, types);
-    }
-
     struct mtr_type type1 = parse_var_type(parser);
 
     if (CHECK(MTR_TOKEN_COMMA)) {
@@ -409,6 +373,41 @@ ret:;
     }
 
     return mtr_new_array_type(type1);
+}
+
+static struct mtr_type function_type(struct mtr_parser* parser) {
+    u8 argc = 0;
+    struct mtr_type types[255];
+    bool cont = true;
+    if (CHECK(MTR_TOKEN_PAREN_R)) {
+        advance(parser);
+        goto ret;
+    }
+
+    while (argc < 255 && cont) {
+        types[argc++] = parse_var_type(parser);
+        if (CHECK(MTR_TOKEN_PAREN_R)) {
+            advance(parser);
+            break;
+        }
+
+        cont = consume(parser, MTR_TOKEN_COMMA, "Expected ','.").type == MTR_TOKEN_COMMA;
+    }
+
+    if (argc > 255) {
+        parser_error(parser, "Exceded maximum number of arguments (255)");
+        return invalid_type;
+    }
+ret:;
+    struct mtr_type return_type;
+    return_type.type = MTR_DATA_VOID;
+    return_type.obj = NULL;
+    if (CHECK(MTR_TOKEN_ARROW)) {
+        advance(parser);
+        return_type = parse_var_type(parser);
+    }
+
+    return mtr_new_function_type(return_type, argc, types);
 }
 
 static struct mtr_type parse_var_type(struct mtr_parser* parser) {
@@ -431,6 +430,12 @@ static struct mtr_type parse_var_type(struct mtr_parser* parser) {
         advance(parser);
         type = array_or_map(parser);
         consume(parser, MTR_TOKEN_SQR_R, "Expected ']'.");
+        break;
+    }
+
+    case MTR_TOKEN_PAREN_L: {
+        advance(parser);
+        type = function_type(parser);
         break;
     }
 
@@ -594,12 +599,10 @@ static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
 
     bool cont = true;
     while (argc < 255 && cont) {
-        struct mtr_variable* var = vars + argc;
-        struct mtr_type* type = types + argc;
-        ++argc;
-        *type = parse_var_type(parser);
+        types[argc] = parse_var_type(parser);
+        struct mtr_variable* var = vars + argc++;
         var->stmt.type = MTR_STMT_VAR;
-        var->symbol.type = *type;
+        var->symbol.type = types[argc-1];
         var->symbol.token = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
         var->value = NULL;
 
@@ -770,6 +773,7 @@ static struct mtr_stmt* declaration(struct mtr_parser* parser) {
     case MTR_TOKEN_BOOL:
     case MTR_TOKEN_STRING:
     case MTR_TOKEN_SQR_L:
+    case MTR_TOKEN_PAREN_L:
         return variable(parser);
     case MTR_TOKEN_ANY: {
         parser_error(parser, "'Any' expressions are only allowed as parameters to native functions.");
@@ -892,6 +896,9 @@ void mtr_free_stmt(struct mtr_stmt* s) {
             mtr_delete_type(f->symbol.type);
             for (u8 i = 0; i < f->argc; ++i) {
                 struct mtr_variable* v = f->argv + i;
+                if (v->value) {
+                    mtr_free_expr(v->value);
+                }
                 mtr_delete_type(v->symbol.type);
             }
             free(f->argv);

@@ -1,7 +1,16 @@
 fn main() {
     String x := 'Hello';
-
     print(x);
+    test(3);
+    test(45.0);
 }
 
 fn print(Any x) ...
+
+fn test(Int x) {
+    print('Int');
+}
+
+fn test(Float x) {
+    print('Float');
+}

@@ -34,6 +34,7 @@ struct mtr_type {
             u8 is_global : 1;
             u8 assignable : 1;
             u8 upvalue : 1;
+            u8 free_ : 1; // just used for function collection types
         };
         u8 flags;
     };
@@ -75,6 +76,7 @@ struct mtr_function_collection_type {
     struct mtr_function_type* functions;
     u16 argc;
     u16 capacity;
+    bool first;
 };
 
 struct mtr_type mtr_new_function_collection_type(struct mtr_function_type* functions, u8 argc);
