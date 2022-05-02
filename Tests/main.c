@@ -3,6 +3,9 @@
 #include "core/file.h"
 #include "core/log.h"
 
+#define MTR_TESTING
+#include "test.h"
+
 #include "stl/mtr_stdlib.h"
 
 #include <stdio.h>
@@ -10,11 +13,16 @@
 
 #include <unistd.h>
 
-#define MTR_PATH(path) "Tests/"path
+#ifdef MTR_MK
+#   define MTR_PATH(path) "Tests/"path
+#else
+#   define MTR_PATH(path) "../../../Tests/"path
+#endif
 
 int main()
 {
     char* source = mtr_read_file(MTR_PATH("closure.mtr"));
+    MTR_LOG(MTR_PATH(""));
     struct mtr_package* package = mtr_compile(source);
     if (NULL == package)
         goto end;

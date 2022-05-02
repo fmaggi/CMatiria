@@ -26,9 +26,9 @@ endif
 
 all: test
 
-test: Tests/main.o $(MATIRIA)
+test: $(MATIRIA)
 	@echo [EXE] test
-	@$(CC) $(EXEFLAGS) -o test $^
+	@$(CC) $(CFLAGS) $(EXEFLAGS) -DMTR_MK -o test Tests/main.c $^
 
 $(MATIRIA): $(OBJS)
 	@echo [LIB] $(MATIRIA)

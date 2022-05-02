@@ -34,7 +34,7 @@ workspace 'Matiria'
 		optimize		'Speed'
 		runtime			'Release'
 		flags			'LinkTimeOptimization'
-        defines         'NDEBUG'
+		defines			'NDEBUG'
 
 	filter "system:windows"
 		systemversion "latest"
