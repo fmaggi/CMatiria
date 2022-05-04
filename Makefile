@@ -39,7 +39,7 @@ $(MATIRIA): $(OBJS)
 	@$(CC) $(CFLAGS) -o $@ -c $<
 
 clean:
-	@rm $(OBJS) $(MATIRIA) test Tests/main.o
+	@rm $(OBJS) $(MATIRIA) test
 
 vscode_setup: $(JSON)
 	@sed -e '1s/^/[\n/' -e '$$s/,$$/\n]/' $(JSON:%.j=%.j.json) > build/compile_commands.json

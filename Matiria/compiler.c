@@ -553,17 +553,13 @@ struct mtr_package* mtr_compile(const char* source) {
     struct mtr_parser parser;
     mtr_parser_init(&parser, source);
 
-    MTR_LOG_DEBUG("Parsing...");
     struct mtr_ast ast = mtr_parse(&parser);
-    MTR_LOG_DEBUG("Done");
 
     if (parser.had_error){
         goto ret;
     }
 
-    MTR_LOG_DEBUG("Validating...");
     bool all_ok = mtr_validate(&ast);
-    MTR_LOG_DEBUG("Done");
 
     if (!all_ok) {
         goto ret;
@@ -571,13 +567,11 @@ struct mtr_package* mtr_compile(const char* source) {
 
     package = mtr_new_package(&ast);
 
-    MTR_LOG_DEBUG("Compiling...");
     struct mtr_block* block = (struct mtr_block*) ast.head;
     for (size_t i = 0; i < block->size; ++i) {
         struct mtr_stmt* s = block->statements[i];
         write_bytecode(s, package);
     }
-    MTR_LOG_DEBUG("Done");
 
 ret:
     mtr_delete_ast(&ast);
