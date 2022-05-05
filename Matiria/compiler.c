@@ -4,6 +4,7 @@
 #include "AST/stmt.h"
 
 #include "AST/type.h"
+#include "core/exitCode.h"
 #include "runtime/value.h"
 #include "scanner/scanner.h"
 
@@ -547,8 +548,8 @@ static void write_bytecode(struct mtr_stmt* stmt, struct mtr_package* package) {
     }
 }
 
-struct mtr_package* mtr_compile(const char* source) {
-    struct mtr_package* package = NULL;
+enum mtr_exit_code mtr_compile(const char* source, struct mtr_package* package) {
+    enum mtr_exit_code ec = MTR_OK;
 
     struct mtr_parser parser;
     mtr_parser_init(&parser, source);
@@ -556,16 +557,18 @@ struct mtr_package* mtr_compile(const char* source) {
     struct mtr_ast ast = mtr_parse(&parser);
 
     if (parser.had_error){
+        ec = MTR_PARSER_ERROR;
         goto ret;
     }
 
     bool all_ok = mtr_validate(&ast);
 
     if (!all_ok) {
+        ec = MTR_TYPE_ERROR; // need to handle type and scope errors separetly
         goto ret;
     }
 
-    package = mtr_new_package(&ast);
+    mtr_load_package(package, &ast);
 
     struct mtr_block* block = (struct mtr_block*) ast.head;
     for (size_t i = 0; i < block->size; ++i) {
@@ -575,5 +578,5 @@ struct mtr_package* mtr_compile(const char* source) {
 
 ret:
     mtr_delete_ast(&ast);
-    return package;
+    return ec;
 }

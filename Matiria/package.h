@@ -14,7 +14,8 @@ struct mtr_package {
     size_t count;
 };
 
-struct mtr_package* mtr_new_package(struct mtr_ast* ast);
+void mtr_init_package(struct mtr_package* package);
+void mtr_load_package(struct mtr_package* package, struct mtr_ast* ast);
 void mtr_delete_package(struct mtr_package* package);
 
 void mtr_package_insert_function(struct mtr_package* package, struct mtr_object* object, struct mtr_symbol symbol);

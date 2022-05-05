@@ -17,17 +17,10 @@ struct symbol_entry {
     size_t length;
 };
 
-struct mtr_symbol_table mtr_new_symbol_table(void) {
-    struct mtr_symbol_table t = {
-        .entries = NULL,
-        .capacity = 0,
-        .size = 0,
-    };
-
-    t.capacity = 8;
-    t.entries = calloc(8, sizeof(struct symbol_entry));
-
-    return t;
+void mtr_init_symbol_table(struct mtr_symbol_table* table) {
+    table->capacity = 8;
+    table->entries = calloc(8, sizeof(struct symbol_entry));
+    table->size = 0;
 }
 
 void mtr_delete_symbol_table(struct mtr_symbol_table* table) {
@@ -113,14 +106,11 @@ void mtr_symbol_table_remove(const struct mtr_symbol_table* table, const char* k
     entry->key = tombstone;
     entry->length = strlen(tombstone);
 }
-
-struct mtr_scope mtr_new_scope(struct mtr_scope* parent) {
-    struct mtr_scope scope;
-    scope.parent = parent;
-    scope.symbols = mtr_new_symbol_table();
+void mtr_init_scope(struct mtr_scope* scope, struct mtr_scope* parent) {
+    scope->parent = parent;
+    mtr_init_symbol_table(&scope->symbols);
     bool should_be_zero = parent == NULL || parent->parent == NULL;
-    scope.current = should_be_zero ? 0 : parent->current;
-    return scope;
+    scope->current = should_be_zero ? 0 : parent->current;
 }
 
 void mtr_delete_scope(struct mtr_scope* scope) {

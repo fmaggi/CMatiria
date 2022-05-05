@@ -1,7 +1,5 @@
-#include "compiler.h"
-#include "runtime/engine.h"
-#include "core/file.h"
-#include "core/log.h"
+#include "core/exitCode.h"
+#include "launch.h"
 
 #define MTR_TESTING
 #include "test.h"
@@ -28,56 +26,32 @@ static const char* build_path(const char* filename) {
     return buf;
 }
 
-enum code {
-    OK,
-    FILE_ERROR,
-    COMPILE_ERROR,
-    RUNTIME_ERROR
-};
-
-static enum code launch(const char* name) {
-    enum code c = OK;
-
-    char* source = mtr_read_file(build_path(name));
-    if (!source) {
-        return FILE_ERROR;
-    }
-    struct mtr_package* package = mtr_compile(source);
-    if (NULL == package) {
-        c = COMPILE_ERROR;
-        goto end;
-    }
-
-    mtr_add_io(package);
-
-    struct mtr_engine engine;
-
-    i32 result = mtr_execute(&engine, package);
-    (void) result;
-
-    mtr_delete_package(package);
-end:
-    free(source);
-    return c;
+TEST_CASE(no_file) {
+    CHECK(mtr_launch("nofile.mtr") == MTR_FILE_ERROR);
 }
 
 TEST_CASE(simple_test) {
-    CHECK(launch("main.mtr") == OK);
+    const char* path = build_path("main.mtr");
+    CHECK(mtr_launch(path) == MTR_OK);
 }
 
 TEST_CASE(parser_test) {
-    CHECK(launch("parser_error.mtr") == COMPILE_ERROR);
+    const char* path = build_path("parser_error.mtr");
+    CHECK(mtr_launch(path) == MTR_PARSER_ERROR);
 }
 
 TEST_CASE(fibbonacci_test) {
-    CHECK(launch("fib.mtr") == OK);
+    const char* path = build_path("fib.mtr");
+    CHECK(mtr_launch(path) == MTR_OK);
 }
 
 TEST_CASE(closure_test) {
-    CHECK(launch("closure.mtr") == OK);
+    const char* path = build_path("closure.mtr");
+    CHECK(mtr_launch(path) == MTR_OK);
 }
 
 static void all_tests() {
+    no_file();
     simple_test();
     parser_test();
     // fibbonacci_test();

@@ -24,7 +24,7 @@ struct validator {
 
 static void init_validator(struct validator* validator, struct validator* old_validator) {
     validator->closure = old_validator->closure;
-    validator->scope = mtr_new_scope(&old_validator->scope);
+    mtr_init_scope(&validator->scope, &old_validator->scope);
     validator->source = old_validator->source;
 }
 
@@ -814,7 +814,7 @@ static bool load_global(struct mtr_stmt* stmt, struct validator* validator) {
 bool mtr_validate(struct mtr_ast* ast) {
     struct validator validator;
     validator.closure = NULL;
-    validator.scope = mtr_new_scope(NULL);
+    mtr_init_scope(&validator.scope, NULL);
     validator.source = ast->source;
 
     bool all_ok = true;

@@ -46,11 +46,15 @@ static bool is_main(struct mtr_symbol symbol) {
     return symbol.token.length == strlen("main") && memcmp(symbol.token.start, "main", strlen("main")) == 0;
 }
 
-struct mtr_package* mtr_new_package(struct mtr_ast* ast) {
-    (void) valid_as_global;
-    struct mtr_package* package = malloc(sizeof(struct mtr_package));
-    package->global_symbols = mtr_new_scope(NULL);
+void mtr_init_package(struct mtr_package* package) {
+    package->count = 0;
+    package->globals = NULL;
+    package->main = NULL;
+    mtr_init_scope(&package->global_symbols, NULL);
+}
 
+void mtr_load_package(struct mtr_package* package, struct mtr_ast* ast) {
+    (void) valid_as_global;
     struct mtr_block* block = (struct mtr_block*) ast->head;
     package->globals = malloc(sizeof(struct mtr_object*) * block->size);
     package->main = NULL;
@@ -66,7 +70,6 @@ struct mtr_package* mtr_new_package(struct mtr_ast* ast) {
     }
 
     package->count = block->size;
-    return package;
 }
 
 void mtr_package_insert_function(struct mtr_package* package, struct mtr_object* object, struct mtr_symbol symbol) {
@@ -123,5 +126,4 @@ void mtr_delete_package(struct mtr_package* package) {
     free(package->globals);
     package->globals = NULL;
     mtr_delete_scope(&package->global_symbols);
-    free(package);
 }

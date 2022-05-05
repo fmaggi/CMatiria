@@ -9,7 +9,7 @@ struct mtr_symbol_table {
     size_t capacity;
 };
 
-struct mtr_symbol_table mtr_new_symbol_table(void);
+void mtr_init_symbol_table(struct mtr_symbol_table* table);
 void mtr_delete_symbol_table(struct mtr_symbol_table* table);
 
 void mtr_symbol_table_insert(struct mtr_symbol_table* table, const char* key, size_t length, struct mtr_symbol symbol);
@@ -22,7 +22,7 @@ struct mtr_scope {
     size_t current;
 };
 
-struct mtr_scope mtr_new_scope(struct mtr_scope* parent);
+void mtr_init_scope(struct mtr_scope* scope, struct mtr_scope* parent);
 void mtr_delete_scope(struct mtr_scope* scope);
 
 struct mtr_symbol* mtr_scope_find(const struct mtr_scope* scope, struct mtr_token token);

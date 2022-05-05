@@ -5,6 +5,8 @@
 #ifndef MTR_TEST_H
 #define MTR_TEST_H
 
+#include "core/log.h"
+
 #define STR(x) #x
 
 static int tests = 0;
