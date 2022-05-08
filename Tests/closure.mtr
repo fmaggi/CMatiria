@@ -1,15 +1,7 @@
 fn main()
 {
     (Float) -> Int x := help();
-    print(x(45.0));
-
-    fn c(Int y) -> Int
-    {
-        return y;
-    }
-
-    test(hello);
-    test(c);
+    print(x(4.0));
 }
 
 fn help() -> (Float) -> Int
@@ -23,13 +15,4 @@ fn help() -> (Float) -> Int
     return c;
 }
 
-fn test((Int) -> Int x) {
-    print(x(3));
-}
-
 fn print(Any x) ...
-
-
-fn hello(Int x) -> Int {
-    return x + 2;
-}

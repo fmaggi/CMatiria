@@ -133,8 +133,8 @@ struct mtr_symbol* mtr_scope_add(struct mtr_scope* scope, struct mtr_symbol symb
     }
 
     symbol.index = scope->current++;
-    symbol.type.is_global = scope->parent == NULL;
-    symbol.type.upvalue = 0;
+    symbol.is_global = scope->parent == NULL;
+    symbol.upvalue = false;
     mtr_symbol_table_insert(&scope->symbols, symbol.token.start, symbol.token.length, symbol);
     return NULL;
 }

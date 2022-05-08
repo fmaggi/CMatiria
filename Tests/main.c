@@ -1,5 +1,10 @@
+#include "AST/type.h"
 #include "core/exitCode.h"
+#include "core/log.h"
+#include "debug/dump.h"
 #include "launch.h"
+
+#include "AST/typeList.h"
 
 #define MTR_TESTING
 #include "test.h"

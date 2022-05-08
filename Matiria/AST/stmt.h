@@ -3,6 +3,7 @@
 
 #include "expr.h"
 #include "symbol.h"
+#include "typeList.h"
 
 #include "core/types.h"
 
@@ -109,6 +110,7 @@ struct mtr_call_stmt {
 
 struct mtr_ast {
     struct mtr_stmt* head;
+    struct mtr_type_list type_list;
     const char* source;
 };
 

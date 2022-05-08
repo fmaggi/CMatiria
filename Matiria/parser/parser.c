@@ -4,6 +4,7 @@
 #include "AST/stmt.h"
 #include "AST/type.h"
 
+#include "AST/typeList.h"
 #include "core/types.h"
 #include "core/report.h"
 #include "core/log.h"
@@ -19,6 +20,7 @@
 
 #define ALLOCATE_EXPR(type, expr) allocate_expr(type, sizeof(struct expr))
 #define ALLOCATE_STMT(type, stmt) allocate_stmt(type, sizeof(struct stmt))
+#define ALLOCATE_TYPE(type, obj)  allocate_type(type, obj ? sizeof(obj) : sizeof(struct mtr_type))
 
 static void init_block(struct mtr_block* block);
 static void write_block(struct mtr_block* block, struct mtr_stmt* declaration);
@@ -34,6 +36,12 @@ static void* allocate_stmt(enum mtr_stmt_type type, size_t size) {
     struct mtr_stmt* node = malloc(size);
     node->type = type;
     return node;
+}
+
+static void* allocate_type(enum mtr_data_type type, size_t size) {
+    struct mtr_type* t = malloc(size);
+    t->type = type;
+    return t;
 }
 
 static void parser_error(struct mtr_parser* parser, const char* message) {
@@ -250,7 +258,7 @@ static struct mtr_expr* grouping(struct mtr_parser* parser, struct mtr_token tok
 static struct mtr_expr* primary(struct mtr_parser* parser, struct mtr_token primary) {
     struct mtr_primary* node = ALLOCATE_EXPR(MTR_EXPR_PRIMARY, mtr_primary);
     node->symbol.token = primary;
-    node->symbol.type = invalid_type;
+    node->symbol.type = NULL;
     return (struct mtr_expr*) node;
 }
 
@@ -361,23 +369,23 @@ static struct mtr_expr* expression(struct mtr_parser* parser) {
 
 // ============================ STMT =====================================
 
-static struct mtr_type parse_var_type(struct mtr_parser* parser);
+static struct mtr_type* parse_var_type(struct mtr_parser* parser);
 
-static struct mtr_type array_or_map(struct mtr_parser* parser) {
-    struct mtr_type type1 = parse_var_type(parser);
+static struct mtr_type* array_or_map(struct mtr_parser* parser) {
+    struct mtr_type* type1 = parse_var_type(parser);
 
     if (CHECK(MTR_TOKEN_COMMA)) {
         advance(parser);
-        struct mtr_type type2 = parse_var_type(parser);
-        return mtr_new_map_type(type1, type2);
+        struct mtr_type* type2 = parse_var_type(parser);
+        return mtr_type_list_register_map(parser->type_list, type1, type2);
     }
 
-    return mtr_new_array_type(type1);
+    return mtr_type_list_register_array(parser->type_list, type1);
 }
 
-static struct mtr_type function_type(struct mtr_parser* parser) {
+static struct mtr_type* function_type(struct mtr_parser* parser) {
     u8 argc = 0;
-    struct mtr_type types[255];
+    struct mtr_type* types[255];
     bool cont = true;
     if (CHECK(MTR_TOKEN_PAREN_R)) {
         advance(parser);
@@ -396,23 +404,19 @@ static struct mtr_type function_type(struct mtr_parser* parser) {
 
     if (argc > 255) {
         parser_error(parser, "Exceded maximum number of arguments (255)");
-        return invalid_type;
+        return NULL;
     }
 ret:;
-    struct mtr_type return_type;
-    return_type.type = MTR_DATA_VOID;
-    return_type.obj = NULL;
+    struct mtr_type* return_type = mtr_type_list_get_void_type(parser->type_list);
     if (CHECK(MTR_TOKEN_ARROW)) {
         advance(parser);
         return_type = parse_var_type(parser);
     }
 
-    return mtr_new_function_type(return_type, argc, types);
+    return mtr_type_list_register_function(parser->type_list, return_type, types, argc);
 }
 
-static struct mtr_type parse_var_type(struct mtr_parser* parser) {
-    struct mtr_type type = invalid_type;
-
+static struct mtr_type* parse_var_type(struct mtr_parser* parser) {
     switch (parser->token.type) {
 
     case MTR_TOKEN_ANY:
@@ -421,28 +425,24 @@ static struct mtr_type parse_var_type(struct mtr_parser* parser) {
     case MTR_TOKEN_BOOL:
     case MTR_TOKEN_STRING: {
         struct mtr_token token = advance(parser);
-        type = mtr_get_data_type(token);
-        type.obj = NULL;
-        break;
+        return mtr_type_list_register_from_token(parser->type_list, token);
     }
 
     case MTR_TOKEN_SQR_L: {
         advance(parser);
-        type = array_or_map(parser);
+        struct mtr_type* type = array_or_map(parser);
         consume(parser, MTR_TOKEN_SQR_R, "Expected ']'.");
-        break;
+        return type;
     }
 
     case MTR_TOKEN_PAREN_L: {
         advance(parser);
-        type = function_type(parser);
-        break;
+        return function_type(parser);
     }
 
     case MTR_TOKEN_IDENTIFIER: {
         struct mtr_token token = advance(parser);
-        type = mtr_new_user_type(token);
-        break;
+        return mtr_type_list_get_user_type(parser->type_list, token);
     }
 
     default: {
@@ -452,7 +452,7 @@ static struct mtr_type parse_var_type(struct mtr_parser* parser) {
 
     }
 
-    return type;
+    return NULL;
 }
 
 static struct mtr_stmt* declaration(struct mtr_parser* parser);
@@ -562,6 +562,8 @@ static struct mtr_stmt* variable(struct mtr_parser* parser) {
     struct mtr_variable* node = ALLOCATE_STMT(MTR_STMT_VAR, mtr_variable);
 
     node->symbol.type = parse_var_type(parser);
+    struct mtr_function_type* f = (struct mtr_function_type*) node->symbol.type;
+    (void) f;
 
     node->symbol.token = consume(parser, MTR_TOKEN_IDENTIFIER, "Expected identifier.");
     node->value = NULL;
@@ -590,7 +592,7 @@ static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
 
     u32 argc = 0;
     struct mtr_variable vars[255];
-    struct mtr_type types[255];
+    struct mtr_type* types[255];
 
     if (CHECK(MTR_TOKEN_PAREN_R)) {
         advance(parser);
@@ -625,15 +627,13 @@ static struct mtr_stmt* func_decl(struct mtr_parser* parser) {
 
 type_check:; // this is some weird shit with labels. prob a clang bug
 
-    struct mtr_type return_type;
-    return_type.type = MTR_DATA_VOID;
-    return_type.obj = NULL;
+    struct mtr_type* return_type = mtr_type_list_get_void_type(parser->type_list);
     if (CHECK(MTR_TOKEN_ARROW)) {
         advance(parser);
         return_type = parse_var_type(parser);
     }
 
-    node->symbol.type = mtr_new_function_type(return_type, argc, types);
+    node->symbol.type = mtr_type_list_register_function(parser->type_list, return_type, types, argc);
 
     node->body = NULL;
     if (CHECK(MTR_TOKEN_ELLIPSIS)) {
@@ -676,12 +676,11 @@ static struct mtr_stmt* union_type(struct mtr_parser* parser, struct mtr_token n
     struct mtr_union_decl* union_ = ALLOCATE_STMT(MTR_STMT_UNION, mtr_union_decl);
     union_->symbol.token = name;
 
-    struct mtr_type types[UINT16_MAX];
+    struct mtr_type* types[UINT16_MAX];
     u16 argc = 0;
     bool cont = true;
     while (argc < UINT16_MAX && cont) {
-        struct mtr_type* type = types + argc++;
-        *type = parse_var_type(parser);
+        types[argc++] = parse_var_type(parser);
 
         if (CHECK(MTR_TOKEN_SQR_R)) {
             advance(parser);
@@ -699,7 +698,11 @@ static struct mtr_stmt* union_type(struct mtr_parser* parser, struct mtr_token n
         parser_error(parser, "Exceded maximum number of types.");
     }
 
-    union_->symbol.type = mtr_new_union_type(name, types, argc);
+    IMPLEMENT
+    MTR_ASSERT(false, "Implement union types");
+    //union_->symbol.type = mtr_new_union_type(name, types, argc);
+
+    //mtr_type_list_register(parser->type_list, type);
     return (struct mtr_stmt*) union_;
 }
 
@@ -738,8 +741,10 @@ static struct mtr_stmt* struct_type(struct mtr_parser* parser, struct mtr_token 
     memcpy(struct_->members, vars, sizeof(struct mtr_variable*) * argc);
     struct_->argc = argc;
 
-    struct_->symbol.type = mtr_new_struct_type(name, symbols, argc);
-
+    IMPLEMENT
+    MTR_ASSERT(false, "Implement struct types");
+    //struct_->symbol.type = mtr_new_struct_type(name, symbols, argc);
+    //mtr_type_list_register(parser->type_list, type);
     return (struct mtr_stmt*) struct_;
 }
 
@@ -811,7 +816,9 @@ struct mtr_ast mtr_parse(struct mtr_parser* parser) {
     ast.head = (struct mtr_stmt*) block;
     ast.source = parser->scanner.source;
     init_block(block);
+    mtr_type_list_init(&ast.type_list);
 
+    parser->type_list = &ast.type_list;
     while (parser->token.type != MTR_TOKEN_EOF) {
         struct mtr_stmt* stmt = global_declaration(parser);
         if (NULL == stmt) {
@@ -893,13 +900,11 @@ void mtr_free_stmt(struct mtr_stmt* s) {
         case MTR_STMT_NATIVE_FN:
         case MTR_STMT_FN: {
             struct mtr_function_decl* f = (struct mtr_function_decl*) s;
-            mtr_delete_type(f->symbol.type);
             for (u8 i = 0; i < f->argc; ++i) {
                 struct mtr_variable* v = f->argv + i;
                 if (v->value) {
                     mtr_free_expr(v->value);
                 }
-                mtr_delete_type(v->symbol.type);
             }
             free(f->argv);
             if (f->body) {
@@ -913,7 +918,6 @@ void mtr_free_stmt(struct mtr_stmt* s) {
         }
         case MTR_STMT_UNION: {
             struct mtr_union_decl* u = (struct mtr_union_decl*) s;
-            mtr_delete_type(u->symbol.type);
             free(u);
             break;
         }
@@ -922,7 +926,6 @@ void mtr_free_stmt(struct mtr_stmt* s) {
             for (u8 i = 0; i < st->argc; ++i) {
                 mtr_free_stmt((struct mtr_stmt*) st->members[i]);
             }
-            mtr_delete_type(st->symbol.type);
             free(st->members);
             free(st);
             break;
@@ -952,7 +955,6 @@ void mtr_free_stmt(struct mtr_stmt* s) {
             if (v->value)
                 mtr_free_expr(v->value);
             v->value = NULL;
-            mtr_delete_type(v->symbol.type);
             free(v);
             break;
         }
@@ -981,7 +983,6 @@ void mtr_free_stmt(struct mtr_stmt* s) {
 static void free_binary(struct mtr_binary* node) {
     mtr_free_expr(node->left);
     mtr_free_expr(node->right);
-    mtr_delete_type(node->operator.type);
     node->left = NULL;
     node->right = NULL;
     free(node);
@@ -1000,7 +1001,6 @@ static void free_primary(struct mtr_primary* node) {
 
 static void free_unary(struct mtr_unary* node) {
     mtr_free_expr(node->right);
-    mtr_delete_type(node->operator.type);
     node->right = NULL;
     free(node);
 }
@@ -1044,7 +1044,6 @@ static void free_call(struct mtr_call* node) {
 
 static void free_cast(struct mtr_cast* node) {
     mtr_free_expr(node->right);
-    mtr_delete_type(node->to);
     node->right = NULL;
     free(node);
 }

@@ -105,8 +105,8 @@ static void write_loop(struct mtr_chunk* chunk, u16 offset) {
 static void write_expr(struct mtr_chunk* chunk, struct mtr_expr* expr);
 
 static void write_primary(struct mtr_chunk* chunk, struct mtr_primary* expr) {
-    u8 op = expr->symbol.type.is_global ? MTR_OP_GLOBAL_GET
-        : expr->symbol.type.upvalue ? MTR_OP_UPVALUE_GET
+    u8 op = expr->symbol.is_global ? MTR_OP_GLOBAL_GET
+        : expr->symbol.upvalue ? MTR_OP_UPVALUE_GET
         : MTR_OP_GET;
     mtr_write_chunk(chunk, op);
     write_u16(chunk, (u16)expr->symbol.index);
@@ -208,9 +208,9 @@ static void write_binary(struct mtr_chunk* chunk, struct mtr_binary* expr) {
 
 #define BINARY_OP(op)                                             \
     do {                                                          \
-        if (expr->operator.type.type == MTR_DATA_INT) {           \
+        if (expr->operator.type->type == MTR_DATA_INT) {           \
             mtr_write_chunk(chunk, MTR_OP_ ## op ## _I);          \
-        } else if (expr->operator.type.type == MTR_DATA_FLOAT) {  \
+        } else if (expr->operator.type->type == MTR_DATA_FLOAT) {  \
             mtr_write_chunk(chunk, MTR_OP_ ## op ## _F);          \
         } else {                                                  \
             MTR_LOG_WARN("Invalid data type.");                   \
@@ -278,7 +278,7 @@ static void write_unary(struct mtr_chunk* chunk, struct mtr_unary* unary) {
         mtr_write_chunk(chunk, MTR_OP_NOT);
         break;
     case MTR_TOKEN_MINUS:
-        if (unary->operator.type.type == MTR_DATA_INT) {
+        if (unary->operator.type->type == MTR_DATA_INT) {
             mtr_write_chunk(chunk, MTR_OP_NEGATE_I);
         } else {
             mtr_write_chunk(chunk, MTR_OP_NEGATE_F);
@@ -354,7 +354,7 @@ static void write(struct mtr_chunk* chunk, struct mtr_stmt* stmt);
 static void write_variable(struct mtr_chunk* chunk, struct mtr_variable* var) {
     u8 nil_op;
 
-    switch (var->symbol.type.type) {
+    switch (var->symbol.type->type) {
     case MTR_DATA_STRING: {
         nil_op = MTR_OP_EMPTY_STRING;
         break;
@@ -432,7 +432,7 @@ static void write_assignment(struct mtr_chunk* chunk, struct mtr_assignment* stm
     switch (stmt->right->type) {
     case MTR_EXPR_PRIMARY: {
         struct mtr_primary* p = (struct mtr_primary*) stmt->right;
-        u8 op = p->symbol.type.upvalue ? MTR_OP_UPVALUE_SET : MTR_OP_SET;
+        u8 op = p->symbol.upvalue ? MTR_OP_UPVALUE_SET : MTR_OP_SET;
         mtr_write_chunk(chunk, op);
         write_u16(chunk, p->symbol.index);
         return;

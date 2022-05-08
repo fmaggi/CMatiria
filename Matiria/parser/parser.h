@@ -1,6 +1,7 @@
 #ifndef MTR_PARSER_H
 #define MTR_PARSER_H
 
+#include "AST/typeList.h"
 #include "scanner/scanner.h"
 #include "AST/stmt.h"
 
@@ -10,6 +11,7 @@ struct mtr_parser {
     struct mtr_scanner scanner;
     struct mtr_token token;
     struct mtr_function_decl* current_function;
+    struct mtr_type_list* type_list;
     bool had_error;
     bool panic;
 };

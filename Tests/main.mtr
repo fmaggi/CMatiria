@@ -1,4 +1,10 @@
 fn main()
 {
-
+    x := 3 + 5;
+    Int y := x;
+    Float z := 45.0;
+    a := [3, 5, x];
+    print(z);
 }
+
+fn print(Any x) ...
