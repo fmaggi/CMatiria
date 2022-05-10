@@ -1,5 +1,3 @@
-#include "AST/expr.h"
-#include "AST/stmt.h"
 #include "AST/type.h"
 #include "scanner/token.h"
 #ifndef NDEBUG

@@ -1,19 +1,11 @@
 #include "validator.h"
 
-#include "AST/symbol.h"
-#include "AST/typeList.h"
-#include "scanner/token.h"
 #include "scope.h"
-
-#include "AST/expr.h"
-#include "AST/stmt.h"
-#include "AST/type.h"
 
 #include "core/report.h"
 #include "core/log.h"
 #include "debug/dump.h"
 
-#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 

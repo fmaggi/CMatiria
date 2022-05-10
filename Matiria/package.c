@@ -1,16 +1,10 @@
 #include "package.h"
 
-#include "AST/stmt.h"
-
-#include "AST/symbol.h"
-#include "AST/type.h"
 #include "core/log.h"
 #include "core/utils.h"
 #include "debug/disassemble.h"
-#include "runtime/object.h"
 
 #include "debug/dump.h"
-#include "validator/scope.h"
 
 #include <stdlib.h>
 #include <string.h>

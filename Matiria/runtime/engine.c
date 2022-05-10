@@ -1,13 +1,12 @@
 #include "engine.h"
 
 #include "bytecode.h"
-#include "core/log.h"
-
 #include "object.h"
-
-#include "debug/disassemble.h"
 #include "value.h"
 
+#include "debug/disassemble.h"
+
+#include "core/log.h"
 #include "core/macros.h"
 
 struct frame {

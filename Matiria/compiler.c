@@ -1,24 +1,16 @@
 #include "compiler.h"
 
-#include "AST/expr.h"
-#include "AST/stmt.h"
+#include "bytecode.h"
+#include "package.h"
 
-#include "AST/type.h"
-#include "core/exitCode.h"
-#include "runtime/value.h"
 #include "scanner/scanner.h"
 
 #include "parser/parser.h"
 
-#include "scanner/token.h"
 #include "validator/validator.h"
 
 #include "runtime/object.h"
 
-#include "bytecode.h"
-#include "package.h"
-
-#include "core/file.h"
 #include "core/log.h"
 #include "core/macros.h"
 

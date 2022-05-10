@@ -1,9 +1,9 @@
 #ifndef MTR_PARSER_H
 #define MTR_PARSER_H
 
-#include "AST/typeList.h"
 #include "scanner/scanner.h"
-#include "AST/stmt.h"
+
+#include "AST/AST.h"
 
 #include "core/types.h"
 
@@ -19,7 +19,5 @@ struct mtr_parser {
 void mtr_parser_init(struct mtr_parser* parser, const char* source);
 
 struct mtr_ast mtr_parse(struct mtr_parser* parser);
-
-void mtr_delete_ast(struct mtr_ast* ast);
 
 #endif

@@ -2,7 +2,6 @@
 #define MTR_VM_H
 
 #include "value.h"
-#include "bytecode.h"
 #include "package.h"
 
 #include "core/types.h"

@@ -1,11 +1,9 @@
 #ifndef MTR_PACKAGE_H
 #define MTR_PACKAGE_H
 
-#include "bytecode.h"
-#include "AST/stmt.h"
+#include "AST/AST.h"
 #include "runtime/object.h"
 #include "validator/scope.h"
-#include "runtime/value.h"
 
 struct mtr_package {
     struct mtr_scope global_symbols;

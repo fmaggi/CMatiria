@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+
 #ifdef MTR_MK
 #   define MTR_PATH(path) "Tests/"path
 #else
@@ -26,28 +27,23 @@ TEST_CASE(no_file) {
 }
 
 TEST_CASE(simple_test) {
-    const char* path = MTR_PATH("main.mtr");
-    CHECK(mtr_launch(path) == MTR_OK);
+    CHECK(mtr_launch(MTR_PATH("main.mtr")) == MTR_OK);
 }
 
 TEST_CASE(parser_test) {
-    const char* path = MTR_PATH("parser_error.mtr");
-    CHECK(mtr_launch(path) == MTR_PARSER_ERROR);
+    CHECK(mtr_launch(MTR_PATH("parser_error.mtr")) == MTR_PARSER_ERROR);
 }
 
 TEST_CASE(fibbonacci_test) {
-    const char* path = MTR_PATH("fib.mtr");
-    CHECK(mtr_launch(path) == MTR_OK);
+    CHECK(mtr_launch(MTR_PATH("fib.mtr")) == MTR_OK);
 }
 
 TEST_CASE(closure_test) {
-    const char* path = MTR_PATH("closure.mtr");
-    CHECK(mtr_launch(path) == MTR_OK);
+    CHECK(mtr_launch(MTR_PATH("closure.mtr")) == MTR_OK);
 }
 
 TEST_CASE(user_types) {
-    const char* path = MTR_PATH("userTypes.mtr");
-    CHECK(mtr_launch(path) == MTR_OK);
+    CHECK(mtr_launch(MTR_PATH("userTypes.mtr")) == MTR_OK);
 }
 
 static void all_tests() {

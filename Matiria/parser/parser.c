@@ -1,10 +1,5 @@
 #include "parser.h"
 
-#include "AST/expr.h"
-#include "AST/stmt.h"
-#include "AST/type.h"
-
-#include "AST/typeList.h"
 #include "core/types.h"
 #include "core/report.h"
 #include "core/log.h"
