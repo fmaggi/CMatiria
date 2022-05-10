@@ -18,7 +18,8 @@
 static bool valid_as_global(struct mtr_stmt* s) {
     return s->type == MTR_STMT_FN
         || s->type == MTR_STMT_NATIVE_FN
-        || s->type == MTR_STMT_STRUCT;
+        || s->type == MTR_STMT_STRUCT
+        || s->type == MTR_STMT_UNION;
 }
 
 static struct mtr_symbol get_symbol(struct mtr_stmt* s) {
@@ -60,9 +61,6 @@ void mtr_load_package(struct mtr_package* package, struct mtr_ast* ast) {
     package->main = NULL;
 
     for (size_t i = 0; i < block->size; ++i) {
-        if (block->statements[i]->type == MTR_STMT_UNION) {
-            continue;
-        }
         MTR_ASSERT(valid_as_global(block->statements[i]), "Statement is not valid as global statement!");
         struct mtr_symbol s = get_symbol(block->statements[i]);
         mtr_scope_add(&package->global_symbols, s);
@@ -120,6 +118,7 @@ struct mtr_object* mtr_package_get_function_by_name(struct mtr_package* package,
 
 void mtr_delete_package(struct mtr_package* package) {
     for (size_t i = 0; i < package->global_symbols.symbols.size; ++i) {
+        if (!package->globals[i]) continue;
         mtr_delete_object(package->globals[i]);
     }
 

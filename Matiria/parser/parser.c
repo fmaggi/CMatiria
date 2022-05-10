@@ -442,7 +442,11 @@ static struct mtr_type* parse_var_type(struct mtr_parser* parser) {
 
     case MTR_TOKEN_IDENTIFIER: {
         struct mtr_token token = advance(parser);
-        return mtr_type_list_get_user_type(parser->type_list, token);
+        struct mtr_type* type = mtr_type_list_get_user_type(parser->type_list, token);
+        if (type == NULL) {
+            parser_error(parser, "Unknown type!");
+        }
+        return type;
     }
 
     default: {
@@ -698,11 +702,8 @@ static struct mtr_stmt* union_type(struct mtr_parser* parser, struct mtr_token n
         parser_error(parser, "Exceded maximum number of types.");
     }
 
-    IMPLEMENT
-    MTR_ASSERT(false, "Implement union types");
-    //union_->symbol.type = mtr_new_union_type(name, types, argc);
+    union_->symbol.type = mtr_type_list_register_union_type(parser->type_list, name, types, argc);
 
-    //mtr_type_list_register(parser->type_list, type);
     return (struct mtr_stmt*) union_;
 }
 
@@ -741,10 +742,8 @@ static struct mtr_stmt* struct_type(struct mtr_parser* parser, struct mtr_token 
     memcpy(struct_->members, vars, sizeof(struct mtr_variable*) * argc);
     struct_->argc = argc;
 
-    IMPLEMENT
-    MTR_ASSERT(false, "Implement struct types");
-    //struct_->symbol.type = mtr_new_struct_type(name, symbols, argc);
-    //mtr_type_list_register(parser->type_list, type);
+    struct_->symbol.type = mtr_type_list_register_struct_type(parser->type_list, name, symbols, argc);
+
     return (struct mtr_stmt*) struct_;
 }
 

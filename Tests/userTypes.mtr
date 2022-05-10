@@ -1,0 +1,19 @@
+type MyStruct := {
+    Int x := 45;
+}
+
+type MyUnion := [ Int | Float | String ]
+
+fn main() {
+    MyStruct x;
+    print(x.x);
+
+    MyUnion y := 5;
+    print(y);
+
+    y := 'Hello';
+
+    print(y);
+}
+
+fn print(Any x) ...

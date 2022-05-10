@@ -1,17 +1,46 @@
 #include "typeList.h"
 #include "AST/type.h"
 #include "core/log.h"
+#include "core/utils.h"
+#include "scanner/token.h"
 
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
+// this should be const
+static struct mtr_type invalid_type = {.type = MTR_DATA_INVALID};
+static struct mtr_type any_type = { .type = MTR_DATA_ANY };
+static struct mtr_type void_type = {.type = MTR_DATA_VOID };
+static struct mtr_type bool_type = { .type = MTR_DATA_BOOL };
+static struct mtr_type int_type = { .type = MTR_DATA_INT };
+static struct mtr_type float_type = { .type = MTR_DATA_FLOAT };
+static struct mtr_type string_type = { .type = MTR_DATA_STRING };
+
 struct type_entry {
     struct mtr_type* type;
     size_t hash;
-    bool used;
 };
+
+void mtr_type_list_init(struct mtr_type_list* list) {
+    list->types = calloc(16, sizeof(struct type_entry));
+    list->capacity = 16;
+    list->count = 7;
+
+#define LOAD_TYPE(ptr, enume) \
+    list->types[enume] = (struct type_entry){ .type = ptr, .hash = enume }
+
+    LOAD_TYPE(&invalid_type, MTR_DATA_INVALID);
+    LOAD_TYPE(&any_type, MTR_DATA_ANY);
+    LOAD_TYPE(&void_type, MTR_DATA_VOID);
+    LOAD_TYPE(&bool_type, MTR_DATA_BOOL);
+    LOAD_TYPE(&int_type, MTR_DATA_INT);
+    LOAD_TYPE(&float_type, MTR_DATA_FLOAT);
+    LOAD_TYPE(&string_type, MTR_DATA_STRING);
+
+#undef LOAD_TYPE
+}
 
 static size_t hash_type(struct mtr_type* type) {
     if (type == NULL) {
@@ -52,8 +81,8 @@ static size_t hash_type(struct mtr_type* type) {
     case MTR_DATA_USER:
     case MTR_DATA_UNION:
     case MTR_DATA_STRUCT: {
-        IMPLEMENT;
-        return 0;
+        struct mtr_user_type* u = (struct mtr_user_type*) type;
+        return hash(u->name.start, u->name.length);
     }
     }
 }
@@ -75,8 +104,8 @@ static struct type_entry* find_entry(struct mtr_type* type, struct type_entry* e
 #endif
 
     struct type_entry e = entries[i];
-    while (e.used == true) {
-        if (h == entries[i].hash && mtr_type_match(type, e.type)) {
+    while (e.type != NULL) {
+        if (h == e.hash && mtr_type_match(type, e.type)) {
             return entries + i;
         }
 #ifndef NDEBUG
@@ -96,22 +125,20 @@ static struct type_entry* find_entry(struct mtr_type* type, struct type_entry* e
 static struct mtr_type* insert(struct mtr_type_list* list, void* type, size_t size_type);
 #define INSERT(type) insert(list, type, sizeof(*type))
 
-void mtr_type_list_init(struct mtr_type_list* list) {
-    list->types = calloc(16, sizeof(struct type_entry));
-    list->capacity = 16;
-    list->count = 0;
-
-    for (u8 i = 0; i < MTR_DATA_STRING + 1; ++i) {
-        struct mtr_type* t = malloc(sizeof(*t));
-        t->type = i;
-        list->types[i].type = t;
-        list->types[i].hash = i;
-        list->types[i].used = true;
-        list->count++;
-    }
-}
-
 void mtr_type_list_delete(struct mtr_type_list* list) {
+    for (size_t i = 0; i < list->capacity; ++i) {
+        if (!list->types[i].type) {
+            continue;
+        }
+        if (list->types[i].type->type != MTR_DATA_FN) {
+            free(list->types[i].type);
+            continue;
+        }
+        struct mtr_function_type* f = (struct mtr_function_type*) list->types[i].type;
+        free(f->argv);
+        free(list->types[i].type);
+    }
+
     free(list->types);
     list->capacity = 0;
     list->count = 0;
@@ -127,12 +154,11 @@ static struct type_entry* resize(struct type_entry* entries, size_t old_cap) {
 
     for (size_t i = 0; i < old_cap; ++i) {
         struct type_entry old = entries[i];
-        if (!old.used)
+        if (!old.type)
             continue;
         struct type_entry* entry = find_entry(old.type, temp, new_cap);
         entry->type = old.type;
         entry->hash = old.hash;
-        entry->used = true;
         MTR_LOG_WARN("moving %p", (void*) old.type);
     }
     free(entries);
@@ -152,7 +178,6 @@ static struct mtr_type* insert(struct mtr_type_list* list, void* type, size_t si
     entry->type = malloc(size_type);
     memcpy(entry->type, type, size_type);
     entry->hash = hash_type(type);
-    entry->used = true;
     list->count++;
 
     if (list->count >= list->capacity * LOAD_FACTOR) {
@@ -208,13 +233,72 @@ struct mtr_type* mtr_type_list_register_function(struct mtr_type_list* list, str
     return (void*)r;
 }
 
+struct mtr_type* mtr_type_list_register_struct_type(struct mtr_type_list* list, struct mtr_token name, struct mtr_symbol** members, u16 count) {
+    struct mtr_struct_type s;
+    s.name.type.type = MTR_DATA_STRUCT;
+    s.name.name = name;
+    s.members = members;
+    s.argc = count;
+
+    struct mtr_struct_type* r = (void*) INSERT(&s);
+
+    if (r->members == members) {
+        if (count == 0) {
+            r->members = NULL;
+            return (void*) r;
+        }
+        void* temp = malloc(sizeof(struct mtr_symbol*) * count);
+        memcpy(temp, members, sizeof(struct mtr_symbol*) * count);
+        r->members = temp;
+    }
+    return (void*)r;
+}
+
+struct mtr_type* mtr_type_list_register_union_type(struct mtr_type_list* list, struct mtr_token name, struct mtr_type** types, u16 count) {
+    struct mtr_union_type u;
+    u.name.type.type = MTR_DATA_UNION;
+    u.name.name = name;
+    u.types = types;
+    u.argc = count;
+
+    struct mtr_union_type* r = (void*) INSERT(&u);
+
+    if (r->types == types) {
+        if (count == 0) {
+            r->types = NULL;
+            return (void*) r;
+        }
+        void* temp = malloc(sizeof(struct mtr_type*) * count);
+        memcpy(temp, types, sizeof(struct mtr_type*) * count);
+        r->types = temp;
+    }
+    return (void*)r;
+}
+
 struct mtr_type* mtr_type_list_get(struct mtr_type_list* list, size_t index) {
     return list->types[index].type;
 }
 
+static bool is_user(struct mtr_type* type) {
+    return type->type == MTR_DATA_USER || type->type == MTR_DATA_STRUCT || type->type == MTR_DATA_UNION;
+}
+
 struct mtr_type* mtr_type_list_get_user_type(struct mtr_type_list* list, struct mtr_token token) {
-    IMPLEMENT
-    return NULL;
+    size_t h = hash(token.start, token.length);
+    size_t i = h & (list->capacity - 1);
+
+    struct type_entry e = list->types[i];
+    while (e.type != NULL) {
+        struct mtr_user_type* u = (struct mtr_user_type*) e.type;
+        if (h == e.hash && is_user(e.type) && mtr_token_compare(u->name, token)) {
+            return e.type;
+        }
+
+        i = (i + 1) & (list->capacity - 1);
+        e = list->types[i];
+    }
+
+    return e.type;
 }
 
 struct mtr_type* mtr_type_list_get_void_type(struct mtr_type_list* list) {

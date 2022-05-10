@@ -47,6 +47,14 @@ static bool is_literal(struct mtr_expr* expr) {
 // }
 
 static bool check_assignemnt(const struct mtr_type* assign_to, const struct mtr_type* what) {
+    if (assign_to == what) {
+        return true;
+    }
+
+    if (assign_to->type == MTR_DATA_ANY) {
+        return true;
+    }
+
     if (!mtr_type_match(assign_to, what)) {
         if (assign_to && assign_to->type == MTR_DATA_UNION) {
             struct mtr_union_type* u = (struct mtr_union_type*) assign_to;
@@ -442,39 +450,28 @@ static struct mtr_stmt* analyze_variable(struct mtr_variable* decl, struct valid
         decl->symbol.type = value_type;
     }
 
-    if (decl->symbol.type && decl->symbol.type->type == MTR_DATA_USER) {
-        // Variable declarations with user types default to the mtr_user_type as we
-        // have no way of knowing if it was a struct or a union.
-        struct mtr_user_type* type = (struct mtr_user_type*) decl->symbol.type;
-        struct mtr_symbol* name = mtr_scope_find(&validator->scope, type->name);
-        if (NULL == name) {
-            mtr_report_error(decl->symbol.token, "Unknown type.", validator->source);
-            expr = false;
-        }
-        // When we check if the type does exist we can now define whether the variable is
-        // a struct or a union.
+    if (decl->symbol.type->type == MTR_DATA_STRUCT && !decl->value) {
+        struct mtr_struct_type* type = (struct mtr_struct_type*) decl->symbol.type;
+        struct mtr_symbol* name = mtr_scope_find(&validator->scope, type->name.name);
+        MTR_ASSERT(name != NULL, "Type not loaded");
 
-        decl->symbol.type = name->type;
+        // Create an expression for the constructor
+        struct mtr_primary* primary = malloc(sizeof(struct mtr_primary));
+        primary->expr_.type = MTR_EXPR_PRIMARY;
+        primary->symbol = *name;
 
-        if (!decl->value && decl->symbol.type->type == MTR_DATA_STRUCT) {
-            // Create an expression for the constructor
-            struct mtr_primary* primary = malloc(sizeof(struct mtr_primary));
-            primary->expr_.type = MTR_EXPR_PRIMARY;
-            primary->symbol = *name;
+        struct mtr_call* call = malloc(sizeof (struct mtr_call));
+        call->expr_.type = MTR_EXPR_CALL;
+        call->callable = (struct mtr_expr*) primary;
+        call->argv = NULL;
+        call->argc = 0;
 
-            struct mtr_call* call = malloc(sizeof (struct mtr_call));
-            call->expr_.type = MTR_EXPR_CALL;
-            call->callable = (struct mtr_expr*) primary;
-            call->argv = NULL;
-            call->argc = 0;
-
-            decl->value = (struct mtr_expr*)call;
-            goto ret;
-        }
+        decl->value = (struct mtr_expr*)call;
+        goto ret;
     }
 
     if (decl->value) {
-        if (decl->symbol.type != value_type) {
+        if (!check_assignemnt(decl->symbol.type, value_type)) {
             mtr_report_error(decl->symbol.token, "Invalid assignement to variable of different type", validator->source);
             expr = false;
         }
@@ -629,9 +626,9 @@ static struct mtr_stmt* analyze_call_stmt(struct mtr_call_stmt* call, struct val
     return sanitize_stmt(call, type != NULL);
 }
 
-static struct mtr_stmt* analyze_union(struct mtr_union_decl* u, struct validator* validator) {
-    return (struct mtr_stmt*) u;
-}
+// static struct mtr_stmt* analyze_union(struct mtr_union_decl* u, struct validator* validator) {
+//     return (struct mtr_stmt*) u;
+// }
 
 static struct mtr_stmt* analyze_closure(struct mtr_closure_decl* closure, struct validator* validator) {
     struct mtr_symbol* s = mtr_scope_add(&validator->scope, closure->function->symbol);
@@ -694,7 +691,7 @@ static struct mtr_stmt* global_analysis(struct mtr_stmt* stmt, struct validator*
     {
     case MTR_STMT_NATIVE_FN: return stmt;
     case MTR_STMT_FN: return analyze_fn((struct mtr_function_decl*) stmt, validator);
-    case MTR_STMT_UNION: return analyze_union((struct mtr_union_decl*) stmt, validator);
+    case MTR_STMT_UNION: return stmt;
     case MTR_STMT_STRUCT: return analyze_struct((struct mtr_struct_decl*) stmt, validator);
     default:
         break;

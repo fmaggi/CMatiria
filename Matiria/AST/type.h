@@ -19,6 +19,7 @@ enum mtr_data_type {
     MTR_DATA_ARRAY,
     MTR_DATA_MAP,
     MTR_DATA_FN,
+
     MTR_DATA_USER,
     MTR_DATA_UNION,
     MTR_DATA_STRUCT,
@@ -61,14 +62,12 @@ struct mtr_user_type {
 };
 
 struct mtr_union_type {
-    struct mtr_type type;
     struct mtr_user_type name;
     struct mtr_type** types;
     u16 argc;
 };
 
 struct mtr_struct_type {
-    struct mtr_type type;
     struct mtr_user_type name;
     struct mtr_symbol** members;
     u16 argc;
