@@ -42,6 +42,21 @@ void mtr_type_list_init(struct mtr_type_list* list) {
 #undef LOAD_TYPE
 }
 
+void mtr_type_list_delete(struct mtr_type_list* list) {
+    for (size_t i = 7; i < list->capacity; ++i) {
+        if (!list->types[i].type) {
+            continue;
+        }
+        mtr_delete_type(list->types[i].type);
+        free(list->types[i].type);
+    }
+
+    free(list->types);
+    list->capacity = 0;
+    list->count = 0;
+    list->types = NULL;
+}
+
 static size_t hash_type(struct mtr_type* type) {
     if (type == NULL) {
         return 0;
@@ -124,26 +139,6 @@ static struct type_entry* find_entry(struct mtr_type* type, struct type_entry* e
 
 static struct mtr_type* insert(struct mtr_type_list* list, void* type, size_t size_type);
 #define INSERT(type) insert(list, type, sizeof(*type))
-
-void mtr_type_list_delete(struct mtr_type_list* list) {
-    for (size_t i = 0; i < list->capacity; ++i) {
-        if (!list->types[i].type) {
-            continue;
-        }
-        if (list->types[i].type->type != MTR_DATA_FN) {
-            free(list->types[i].type);
-            continue;
-        }
-        struct mtr_function_type* f = (struct mtr_function_type*) list->types[i].type;
-        free(f->argv);
-        free(list->types[i].type);
-    }
-
-    free(list->types);
-    list->capacity = 0;
-    list->count = 0;
-    list->types = NULL;
-}
 
 #define LOAD_FACTOR 0.75
 

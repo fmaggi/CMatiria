@@ -1,5 +1,6 @@
 #include "parser.h"
 
+#include "AST/typeList.h"
 #include "core/types.h"
 #include "core/report.h"
 #include "core/log.h"
@@ -829,6 +830,7 @@ struct mtr_ast mtr_parse(struct mtr_parser* parser) {
 
 void mtr_delete_ast(struct mtr_ast* ast) {
     delete_block((struct mtr_block*) ast->head);
+    mtr_type_list_delete(&ast->type_list);
     ast->head = NULL;
 }
 

@@ -25,11 +25,11 @@ enum mtr_data_type {
     MTR_DATA_STRUCT,
 };
 
-typedef void mtr_object_type;
-
 struct mtr_type {
     enum mtr_data_type type;
 };
+
+void mtr_delete_type(struct mtr_type* type);
 
 struct mtr_type mtr_get_data_type(struct mtr_token token);
 bool mtr_is_compound_type(const struct mtr_type* type);
@@ -37,6 +37,9 @@ bool mtr_is_compound_type(const struct mtr_type* type);
 bool mtr_type_match(const struct mtr_type* lhs, const struct mtr_type* rhs);
 
 struct mtr_type* mtr_get_underlying_type(const struct mtr_type* type);
+
+// Compound types dont own what they are compounded with (Dont know if you say it like that?)
+// When we free them we only free allocations with in them
 
 struct mtr_array_type {
     struct mtr_type type;

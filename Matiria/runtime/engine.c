@@ -3,6 +3,7 @@
 #include "bytecode.h"
 #include "object.h"
 #include "value.h"
+#include "memory.h"
 
 #include "debug/disassemble.h"
 
@@ -43,6 +44,7 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
     } while (false)
 
 #define READ(type) *((type*)ip); ip += sizeof(type)
+#define LINK(obj) mtr_link_obj(engine, (struct mtr_object*) obj)
 
 static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 argc, mtr_value* closed) {
     struct frame frame;
@@ -87,6 +89,7 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
                 const char* string = READ(const char*);
                 u32 length = READ(u32);
                 struct mtr_string* s = mtr_new_string(string, length);
+                LINK(s);
                 push(engine, MTR_OBJ(s));
                 break;
             }
@@ -94,7 +97,7 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
             case MTR_OP_ARRAY_LITERAL: {
                 u8 count = READ(u8);
                 struct mtr_array* array = mtr_new_array(count);
-
+                LINK(array);
                 for (u8 i = 0; i < count; ++i) {
                     const mtr_value elem = pop(engine);
                     array->elements[i] = elem;
@@ -108,7 +111,7 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
 
             case MTR_OP_MAP_LITERAL: {
                 struct mtr_map* map = mtr_new_map();
-
+                LINK(map);
                 u8 count = READ(u8);
 
                 for (u8 i = 0; i < count; ++i) {
@@ -124,6 +127,7 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
             case MTR_OP_CONSTRUCTOR: {
                 u8 count = READ(u8);
                 struct mtr_struct* s = mtr_new_struct(count);
+                LINK(s);
                 for (u8 i = 0; i < count; ++i) {
                     u8 actual_index = count - i - 1;
                     s->members[actual_index] = pop(engine);
@@ -134,6 +138,7 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
 
             case MTR_OP_CLOSURE: {
                 struct mtr_closure* c = READ(struct mtr_closure*);
+                LINK(c);
                 u16 count = c->count;
 
                 c->upvalues = malloc(sizeof(mtr_value) * count);
@@ -154,19 +159,23 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
             }
 
             case MTR_OP_EMPTY_STRING: {
-                struct mtr_string* string_object = mtr_new_string(NULL, 0);
-                push(engine, MTR_OBJ(string_object));
+                // struct mtr_string* string_object = mtr_new_string(NULL, 0);
+                // push(engine, MTR_OBJ(string_object));
+                // break;
+                MTR_ASSERT(false, "Think about this");
                 break;
             }
 
             case MTR_OP_EMPTY_ARRAY: {
                 struct mtr_array* array_object = mtr_new_array(8);
+                LINK(array_object);
                 push(engine, MTR_OBJ(array_object));
                 break;
             }
 
             case MTR_OP_EMPTY_MAP: {
                 struct mtr_map* map = mtr_new_map();
+                LINK(map);
                 push(engine, MTR_OBJ(map));
                 break;
             }
@@ -434,6 +443,7 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
 i32 mtr_execute(struct mtr_engine* engine, struct mtr_package* package) {
     engine->globals = package->globals;
     engine->stack_top = engine->stack;
+    engine->objects = NULL;
     struct mtr_function* f = package->main;
     if (NULL == f) {
         MTR_LOG_ERROR("Did not find main.");
@@ -441,6 +451,14 @@ i32 mtr_execute(struct mtr_engine* engine, struct mtr_package* package) {
     }
 
     call(engine, f->chunk, 0, NULL);
+
+    struct mtr_object* o = engine->objects;
+    while (o) {
+        struct mtr_object* next = o->next;
+        mtr_delete_object(o);
+        o = next;
+
+    }
 
     // mtr_dump_stack(engine->stack, engine->stack_top);
     return 0;

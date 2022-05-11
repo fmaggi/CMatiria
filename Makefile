@@ -4,7 +4,7 @@ MATIRIA = libMatiria.a
 CC = clang
 LL = llvm-ar
 
-CFLAGS = -I$(SRC_DIR) -Werror -Wall -Wextra -pedantic -Wno-unused-parameter -D_FORTIFY_SOURCE=2 -std=c17
+CFLAGS = -I$(SRC_DIR) -Wall -Wextra -pedantic -Wno-unused-parameter -D_FORTIFY_SOURCE=2 -std=c17
 EXEFLAGS =
 LLFLAGS =
 
@@ -39,7 +39,7 @@ $(MATIRIA): $(OBJS)
 	@$(CC) $(CFLAGS) -o $@ -c $<
 
 clean:
-	@rm $(OBJS) $(MATIRIA) test
+	@rm $(OBJS) $(MATIRIA) test Tests/main.o
 
 vscode_setup: $(JSON)
 	@sed -e '1s/^/[\n/' -e '$$s/,$$/\n]/' $(JSON:%.j=%.j.json) > build/compile_commands.json

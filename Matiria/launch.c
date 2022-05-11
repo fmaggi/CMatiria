@@ -26,8 +26,9 @@ enum mtr_exit_code mtr_launch(const char* path) {
 
     mtr_add_io(&package);
 
-    struct mtr_engine engine;
-    i32 result = mtr_execute(&engine, &package);
+    struct mtr_engine* engine = malloc(sizeof(*engine));
+    i32 result = mtr_execute(engine, &package);
+    free(engine);
 
 end:
     mtr_delete_package(&package);

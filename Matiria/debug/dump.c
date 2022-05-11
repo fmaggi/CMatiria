@@ -213,33 +213,33 @@ void mtr_dump_stmt(struct mtr_stmt* stmt) {
 
 static void dump_type(struct mtr_type type, u32 offset);
 
-static void dump_object_type(mtr_object_type* obj, enum mtr_data_type type, u32 offset) {
-    if (offset > 0 && offset < 256) {
-        char buf[256];
-        memset(buf, ' ', 256);
-        MTR_PRINT_DEBUG("%.*s", offset, buf);
-    }
+// static void dump_object_type(mtr_object_type* obj, enum mtr_data_type type, u32 offset) {
+//     if (offset > 0 && offset < 256) {
+//         char buf[256];
+//         memset(buf, ' ', 256);
+//         MTR_PRINT_DEBUG("%.*s", offset, buf);
+//     }
 
-    switch (type) {
-    case MTR_DATA_INVALID : return;
-    case MTR_DATA_ARRAY: {
-        struct mtr_array_type* a = (struct mtr_array_type*) obj;
-        dump_type(a->type, offset+1);
-    }
-    case MTR_DATA_FN: return;
+//     switch (type) {
+//     case MTR_DATA_INVALID : return;
+//     case MTR_DATA_ARRAY: {
+//         struct mtr_array_type* a = (struct mtr_array_type*) obj;
+//         dump_type(a->type, offset+1);
+//     }
+//     case MTR_DATA_FN: return;
 
-    case MTR_DATA_USER:
-    case MTR_DATA_UNION:
-    case MTR_DATA_STRUCT: {
-        struct mtr_user_type* u = (struct mtr_user_type*) obj;
-        MTR_LOG("%.*s", u->name.length, u->name.start);
-        return;
-    }
-    default:
-        break;
-    }
-    MTR_ASSERT(false, "Invalid type.");
-}
+//     case MTR_DATA_USER:
+//     case MTR_DATA_UNION:
+//     case MTR_DATA_STRUCT: {
+//         struct mtr_user_type* u = (struct mtr_user_type*) obj;
+//         MTR_LOG("%.*s", u->name.length, u->name.start);
+//         return;
+//     }
+//     default:
+//         break;
+//     }
+//     MTR_ASSERT(false, "Invalid type.");
+// }
 
 static void dump_type(struct mtr_type type, u32 offset) {
     if (offset > 0 && offset < 256) {

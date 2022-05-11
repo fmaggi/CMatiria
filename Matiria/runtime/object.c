@@ -1,5 +1,6 @@
 #include "object.h"
 
+#include "bytecode.h"
 #include "core/log.h"
 #include "core/utils.h"
 
@@ -42,6 +43,12 @@ void mtr_delete_object(struct mtr_object* object) {
         struct mtr_native_fn* fn = (struct mtr_native_fn*) object;
         free(fn);
         break;
+    }
+    case MTR_OBJ_CLOSURE: {
+        struct mtr_closure* c = (struct mtr_closure*) object;
+        mtr_delete_chunk(&c->chunk);
+        free(c->upvalues);
+        free(c);
     }
     default:
         break;

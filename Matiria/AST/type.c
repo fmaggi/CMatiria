@@ -55,59 +55,46 @@ bool mtr_is_compound_type(const struct mtr_type* type) {
     return type->type > MTR_DATA_STRING;
 }
 
-// static void delete_object_type(mtr_object_type* obj, enum mtr_data_type type) {
-//     switch (type) {
-//     case MTR_DATA_ARRAY: {
-//         struct mtr_array_type* a = (struct mtr_array_type*) obj;
-//         mtr_delete_type(a->type);
-//         free(a);
-//         return;
-//     }
-//     case MTR_DATA_MAP: {
-//         struct mtr_map_type* m = (struct mtr_map_type*) obj;
-//         mtr_delete_type(m->key);
-//         mtr_delete_type(m->value);
-//         free(m);
-//         return;
-//     }
-//     case MTR_DATA_FN: {
-//         struct mtr_function_type* f = (struct mtr_function_type*) obj;
-//         mtr_delete_type(f->return_);
-//         free(f->argv);
-//         free(f);
-//         return;
-//     }
-//     case MTR_DATA_STRUCT: {
-//         struct mtr_struct_type* s = (struct mtr_struct_type*) obj;
-//         free(s->members);
-//         free(s);
-//         return;
-//     }
-//     case MTR_DATA_UNION: {
-//         struct mtr_union_type* u = (struct mtr_union_type*) obj;
-//         for (u8 i = 0; i < u->argc; ++i ) {
-//             mtr_delete_type(u->types[i]);
-//         }
-//         free(u->types);
-//         free(u);
-//         return;
-//     }
-//     case MTR_DATA_USER: {
-//         struct mtr_user_type* u = (struct mtr_user_type*) obj;
-//         free(u);
-//         return;
-//     }
-//     default:
-//         break;
-//     }
-//     MTR_ASSERT(false, "Invalid type.");
-// }
+static void delete_object_type(struct mtr_type* obj) {
+    switch (obj->type) {
+    case MTR_DATA_ARRAY: {
+        struct mtr_array_type* a = (struct mtr_array_type*) obj;
+        return;
+    }
+    case MTR_DATA_MAP: {
+        struct mtr_map_type* m = (struct mtr_map_type*) obj;
+        return;
+    }
+    case MTR_DATA_FN: {
+        struct mtr_function_type* f = (struct mtr_function_type*) obj;
+        free(f->argv);
+        return;
+    }
+    case MTR_DATA_STRUCT: {
+        struct mtr_struct_type* s = (struct mtr_struct_type*) obj;
+        free(s->members);
+        return;
+    }
+    case MTR_DATA_UNION: {
+        struct mtr_union_type* u = (struct mtr_union_type*) obj;
+        free(u->types);
+        return;
+    }
+    case MTR_DATA_USER: {
+        struct mtr_user_type* u = (struct mtr_user_type*) obj;
+        return;
+    }
+    default:
+        break;
+    }
+    MTR_ASSERT(false, "Invalid type.");
+}
 
-// void mtr_delete_type(struct mtr_type type) {
-//     if (type.obj) {
-//         delete_object_type(type.obj, type.type);
-//     }
-// }
+void mtr_delete_type(struct mtr_type* type) {
+    if (mtr_is_compound_type(type)) {
+        delete_object_type(type);
+    }
+}
 
 static bool are_user_types(enum mtr_data_type lhs, enum mtr_data_type rhs) {
     return (lhs == MTR_DATA_USER && (rhs == MTR_DATA_STRUCT || rhs == MTR_DATA_UNION))

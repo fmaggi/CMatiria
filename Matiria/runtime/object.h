@@ -18,6 +18,7 @@ enum mtr_object_t {
 
 struct mtr_object {
     enum mtr_object_t type;
+    struct mtr_object* next;
 };
 
 void mtr_delete_object(struct mtr_object* object);
