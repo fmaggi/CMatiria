@@ -635,6 +635,8 @@ static struct mtr_stmt* analyze_closure(struct mtr_closure_decl* closure, struct
     closure->function = (struct mtr_function_decl*) analyze_fn(closure->function, validator);
     validator->closure = prev;
 
+    MTR_LOG_WARN("TODO: Fix nested closures");
+
     return sanitize_stmt(closure, closure->function != NULL);
 }
 
@@ -783,7 +785,6 @@ static bool write_closed_on(struct mtr_closure_decl* closure, struct mtr_primary
 
     for (u8 i = 0; i < closure->count; ++i) {
         if (mtr_token_compare(upvalue->symbol.token, closure->upvalues[i].token)) {
-            MTR_LOG_TRACE("Already here!");
             upvalue->symbol.index = closure->upvalues[i].index;
             upvalue->symbol.upvalue = true;
             return true;

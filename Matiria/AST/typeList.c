@@ -143,7 +143,6 @@ static struct mtr_type* insert(struct mtr_type_list* list, void* type, size_t si
 #define LOAD_FACTOR 0.75
 
 static struct type_entry* resize(struct type_entry* entries, size_t old_cap) {
-    MTR_PROFILE_FUNC();
     size_t new_cap = old_cap * 2;
     struct type_entry* temp = calloc(new_cap, sizeof(struct type_entry));
 
@@ -154,7 +153,6 @@ static struct type_entry* resize(struct type_entry* entries, size_t old_cap) {
         struct type_entry* entry = find_entry(old.type, temp, new_cap);
         entry->type = old.type;
         entry->hash = old.hash;
-        MTR_LOG_WARN("moving %p", (void*) old.type);
     }
     free(entries);
     return temp;

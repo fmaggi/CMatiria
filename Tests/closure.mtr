@@ -1,18 +1,23 @@
 fn main()
 {
-    (Float) -> Int x := help();
-    print(x(4.0));
+    y := closure_inside_closure();
+    z := y();
+    print(z(0));
 }
 
-fn help() -> (Float) -> Int
-{
-    x := 3;
-    fn c(Float y) -> Int
-    {
-        return x + 3;
-    }
+fn closure_inside_closure() -> () -> (Int) -> Int {
     x := 45;
-    return c;
+    fn c1() -> (Int) -> Int {
+        print('C1');
+        print(x);
+        fn c2(Int y) -> Int {
+            print('C2');
+            print(x);
+            return x + y;
+        }
+        return c2;
+    }
+    return c1;
 }
 
 fn print(Any x) ...
