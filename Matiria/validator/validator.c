@@ -1,6 +1,8 @@
 #include "validator.h"
 
-#include "scope.h"
+#include "AST/AST.h"
+#include "AST/symbol.h"
+#include "symbolTable.h"
 
 #include "core/report.h"
 #include "core/log.h"
@@ -10,17 +12,106 @@
 #include <string.h>
 
 struct validator {
+    struct mtr_symbol_table symbols;
+    size_t count;
+    struct validator* enclosing;
     struct mtr_closure_decl* closure;
-    struct mtr_scope scope;
     struct mtr_type_list* type_list;
     const char* source;
 };
 
-static void init_validator(struct validator* validator, struct validator* old_validator) {
-    validator->closure = old_validator->closure;
-    mtr_init_scope(&validator->scope, &old_validator->scope);
-    validator->source = old_validator->source;
-    validator->type_list = old_validator->type_list;
+static void init_validator(struct validator* validator, struct validator* enclosing) {
+    validator->enclosing = enclosing;
+    validator->closure = enclosing->closure;
+    mtr_init_symbol_table(&validator->symbols);
+    validator->source = enclosing->source;
+    validator->type_list = enclosing->type_list;
+
+    bool should_be_zero = enclosing == NULL || enclosing->enclosing == NULL;
+    validator->count = should_be_zero ? 0 : enclosing->count;
+}
+
+static void delete_validator(struct validator* validator) {
+    mtr_delete_symbol_table(&validator->symbols);
+}
+
+static struct mtr_symbol* find_symbol(const struct validator* validator, struct mtr_token token) {
+    struct mtr_symbol* s = mtr_symbol_table_get(&validator->symbols, token.start, token.length);
+    while (NULL == s && NULL != validator->enclosing) {
+        validator = validator->enclosing;
+        s = mtr_symbol_table_get(&validator->symbols, token.start, token.length);
+    }
+    return s;
+}
+
+static size_t add_symbol(struct validator* validator, struct mtr_symbol symbol) {
+    struct mtr_symbol* s = find_symbol(validator, symbol.token);
+    if (NULL != s) {
+        return -1;
+    }
+
+    symbol.index = validator->count++;
+    symbol.is_global = validator->enclosing == NULL;
+    symbol.upvalue = false;
+    mtr_symbol_table_insert(&validator->symbols, symbol.token.start, symbol.token.length, symbol);
+    return symbol.index;
+}
+
+static struct mtr_symbol* resolve_local(struct validator* validator, struct mtr_symbol symbol) {
+    struct mtr_token token = symbol.token;
+    return mtr_symbol_table_get(&validator->symbols, token.start, token.length);
+}
+
+static struct mtr_symbol* add_upvalue(struct validator* validator, struct mtr_symbol symbol, bool local) {
+    struct mtr_closure_decl* closure = validator->closure;
+
+    if (closure->count >= UINT16_MAX) {
+        return false;
+    }
+
+    if (closure->upvalues == NULL) {
+        closure->upvalues = malloc(sizeof(struct mtr_symbol) * 8);
+        closure->capacity = 8;
+        closure->count = 0;
+    }
+
+    for (u8 i = 0; i < closure->count; ++i) {
+        if (mtr_token_compare(symbol.token, closure->upvalues[i].token)) {
+            symbol.index = closure->upvalues[i].index;
+            symbol.upvalue = true;
+            return closure->upvalues + i;
+        }
+    }
+
+    if (closure->count == closure->capacity) {
+        closure->capacity *= 2;
+        closure->upvalues = realloc(closure->upvalues, sizeof(struct mtr_symbol) * closure->capacity);
+    }
+
+    u16 index = closure->count++;
+
+    closure->upvalues[index] = symbol;
+    closure->upvalues[index].upvalue = local ? MTR_LOCAL : MTR_NONLOCAL;
+    closure->upvalues[index].index = index;
+    return &closure->upvalues[index];
+}
+
+static struct mtr_symbol* resolve_upvalue(struct validator* validator, struct mtr_symbol symbol) {
+    if (validator->enclosing == NULL) {
+        return NULL;
+    }
+
+    struct mtr_symbol* s = resolve_local(validator->enclosing, symbol);
+    if (s != NULL) {
+        return add_upvalue(validator, symbol, true);
+    }
+
+    s = resolve_upvalue(validator->enclosing, symbol);
+    if (s != NULL) {
+        return add_upvalue(validator, symbol, false);
+    }
+
+    return NULL;
 }
 
 static bool write_closed_on(struct mtr_closure_decl* closure, struct mtr_primary* closed_on);
@@ -152,7 +243,7 @@ static struct mtr_type* analyze_binary(struct mtr_binary* expr, struct validator
 
     struct mtr_type* t = get_operator_type(validator->type_list, expr->operator.token, l, r);
 
-    if (t->type == MTR_DATA_INVALID) {
+    if (!t || t->type == MTR_DATA_INVALID) {
         mtr_report_error(expr->operator.token, "Invalid operation between objects of different types.", validator->source);
         return NULL;
     }
@@ -166,35 +257,30 @@ static struct mtr_type* analyze_binary(struct mtr_binary* expr, struct validator
     return  expr->operator.type;
 }
 
-
 static struct mtr_type* analyze_primary(struct mtr_primary* expr, struct validator* validator) {
-    struct mtr_symbol* s = mtr_scope_find(&validator->scope, expr->symbol.token);
-    if (NULL == s) {
+    struct mtr_symbol* symbol = find_symbol(validator, expr->symbol.token);
+
+    if (symbol == NULL) {
         mtr_report_error(expr->symbol.token, "Undeclared variable.", validator->source);
         return NULL;
     }
 
-    expr->symbol.type = s->type;
-    expr->symbol.index = s->index;
-    expr->symbol.flags = s->flags;
+    expr->symbol.type = symbol->type;
+    expr->symbol.index = symbol->index;
+    expr->symbol.flags = symbol->flags;
 
-    bool check_closed_on = validator->closure != NULL && !s->is_global;;
-    if (check_closed_on) {
-        struct mtr_scope scope = validator->scope;
-        scope.parent = NULL;
+    bool check = validator->closure && !symbol->is_global;
 
-        struct mtr_symbol* closed = mtr_scope_find(&scope, expr->symbol.token);
-        if (s != NULL && closed == NULL) {
-            // We didnt find it on the local scope so it is a closed on var
-            bool written = write_closed_on(validator->closure, expr);
-            if (!written) {
-                mtr_report_error(expr->symbol.token, "Too many closures.", validator->source);
-                return NULL;
-            }
+    if (check) {
+        struct mtr_symbol* closed = resolve_local(validator, expr->symbol);
+        if (closed == NULL) {
+            closed = resolve_upvalue(validator, expr->symbol);
         }
+        expr->symbol.index = closed->index;
+        expr->symbol.flags = closed->flags;
     }
 
-    return s->type;
+    return symbol->type;
 }
 
 static struct mtr_type* analyze_literal(struct mtr_literal* literal, struct validator* validator) {
@@ -380,13 +466,16 @@ static struct mtr_type* analyze_expr(struct mtr_expr* expr, struct validator* va
 }
 
 static bool load_fn(struct mtr_function_decl* stmt, struct validator* validator) {
-    const struct mtr_symbol* s = mtr_scope_add(&validator->scope, stmt->symbol);
-    if (s) {
+    size_t i = add_symbol(validator, stmt->symbol);
+    if (i == (size_t) -1) {
         mtr_report_error(stmt->symbol.token, "Redefinition of name.", validator->source);
+
+        struct mtr_symbol* s = find_symbol(validator, stmt->symbol.token);
         mtr_report_message(s->token, "Previuosly defined here.", validator->source);
         return false;
     }
 
+    stmt->symbol.index = i;
     return true;
 }
 
@@ -396,12 +485,16 @@ static bool load_var(struct mtr_variable* stmt, struct validator* validator) {
         return false;
     }
 
-    const struct mtr_symbol* s = mtr_scope_add(&validator->scope, stmt->symbol);
-    if (NULL != s) {
+    size_t i = add_symbol(validator, stmt->symbol);
+    if (i == (size_t) -1) {
         mtr_report_error(stmt->symbol.token, "Redefinition of name.", validator->source);
+
+        struct mtr_symbol* s = find_symbol(validator, stmt->symbol.token);
         mtr_report_message(s->token, "Previuosly defined here.", validator->source);
         return false;
     }
+
+    stmt->symbol.index = i;
     return true;
 }
 
@@ -421,7 +514,7 @@ static struct mtr_stmt* sanitize_stmt(void* stmt, bool condition) {
 static struct mtr_stmt* analyze_block(struct mtr_block* block, struct validator* validator) {
     bool all_ok = true;
 
-    size_t current = validator->scope.current;
+    size_t current = validator->count;
 
     for (size_t i = 0; i < block->size; ++i) {
         struct mtr_stmt* s = block->statements[i];
@@ -430,7 +523,7 @@ static struct mtr_stmt* analyze_block(struct mtr_block* block, struct validator*
         all_ok = checked != NULL && all_ok;
     }
 
-    block->var_count = (u16) (validator->scope.current - current);
+    block->var_count = (u16) (validator->count - current);
     return sanitize_stmt(block, all_ok);
 }
 
@@ -444,7 +537,7 @@ static struct mtr_stmt* analyze_variable(struct mtr_variable* decl, struct valid
 
     if (decl->symbol.type->type == MTR_DATA_STRUCT && !decl->value) {
         struct mtr_struct_type* type = (struct mtr_struct_type*) decl->symbol.type;
-        struct mtr_symbol* name = mtr_scope_find(&validator->scope, type->name.name);
+        struct mtr_symbol* name = find_symbol(validator, type->name.name);
         MTR_ASSERT(name != NULL, "Type not loaded");
 
         // Create an expression for the constructor
@@ -479,23 +572,18 @@ ret:
     return sanitize_stmt(decl, expr && loaded);
 }
 
-static struct mtr_stmt* analyze_fn(struct mtr_function_decl* stmt, struct validator* validator) {
+static struct mtr_stmt* analyze_function_no_validator(struct mtr_function_decl* stmt, struct validator* validator) {
     bool all_ok = true;
-
-    struct validator fn_validator;
-    init_validator(&fn_validator, validator);
-    fn_validator.scope.current = 0;
 
     for (size_t i = 0; i < stmt->argc; ++i) {
         struct mtr_variable* arg = stmt->argv + i;
-        all_ok = analyze_variable(arg, &fn_validator) && all_ok;
+        all_ok = analyze_variable(arg, validator) && all_ok;
     }
 
-    struct mtr_stmt* checked = analyze(stmt->body, &fn_validator);
+    struct mtr_stmt* checked = analyze(stmt->body, validator);
     stmt->body = checked;
 
     all_ok = checked != NULL && all_ok;
-    mtr_delete_scope(&fn_validator.scope);
 
     struct mtr_function_type* type =  (struct mtr_function_type*) stmt->symbol.type;
     if (type->return_->type != MTR_DATA_VOID && all_ok) {
@@ -510,10 +598,20 @@ static struct mtr_stmt* analyze_fn(struct mtr_function_decl* stmt, struct valida
     return sanitize_stmt(stmt, all_ok);
 }
 
+static struct mtr_stmt* analyze_fn(struct mtr_function_decl* stmt, struct validator* validator) {
+    bool all_ok = true;
+
+    struct validator fn_validator;
+    init_validator(&fn_validator, validator);
+    fn_validator.count = 0;
+
+    return analyze_function_no_validator(stmt, &fn_validator);
+}
+
 static struct mtr_stmt* analyze_assignment(struct mtr_assignment* stmt, struct validator* validator) {
     if (stmt->right->type == MTR_EXPR_PRIMARY) {
         struct mtr_primary* p = (struct mtr_primary*) stmt->right;
-        struct mtr_symbol* s = mtr_scope_find(&validator->scope, p->symbol.token);
+        struct mtr_symbol* s = find_symbol(validator, p->symbol.token);
         if (NULL == s) {
             struct mtr_variable* v = malloc(sizeof(struct mtr_variable));
             v->stmt.type = MTR_STMT_VAR;
@@ -563,7 +661,7 @@ static struct mtr_stmt* analyze_if(struct mtr_if* stmt, struct validator* valida
         struct mtr_stmt* then_checked = analyze(stmt->then, &then);
         stmt->then = then_checked;
         then_ok = then_checked != NULL;
-        mtr_delete_scope(&then.scope);
+        delete_validator(&then);
     }
 
     bool e_ok = true;
@@ -573,6 +671,7 @@ static struct mtr_stmt* analyze_if(struct mtr_if* stmt, struct validator* valida
         struct mtr_stmt* e_checked = analyze(stmt->otherwise, &otherwise);
         stmt->then = e_checked;
         e_ok = e_checked != NULL;
+        delete_validator(&otherwise);
     }
 
     return sanitize_stmt(stmt, condition_ok && then_ok && e_ok);
@@ -592,7 +691,7 @@ static struct mtr_stmt* analyze_while(struct mtr_while* stmt, struct validator* 
     struct mtr_stmt* body_checked = analyze(stmt->body, &body);
     stmt->body = body_checked;
     bool body_ok = body_checked != NULL;
-    mtr_delete_scope(&body.scope);
+    delete_validator(&body);
 
     return sanitize_stmt(stmt, condition_ok && body_ok);
 }
@@ -623,19 +722,22 @@ static struct mtr_stmt* analyze_call_stmt(struct mtr_call_stmt* call, struct val
 // }
 
 static struct mtr_stmt* analyze_closure(struct mtr_closure_decl* closure, struct validator* validator) {
-    struct mtr_symbol* s = mtr_scope_add(&validator->scope, closure->function->symbol);
-    if (s != NULL) {
+    size_t i = add_symbol(validator, closure->function->symbol);
+    if (i == (size_t) -1) {
         mtr_report_error(closure->function->symbol.token, "Redefinition of name.", validator->source);
+
+        struct mtr_symbol* s = find_symbol(validator, closure->function->symbol.token);
         mtr_report_message(s->token, "Previuosly defined here.", validator->source);
         return sanitize_stmt(closure, false);
     }
 
-    struct mtr_closure_decl* prev = validator->closure;
-    validator->closure = closure;
-    closure->function = (struct mtr_function_decl*) analyze_fn(closure->function, validator);
-    validator->closure = prev;
+    closure->function->symbol.index = i;
 
-    MTR_LOG_WARN("TODO: Fix nested closures");
+    struct validator cl_validator;
+    init_validator(&cl_validator, validator);
+    cl_validator.closure = closure;
+    cl_validator.count = 0;
+    closure->function = (struct mtr_function_decl*) analyze_function_no_validator(closure->function, &cl_validator);
 
     return sanitize_stmt(closure, closure->function != NULL);
 }
@@ -653,7 +755,7 @@ static struct mtr_stmt* analyze_struct(struct mtr_struct_decl* s, struct validat
         all_ok = checked != NULL && all_ok;
     }
 
-    mtr_delete_scope(&st_validator.scope);
+    delete_validator(&st_validator);
 
     return sanitize_stmt(s, all_ok);
 }
@@ -695,35 +797,44 @@ static struct mtr_stmt* global_analysis(struct mtr_stmt* stmt, struct validator*
 }
 
 static bool load_union(struct mtr_union_decl* u, struct validator* validator) {
-    const struct mtr_symbol* s = mtr_scope_add(&validator->scope, u->symbol);
-    if (NULL != s) {
+    size_t i = add_symbol(validator, u->symbol);
+    if (i == (size_t) -1) {
         mtr_report_error(u->symbol.token, "Redefinition of name.", validator->source);
+
+        struct mtr_symbol* s = find_symbol(validator, u->symbol.token);
         mtr_report_message(s->token, "Previuosly defined here.", validator->source);
         return false;
     }
 
+    u->symbol.index = i;
     return true;
 }
 
 static bool load_struct(struct mtr_struct_decl* st, struct validator* validator) {
-    const struct mtr_symbol* s = mtr_scope_add(&validator->scope, st->symbol);
-    if (NULL != s) {
+    size_t i = add_symbol(validator, st->symbol);
+    if (i == (size_t) -1) {
         mtr_report_error(st->symbol.token, "Redefinition of name.", validator->source);
+
+        struct mtr_symbol* s = find_symbol(validator, st->symbol.token);
         mtr_report_message(s->token, "Previuosly defined here.", validator->source);
         return false;
     }
 
+    st->symbol.index = i;
     return true;
 }
 
 static bool load_native_fn(struct mtr_function_decl* stmt, struct validator* validator) {
-    const struct mtr_symbol* s = mtr_scope_add(&validator->scope, stmt->symbol);
-    if (NULL != s) {
+    size_t i = add_symbol(validator, stmt->symbol);
+    if (i == (size_t) -1) {
         mtr_report_error(stmt->symbol.token, "Redefinition of name. (Native functions are not overloadable).", validator->source);
+
+        struct mtr_symbol* s = find_symbol(validator, stmt->symbol.token);
         mtr_report_message(s->token, "Previuosly defined here.", validator->source);
         return false;
     }
 
+    stmt->symbol.index = i;
     return true;
 }
 
@@ -748,7 +859,9 @@ static bool load_global(struct mtr_stmt* stmt, struct validator* validator) {
 bool mtr_validate(struct mtr_ast* ast) {
     struct validator validator;
     validator.closure = NULL;
-    mtr_init_scope(&validator.scope, NULL);
+    mtr_init_symbol_table(&validator.symbols);
+    validator.count = 0;
+    validator.enclosing = NULL;
     validator.source = ast->source;
     validator.type_list = &ast->type_list;
 
@@ -768,36 +881,6 @@ bool mtr_validate(struct mtr_ast* ast) {
         all_ok =  checked != NULL && all_ok;
     }
 
-    mtr_delete_scope(&validator.scope);
+    delete_validator(&validator);
     return all_ok;
-}
-
-static bool write_closed_on(struct mtr_closure_decl* closure, struct mtr_primary* upvalue) {
-    if (closure->count >= UINT16_MAX) {
-        return false;
-    }
-
-    if (closure->upvalues == NULL) {
-        closure->upvalues = malloc(sizeof(struct mtr_symbol) * 8);
-        closure->capacity = 8;
-        closure->count = 0;
-    }
-
-    for (u8 i = 0; i < closure->count; ++i) {
-        if (mtr_token_compare(upvalue->symbol.token, closure->upvalues[i].token)) {
-            upvalue->symbol.index = closure->upvalues[i].index;
-            upvalue->symbol.upvalue = true;
-            return true;
-        }
-    }
-
-    if (closure->count == closure->capacity) {
-        closure->capacity *= 2;
-        closure->upvalues = realloc(closure->upvalues, sizeof(struct mtr_symbol) * closure->capacity);
-    }
-
-    closure->upvalues[closure->count] = upvalue->symbol;
-    upvalue->symbol.index = closure->count++;
-    upvalue->symbol.upvalue = true;
-    return true;
 }

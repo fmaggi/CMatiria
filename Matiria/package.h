@@ -3,11 +3,11 @@
 
 #include "AST/AST.h"
 #include "runtime/object.h"
-#include "validator/scope.h"
+#include "validator/symbolTable.h"
 
 struct mtr_package {
-    struct mtr_scope global_symbols;
-    struct mtr_object** globals;
+    struct mtr_symbol_table symbols;
+    struct mtr_object** objects;
     struct mtr_function* main;
     size_t count;
 };

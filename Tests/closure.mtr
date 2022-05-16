@@ -2,18 +2,21 @@ fn main()
 {
     y := closure_inside_closure();
     z := y();
-    print(z(0));
+    w := z(47);
+    print(w);
 }
 
-fn closure_inside_closure() -> () -> (Int) -> Int {
-    x := 45;
-    fn c1() -> (Int) -> Int {
+fn closure_inside_closure() -> () -> (Int) -> [Int] {
+    x := [0, 1, 2, 3];
+    fn c1() -> (Int) -> [Int] {
         print('C1');
         print(x);
-        fn c2(Int y) -> Int {
+        x[0] := 1;
+        fn c2(Int y) -> [Int] {
             print('C2');
             print(x);
-            return x + y;
+            x[0] := y;
+            return x;
         }
         return c2;
     }

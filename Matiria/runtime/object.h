@@ -48,6 +48,12 @@ struct mtr_function {
 
 struct mtr_function* mtr_new_function(struct mtr_chunk chunk);
 
+struct mtr_upvalue {
+    mtr_value value;
+    mtr_value* ptr;
+    bool local;
+};
+
 struct mtr_closure {
     struct mtr_object obj;
     struct mtr_chunk chunk;

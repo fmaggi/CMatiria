@@ -145,11 +145,6 @@ struct mtr_function_decl {
     u8 argc;
 };
 
-struct mtr_closed {
-    size_t* captured;
-    u8 count;
-};
-
 struct mtr_closure_decl {
     struct mtr_stmt stmt;
     struct mtr_function_decl* function;

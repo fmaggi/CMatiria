@@ -47,12 +47,12 @@ TEST_CASE(user_types) {
 }
 
 static void all_tests() {
-    no_file();
-    simple_test();
-    parser_test();
+    // no_file();
+    // simple_test();
+    // parser_test();
     // fibbonacci_test();
     closure_test();
-    user_types();
+    // user_types();
     REPORT();
 }
 

@@ -299,7 +299,7 @@ struct mtr_type* mtr_type_list_get_void_type(struct mtr_type_list* list) {
 }
 
 struct mtr_type* mtr_type_list_exists(struct mtr_type_list* list, struct mtr_type type) {
-    struct type_entry* entry = find_entry(&type, list->types, list->count);
+    struct type_entry* entry = find_entry(&type, list->types, list->capacity);
     if (entry->type && mtr_type_match(&type, entry->type)) {
         return entry->type;
     }

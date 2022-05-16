@@ -145,7 +145,13 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
 
                 for (u16 i = 0; i < count; ++i) {
                     u16 index = READ(u16);
-                    c->upvalues[i] = frame.stack[index];
+                    bool nonlocal = READ(bool);
+
+                    if (nonlocal) {
+                        c->upvalues[i] = frame.closed[index];
+                    } else {
+                        c->upvalues[i] = frame.stack[index];
+                    }
                 }
 
                 push(engine, MTR_OBJ(c));
@@ -441,7 +447,7 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
 #undef READ
 
 i32 mtr_execute(struct mtr_engine* engine, struct mtr_package* package) {
-    engine->globals = package->globals;
+    engine->globals = package->objects;
     engine->stack_top = engine->stack;
     engine->objects = NULL;
     struct mtr_function* f = package->main;
