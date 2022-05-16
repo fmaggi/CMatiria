@@ -148,7 +148,7 @@ struct mtr_function_decl {
 struct mtr_closure_decl {
     struct mtr_stmt stmt;
     struct mtr_function_decl* function;
-    struct mtr_symbol* upvalues;
+    struct mtr_upvalue_symbol* upvalues;
     u16 capacity;
     u16 count;
 };

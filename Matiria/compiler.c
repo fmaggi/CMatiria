@@ -481,11 +481,9 @@ static void write_closure(struct mtr_chunk* chunk, struct mtr_closure_decl* c) {
     write_u64(chunk, mtr_reinterpret_cast(u64, closure));
 
     for (u16 i = 0; i < c->count; ++i) {
-        struct mtr_symbol s = c->upvalues[i];
+        struct mtr_upvalue_symbol s = c->upvalues[i];
         write_u16(chunk, (u16)s.index);
-
-        bool nonlocal = s.upvalue == MTR_NONLOCAL;
-        mtr_write_chunk(chunk, nonlocal);
+        mtr_write_chunk(chunk, s.local);
     }
 }
 

@@ -57,64 +57,62 @@ static size_t add_symbol(struct validator* validator, struct mtr_symbol symbol) 
     return symbol.index;
 }
 
-static struct mtr_symbol* resolve_local(struct validator* validator, struct mtr_symbol symbol) {
+static size_t resolve_local(struct validator* validator, struct mtr_symbol symbol) {
     struct mtr_token token = symbol.token;
-    return mtr_symbol_table_get(&validator->symbols, token.start, token.length);
+    struct mtr_symbol* s = mtr_symbol_table_get(&validator->symbols, token.start, token.length);
+    return s ? s->index : -1;
 }
 
-static struct mtr_symbol* add_upvalue(struct validator* validator, struct mtr_symbol symbol, bool local) {
+static size_t add_upvalue(struct validator* validator, struct mtr_symbol symbol, bool local) {
     struct mtr_closure_decl* closure = validator->closure;
 
     if (closure->count >= UINT16_MAX) {
-        return false;
+        return -1;
     }
 
     if (closure->upvalues == NULL) {
-        closure->upvalues = malloc(sizeof(struct mtr_symbol) * 8);
+        closure->upvalues = malloc(sizeof(struct mtr_upvalue_symbol) * 8);
         closure->capacity = 8;
         closure->count = 0;
     }
 
     for (u8 i = 0; i < closure->count; ++i) {
         if (mtr_token_compare(symbol.token, closure->upvalues[i].token)) {
-            symbol.index = closure->upvalues[i].index;
-            symbol.upvalue = true;
-            return closure->upvalues + i;
+            return i;
         }
     }
 
     if (closure->count == closure->capacity) {
         closure->capacity *= 2;
-        closure->upvalues = realloc(closure->upvalues, sizeof(struct mtr_symbol) * closure->capacity);
+        closure->upvalues = realloc(closure->upvalues, sizeof(struct mtr_upvalue_symbol) * closure->capacity);
     }
 
     u16 index = closure->count++;
 
-    closure->upvalues[index] = symbol;
-    closure->upvalues[index].upvalue = local ? MTR_LOCAL : MTR_NONLOCAL;
-    closure->upvalues[index].index = index;
-    return &closure->upvalues[index];
+    closure->upvalues[index].token = symbol.token;
+    closure->upvalues[index].index = symbol.index;
+    closure->upvalues[index].local = local;
+    return index;
 }
 
-static struct mtr_symbol* resolve_upvalue(struct validator* validator, struct mtr_symbol symbol) {
+static size_t resolve_upvalue(struct validator* validator, struct mtr_symbol symbol) {
     if (validator->enclosing == NULL) {
-        return NULL;
+        return -1;
     }
 
-    struct mtr_symbol* s = resolve_local(validator->enclosing, symbol);
-    if (s != NULL) {
+    size_t i = resolve_local(validator->enclosing, symbol);
+    if (i != (size_t) -1) {
         return add_upvalue(validator, symbol, true);
     }
 
-    s = resolve_upvalue(validator->enclosing, symbol);
-    if (s != NULL) {
+    i = resolve_upvalue(validator->enclosing, symbol);
+    if (i != (size_t) -1) {
+        symbol.index = i;
         return add_upvalue(validator, symbol, false);
     }
 
-    return NULL;
+    return -1;
 }
-
-static bool write_closed_on(struct mtr_closure_decl* closure, struct mtr_primary* closed_on);
 
 #define TYPE_CHECK(t) \
     do {              \
@@ -271,13 +269,15 @@ static struct mtr_type* analyze_primary(struct mtr_primary* expr, struct validat
 
     bool check = validator->closure && !symbol->is_global;
 
+    // because we are here we know the symbol exists
+    // probably could optimize this
     if (check) {
-        struct mtr_symbol* closed = resolve_local(validator, expr->symbol);
-        if (closed == NULL) {
-            closed = resolve_upvalue(validator, expr->symbol);
+        size_t i = resolve_local(validator, expr->symbol);
+        if (i == (size_t) -1) {
+            i = resolve_upvalue(validator, expr->symbol);
+            expr->symbol.upvalue = true;
         }
-        expr->symbol.index = closed->index;
-        expr->symbol.flags = closed->flags;
+        expr->symbol.index = i;
     }
 
     return symbol->type;

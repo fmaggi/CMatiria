@@ -145,12 +145,12 @@ static void call(struct mtr_engine* engine, const struct mtr_chunk chunk, u8 arg
 
                 for (u16 i = 0; i < count; ++i) {
                     u16 index = READ(u16);
-                    bool nonlocal = READ(bool);
+                    bool local = READ(bool);
 
-                    if (nonlocal) {
-                        c->upvalues[i] = frame.closed[index];
-                    } else {
+                    if (local) {
                         c->upvalues[i] = frame.stack[index];
+                    } else {
+                        c->upvalues[i] = frame.closed[index];
                     }
                 }
 

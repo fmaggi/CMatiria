@@ -140,10 +140,14 @@ u8* mtr_disassemble_instruction(u8* instruction, u32 offset) {
     }
 
     case MTR_OP_UPVALUE_GET: {
+        u16 index = READ(u16);
+        MTR_LOG("uGET at %u", index);
         break;
     }
 
     case MTR_OP_UPVALUE_SET: {
+        u16 index = READ(u16);
+        MTR_LOG("uSET at %u", index);
         break;
     }
 
