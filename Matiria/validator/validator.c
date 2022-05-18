@@ -527,6 +527,12 @@ static struct mtr_stmt* analyze_block(struct mtr_block* block, struct validator*
     return sanitize_stmt(block, all_ok);
 }
 
+static struct mtr_stmt* analyze_scope(struct mtr_block* block, struct validator* validator) {
+    struct validator scope_validator;
+    init_validator(&scope_validator, validator);
+    return analyze_block(block, &scope_validator);
+}
+
 static struct mtr_stmt* analyze_variable(struct mtr_variable* decl, struct validator* validator) {
     bool expr = true;
     struct mtr_type* value_type = decl->value == NULL ? NULL : analyze_expr(decl->value, validator);
@@ -586,9 +592,15 @@ static struct mtr_stmt* analyze_function_no_validator(struct mtr_function_decl* 
     all_ok = checked != NULL && all_ok;
 
     struct mtr_function_type* type =  (struct mtr_function_type*) stmt->symbol.type;
-    if (type->return_->type != MTR_DATA_VOID && all_ok) {
+    struct mtr_stmt* last = NULL;
+    if (stmt->body->type == MTR_STMT_BLOCK) {
         struct mtr_block* body = (struct mtr_block*) stmt->body;
-        struct mtr_stmt* last = body->statements[body->size-1];
+        last = body->statements[body->size-1];
+    } else {
+        last = stmt->body;
+    }
+
+    if (type->return_->type != MTR_DATA_VOID && all_ok) {
         if (last->type != MTR_STMT_RETURN) {
             mtr_report_error(stmt->symbol.token, "Non void function doesn't return anything.", validator->source);
             return false;
@@ -763,6 +775,7 @@ static struct mtr_stmt* analyze_struct(struct mtr_struct_decl* s, struct validat
 static struct mtr_stmt* analyze(struct mtr_stmt* stmt, struct validator* validator) {
     switch (stmt->type)
     {
+    case MTR_STMT_SCOPE:      return analyze_scope((struct mtr_block*) stmt, validator);
     case MTR_STMT_BLOCK:      return analyze_block((struct mtr_block*) stmt, validator);
     case MTR_STMT_ASSIGNMENT: return analyze_assignment((struct mtr_assignment*) stmt, validator);
     case MTR_STMT_FN:         return analyze_fn((struct mtr_function_decl*) stmt, validator);

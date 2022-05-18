@@ -1,5 +1,6 @@
 #include "parser.h"
 
+#include "AST/AST.h"
 #include "AST/typeList.h"
 #include "core/types.h"
 #include "core/report.h"
@@ -502,6 +503,12 @@ static struct mtr_stmt* block(struct mtr_parser* parser) {
     return (struct mtr_stmt*) node;
 }
 
+static struct mtr_stmt* scope(struct mtr_parser* parser) {
+    struct mtr_block* self = (struct mtr_block*) block(parser);
+    self->stmt.type = MTR_STMT_SCOPE;
+    return (struct mtr_stmt*) self;
+}
+
 static struct mtr_stmt* if_stmt(struct mtr_parser* parser) {
     struct mtr_if* node = ALLOCATE_STMT(MTR_STMT_IF, mtr_if);
 
@@ -509,12 +516,21 @@ static struct mtr_stmt* if_stmt(struct mtr_parser* parser) {
     node->condition = expression(parser);
     consume(parser, MTR_TOKEN_COLON, "Expected ':'.");
 
-    node->then = declaration(parser);
+    if (CHECK(MTR_TOKEN_CURLY_L)) {
+        node->then = block(parser);
+    } else {
+        node->then = declaration(parser);
+    }
+
     node->otherwise = NULL;
 
     if (CHECK(MTR_TOKEN_ELSE)) {
         advance(parser);
-        node->otherwise = declaration(parser);
+        if (CHECK(MTR_TOKEN_CURLY_L)) {
+            node->otherwise = block(parser);
+        } else {
+            node->otherwise = declaration(parser);
+        }
     }
 
     return (struct mtr_stmt*) node;
@@ -526,7 +542,11 @@ static struct mtr_stmt* while_stmt(struct mtr_parser* parser) {
     advance(parser);
     node->condition = expression(parser);
     consume(parser, MTR_TOKEN_COLON, "Expected ':'.");
-    node->body = declaration(parser);
+    if (CHECK(MTR_TOKEN_CURLY_L)) {
+        node->body = block(parser);
+    } else {
+        node->body = declaration(parser);
+    }
 
     return (struct mtr_stmt*) node;
 }
@@ -551,7 +571,7 @@ static struct mtr_stmt* statement(struct mtr_parser* parser) {
     {
     case MTR_TOKEN_IF:      return if_stmt(parser);
     case MTR_TOKEN_WHILE:   return while_stmt(parser);
-    // case MTR_TOKEN_CURLY_L: return block(parser);
+    case MTR_TOKEN_CURLY_L: return scope(parser);
     case MTR_TOKEN_RETURN:  return return_stmt(parser);
     default:
         return expr_stmt(parser);
@@ -640,9 +660,17 @@ type_check:; // this is some weird shit with labels. prob a clang bug
         node->stmt.type = MTR_STMT_NATIVE_FN;
         advance(parser);
         return (struct mtr_stmt*) node;
+    } else if (CHECK(MTR_TOKEN_ASSIGN)) {
+        advance(parser);
+        struct mtr_return* r = ALLOCATE_STMT(MTR_STMT_RETURN, mtr_return);
+        r->expr = expression(parser);
+        consume(parser, MTR_TOKEN_SEMICOLON, "Expected ';'.");
+        r->from = node;
+        node->body = (struct mtr_stmt*) r;
+    } else {
+        node->body = block(parser);
     }
 
-    node->body = block(parser);
 
     return (struct mtr_stmt*) node;
 }
@@ -871,9 +899,11 @@ void mtr_free_stmt(struct mtr_stmt* s) {
         return;
     }
     switch (s->type) {
-        case MTR_STMT_BLOCK:
+        case MTR_STMT_SCOPE:
+        case MTR_STMT_BLOCK: {
             delete_block((struct mtr_block*) s);
             break;
+        }
         case MTR_STMT_ASSIGNMENT: {
             struct mtr_assignment* a = (struct mtr_assignment*) s;
             mtr_free_expr(a->right);

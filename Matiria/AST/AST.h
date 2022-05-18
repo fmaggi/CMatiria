@@ -99,7 +99,8 @@ enum mtr_stmt_type {
     MTR_STMT_IF,
     MTR_STMT_WHILE,
     MTR_STMT_BLOCK,
-    MTR_STMT_CALL
+    MTR_STMT_SCOPE,
+    MTR_STMT_CALL,
 };
 
 struct mtr_stmt {

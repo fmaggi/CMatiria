@@ -1,4 +1,4 @@
-SRC_DIR = Matiria
+SRC_DIR = ./Matiria
 MATIRIA = libMatiria.a
 
 CC = clang
@@ -26,17 +26,22 @@ endif
 
 all: test
 
-test: $(MATIRIA)
+test: $(MATIRIA) Tests/main.o
 	@echo [EXE] test
-	@$(CC) $(CFLAGS) $(EXEFLAGS) -DMTR_MK -o test Tests/main.c $^
+	@$(CC) -o test $(CFLAGS) $(EXEFLAGS) -DMTR_MK Tests/main.o $(MATIRIA)
 
 $(MATIRIA): $(OBJS)
 	@echo [LIB] $(MATIRIA)
 	@$(LL) rcs $@ $^ $(LLFLAGS)
 
-%.o: %.c
+Matiria/%.o: Matiria/%.c
 	@echo [CC] $<
 	@$(CC) $(CFLAGS) -o $@ -c $<
+
+Tests/%.o: Tests/%.c
+	@echo [CC] $<
+	@$(CC) $(CFLAGS) -DMTR_MK -o $@ -c $<
+
 
 clean:
 	@rm $(OBJS) $(MATIRIA) test Tests/main.o

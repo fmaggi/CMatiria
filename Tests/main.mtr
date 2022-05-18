@@ -5,6 +5,9 @@ fn main()
     Float z := 45.0;
     a := [3, 5, x];
     print(z);
+    print(test());
 }
+
+fn test() -> Int := 35 + 45;
 
 fn print(Any x) ...

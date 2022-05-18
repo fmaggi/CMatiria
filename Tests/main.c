@@ -26,19 +26,19 @@ TEST_CASE(no_file) {
     CHECK(mtr_launch("nofile.mtr") == MTR_FILE_ERROR);
 }
 
-TEST_CASE(simple_test) {
+TEST_CASE(simple) {
     CHECK(mtr_launch(MTR_PATH("main.mtr")) == MTR_OK);
 }
 
-TEST_CASE(parser_test) {
+TEST_CASE(parser) {
     CHECK(mtr_launch(MTR_PATH("parser_error.mtr")) == MTR_PARSER_ERROR);
 }
 
-TEST_CASE(fibbonacci_test) {
+TEST_CASE(fibbonacci) {
     CHECK(mtr_launch(MTR_PATH("fib.mtr")) == MTR_OK);
 }
 
-TEST_CASE(closure_test) {
+TEST_CASE(closure) {
     CHECK(mtr_launch(MTR_PATH("closure.mtr")) == MTR_OK);
 }
 
@@ -46,13 +46,19 @@ TEST_CASE(user_types) {
     CHECK(mtr_launch(MTR_PATH("userTypes.mtr")) == MTR_OK);
 }
 
+TEST_CASE(scope) {
+    CHECK(mtr_launch(MTR_PATH("scope.mtr")) == MTR_OK);
+}
+
 static void all_tests() {
-    // no_file();
-    // simple_test();
-    // parser_test();
-    // fibbonacci_test();
-    closure_test();
-    // user_types();
+    no_file();
+    parser();
+    simple();
+    scope();
+    fibbonacci();
+    closure();
+    user_types();
+    scope();
     REPORT();
 }
 

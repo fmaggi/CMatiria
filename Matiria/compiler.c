@@ -491,9 +491,15 @@ static void write(struct mtr_chunk* chunk, struct mtr_stmt* stmt) {
     switch (stmt->type)
     {
     case MTR_STMT_VAR:   write_variable(chunk, (struct mtr_variable*) stmt); return;
+
     case MTR_STMT_IF:    write_if(chunk, (struct mtr_if*) stmt); return;
     case MTR_STMT_WHILE: write_while(chunk, (struct mtr_while*) stmt); return;
-    case MTR_STMT_BLOCK: write_block(chunk, (struct mtr_block*) stmt); return;
+
+    // scopes are just for validation purposes
+    case MTR_STMT_SCOPE:
+    case MTR_STMT_BLOCK:
+        write_block(chunk, (struct mtr_block*) stmt); return;
+
     case MTR_STMT_ASSIGNMENT: write_assignment(chunk, (struct mtr_assignment*) stmt); return;
     case MTR_STMT_RETURN: write_return(chunk, (struct mtr_return*) stmt); return;
     case MTR_STMT_CALL: write_call_stmt(chunk, (struct mtr_call_stmt*) stmt); return;

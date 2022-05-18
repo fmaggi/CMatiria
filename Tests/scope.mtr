@@ -1,0 +1,17 @@
+fn main()
+{
+    {
+        Int x := 45;
+        print(x);
+    }
+
+    {
+        Float x := 1.5;
+        print(x);
+    }
+
+    String x := 'Hello';
+    print(x);
+}
+
+fn print(Any x) ...
