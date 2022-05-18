@@ -17,7 +17,3 @@ fn main() {
 }
 
 fn print(Any x) ...
-
-fn test() {
-    print('bye');
-}

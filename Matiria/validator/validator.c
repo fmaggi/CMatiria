@@ -530,7 +530,12 @@ static struct mtr_stmt* analyze_block(struct mtr_block* block, struct validator*
 static struct mtr_stmt* analyze_scope(struct mtr_block* block, struct validator* validator) {
     struct validator scope_validator;
     init_validator(&scope_validator, validator);
-    return analyze_block(block, &scope_validator);
+
+    struct mtr_stmt* b = analyze_block(block, &scope_validator);
+
+    delete_validator(&scope_validator);
+
+    return b;
 }
 
 static struct mtr_stmt* analyze_variable(struct mtr_variable* decl, struct validator* validator) {
@@ -617,7 +622,11 @@ static struct mtr_stmt* analyze_fn(struct mtr_function_decl* stmt, struct valida
     init_validator(&fn_validator, validator);
     fn_validator.count = 0;
 
-    return analyze_function_no_validator(stmt, &fn_validator);
+    struct mtr_stmt* s = analyze_function_no_validator(stmt, &fn_validator);
+
+    delete_validator(&fn_validator);
+
+    return s;
 }
 
 static struct mtr_stmt* analyze_assignment(struct mtr_assignment* stmt, struct validator* validator) {
@@ -750,6 +759,7 @@ static struct mtr_stmt* analyze_closure(struct mtr_closure_decl* closure, struct
     cl_validator.closure = closure;
     cl_validator.count = 0;
     closure->function = (struct mtr_function_decl*) analyze_function_no_validator(closure->function, &cl_validator);
+    delete_validator(&cl_validator);
 
     return sanitize_stmt(closure, closure->function != NULL);
 }
